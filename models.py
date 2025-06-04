@@ -275,39 +275,66 @@ class Experiment(Base):
 
 class BenchmarkResult(Base):
     """
-    Benchmarking experiment results.
+    Benchmarking experiment results from hap.py output.
+    Stores key metrics for SNP and INDEL variants.
     """
     __tablename__ = 'benchmark_results'
-    id = Column(Integer, primary_key=True)
-    experiment_id = Column(Integer, ForeignKey('experiments.id'))
     
-    # Core columns
-    type = Column(String(20))           # SNP, INDEL
-    subset = Column(String(100))        # *, easy, difficult
-    filter = Column(String(20))         # PASS, ALL
+    id = Column(Integer, primary_key=True)
+    experiment_id = Column(Integer, ForeignKey('experiments.id'), nullable=False)
+    
+    # Core identifiers (filtering criteria)
+    variant_type = Column(String(20), nullable=False)      # SNP, INDEL
+    subtype = Column(String(100), default='NULL')             # Always 'NULL' for now
+    subset = Column(String(100), default='ALL')              # Always 'ALL' for now  
+    filter_type = Column(String(20), default='ALL')       # Always 'ALL' for now
     
     # Performance metrics
-    recall = Column(Float)              # METRIC.Recall
-    precision = Column(Float)           # METRIC.Precision  
-    f1_score = Column(Float)           # METRIC.F1_Score
+    metric_recall = Column(Float)      # METRIC.Recall
+    metric_precision = Column(Float)   # METRIC.Precision
+    metric_f1_score = Column(Float)    # METRIC.F1_Score
     
-    # Count data
-    truth_total = Column(Integer)       # TRUTH.TOTAL
-    truth_tp = Column(Integer)         # TRUTH.TP
-    truth_fn = Column(Integer)         # TRUTH.FN
-    query_tp = Column(Integer)         # QUERY.TP
-    query_fp = Column(Integer)         # QUERY.FP
-    query_unk = Column(Integer)        # QUERY.UNK
+    # Subset information
+    subset_size = Column(Float)            # Subset.Size
+    subset_is_conf_size = Column(Float)    # Subset.IS_CONF.Size
+    
+    # Truth set totals
+    truth_total = Column(Integer)         # TRUTH.TOTAL
+    truth_total_het = Column(Float)       # TRUTH.TOTAL.het
+    truth_total_homalt = Column(Float)    # TRUTH.TOTAL.homalt
+    
+    # Truth set true positives
+    truth_tp = Column(Integer)          # TRUTH.TP
+    truth_tp_het = Column(Float)        # TRUTH.TP.het
+    truth_tp_homalt = Column(Float)     # TRUTH.TP.homalt
+    
+    # Truth set false negatives
+    truth_fn = Column(Integer)              # TRUTH.FN
+    truth_fn_het = Column(Float)            # TRUTH.FN.het
+    truth_fn_homalt = Column(Float)         # TRUTH.FN.homalt
+    
+    # Query totals
+    query_total = Column(Integer)         # QUERY.TOTAL
+    query_total_het = Column(Float)       # QUERY.TOTAL.het
+    query_total_homalt = Column(Float)    # QUERY.TOTAL.homalt
+    
+    # Query true positives
+    query_tp = Column(Integer)        # QUERY.TP
+    query_tp_het = Column(Float)      # QUERY.TP.het
+    query_tp_homalt = Column(Float)   # QUERY.TP.homalt
+    
+    # Query false positives
+    query_fp = Column(Integer)          # QUERY.FP
+    query_fp_het = Column(Float)        # QUERY.FP.het
+    query_fp_homalt = Column(Float)     # QUERY.FP.homalt
+    
+    # Query unknown
+    query_unk = Column(Integer)           # QUERY.UNK
+    query_unk_het = Column(Float)         # QUERY.UNK.het
+    query_unk_homalt = Column(Float)      # QUERY.UNK.homalt
     
     # Relationship
     experiment = relationship("Experiment", back_populates="benchmark_results")
-# ============================================================================
-# OTHER FUNCTIONS
-# ============================================================================
-'''
-def get_enum_values(enum_class):
-    """Get all possible values for an enum"""
-    return [e.value for e in enum_class]
-
-
-'''
+    
+    def __repr__(self):
+        return f"<BenchmarkResult(exp_id={self.experiment_id}, type={self.variant_type}, recall={self.metric_recall})>"
