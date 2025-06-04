@@ -23,5 +23,5 @@ def main():
         print("Database setup failed")
         sys.exit(1)
 
-if __name__ == "__main__": # Checks if the script is being run from the main program
+if __name__ == "__main__":
     main()
