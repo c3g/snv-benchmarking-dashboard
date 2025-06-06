@@ -12,9 +12,8 @@ def main():
         print("Cannot connect to database.")
         sys.exit(1)
     
-    print("🗑️ Dropping all existing tables and data...")
-    create_tables()  # This empties everything
-    print("✅ Fresh tables created")
+    # Create tables
+    create_tables() 
     
     # Add reference data
     if populate_database_from_csv():

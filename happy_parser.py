@@ -112,4 +112,4 @@ def parse_happy_csv(happy_file_name, experiment_id):
         return {"success": True, "message": f"Added {results_added} results"}
     except Exception as e:
         print(f"Error parsing {happy_file_path}: {e}")
-        return {"success": False, "error": str(e)}    
+        return {"success": False, "error": str(e)}   
