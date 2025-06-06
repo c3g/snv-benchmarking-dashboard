@@ -25,12 +25,6 @@ def safe_int(value):
 def parse_happy_csv(happy_file_name, experiment_id):
     """
     Parse one hap.py CSV file and store results in database
-    
-    Args:
-        happy_file_name: path to hap.py CSV file
-        
-    Returns:
-
     """
     happy_file_path = get_data_file_path(happy_file_name)
     
@@ -41,9 +35,9 @@ def parse_happy_csv(happy_file_name, experiment_id):
 
         # Filter for the specific rows --------------- Can be updated later
         filtered_df = df[
+            (df['Subset'] == ('*')) & 
             (df['Subtype'] == '*') &
-            (df['Subset'] == '*') &
-            (df['Filter'] == 'ALL')
+            (df['Filter'] == 'ALL') 
         ]
     
         if len(filtered_df) == 0:
@@ -62,8 +56,8 @@ def parse_happy_csv(happy_file_name, experiment_id):
                     
                     # Main identifiers
                     variant_type=row['Type'],
-                    subtype=row['Subtype'],
-                    subset=row['Subset'],
+                    subtype=row['Subtype'].replace('*', 'ALL_SUBTYPES'),
+                    subset=row['Subset'].replace('*', 'ALL_REGIONS'),
                     filter_type=row['Filter'],
                     
                     # Performance metrics
@@ -119,6 +113,3 @@ def parse_happy_csv(happy_file_name, experiment_id):
     except Exception as e:
         print(f"Error parsing {happy_file_path}: {e}")
         return {"success": False, "error": str(e)}    
-        
-#------------- TEST 
-print(parse_happy_csv('001_HG002_Illumina_NovaseqX_DeepVariant_GIAB.csv',1))

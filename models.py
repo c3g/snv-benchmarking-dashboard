@@ -300,38 +300,38 @@ class BenchmarkResult(Base):
     
     # Truth set totals
     truth_total = Column(Integer)         # TRUTH.TOTAL
-    truth_total_het = Column(Float)       # TRUTH.TOTAL.het
-    truth_total_homalt = Column(Float)    # TRUTH.TOTAL.homalt
+    truth_total_het = Column(Integer)       # TRUTH.TOTAL.het
+    truth_total_homalt = Column(Integer)    # TRUTH.TOTAL.homalt
     
     # Truth set true positives
     truth_tp = Column(Integer)          # TRUTH.TP
-    truth_tp_het = Column(Float)        # TRUTH.TP.het
-    truth_tp_homalt = Column(Float)     # TRUTH.TP.homalt
+    truth_tp_het = Column(Integer)        # TRUTH.TP.het
+    truth_tp_homalt = Column(Integer)     # TRUTH.TP.homalt
     
     # Truth set false negatives
     truth_fn = Column(Integer)              # TRUTH.FN
-    truth_fn_het = Column(Float)            # TRUTH.FN.het
-    truth_fn_homalt = Column(Float)         # TRUTH.FN.homalt
+    truth_fn_het = Column(Integer)            # TRUTH.FN.het
+    truth_fn_homalt = Column(Integer)         # TRUTH.FN.homalt
     
     # Query totals
     query_total = Column(Integer)         # QUERY.TOTAL
-    query_total_het = Column(Float)       # QUERY.TOTAL.het
-    query_total_homalt = Column(Float)    # QUERY.TOTAL.homalt
+    query_total_het = Column(Integer)       # QUERY.TOTAL.het
+    query_total_homalt = Column(Integer)    # QUERY.TOTAL.homalt
     
     # Query true positives
     query_tp = Column(Integer)        # QUERY.TP
-    query_tp_het = Column(Float)      # QUERY.TP.het
-    query_tp_homalt = Column(Float)   # QUERY.TP.homalt
+    query_tp_het = Column(Integer)      # QUERY.TP.het
+    query_tp_homalt = Column(Integer)   # QUERY.TP.homalt
     
     # Query false positives
     query_fp = Column(Integer)          # QUERY.FP
-    query_fp_het = Column(Float)        # QUERY.FP.het
-    query_fp_homalt = Column(Float)     # QUERY.FP.homalt
+    query_fp_het = Column(Integer)        # QUERY.FP.het
+    query_fp_homalt = Column(Integer)     # QUERY.FP.homalt
     
     # Query unknown
     query_unk = Column(Integer)           # QUERY.UNK
-    query_unk_het = Column(Float)         # QUERY.UNK.het
-    query_unk_homalt = Column(Float)      # QUERY.UNK.homalt
+    query_unk_het = Column(Integer)         # QUERY.UNK.het
+    query_unk_homalt = Column(Integer)      # QUERY.UNK.homalt
     
     # Relationship
     experiment = relationship("Experiment", back_populates="benchmark_results")

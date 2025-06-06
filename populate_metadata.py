@@ -16,6 +16,7 @@ import pandas as pd
 from database import get_db_session
 from models import *
 from config import METADATA_CSV_PATH
+from happy_parser import parse_happy_csv
 
 # Path to metadata CSV file
 metadata_CSV_file_path = METADATA_CSV_PATH
@@ -426,7 +427,7 @@ def add_experiment(row):
 
 def populate_database_from_csv(file_path=metadata_CSV_file_path):
     """
-    Main function to populate the entire database from CSV metadata.
+    Main function to populate the entire database from CSV metadata AND hap.py results
     Processes each row and calls all population functions in order.
     
     Args:
@@ -435,7 +436,7 @@ def populate_database_from_csv(file_path=metadata_CSV_file_path):
     Returns:
         bool: True if successful, False if errors occurred
     """
-    
+
     # Load CSV file
     raw_df = load_csv_metadata(file_path)
     if raw_df is None:
@@ -462,4 +463,15 @@ def populate_database_from_csv(file_path=metadata_CSV_file_path):
         add_quality_control(row)
         add_experiment(row)
         
+        experiment_id = row['ID']
+        file_name = row['file_name']
+        
+        if file_name and not pd.isna(file_name):
+            result = parse_happy_csv(file_name, experiment_id)
+            if result["success"]:
+                print(f"Loaded results: {result['message']}")
+            else:
+                print(f"Failed to load results: {result.get('error')}")
+        
+        print(f"✅ Complete setup for: {row['name']}\n")
     return True
