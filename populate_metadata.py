@@ -152,12 +152,13 @@ def map_boolean(value):
 # GENERIC METADATA ADDING FUNCTION
 # ============================================================================
 
-def add_record_if_not_exists(model_class, filter_fields, all_fields, record_name):
+def add_record_if_not_exists(session, model_class, filter_fields, all_fields, record_name):
     """
-    Generic function to add database record only if it doesn't already exist.
+    Generic function to add metadata record only if it doesn't already exist.
     Prevents duplicate records and works with any SQLAlchemy model.
     
     Args:
+        session: passed as parameter instead of creating a new one
         model_class: SQLAlchemy model class (e.g., SequencingTechnology)
         filter_fields (dict): Fields to check for existing records
         all_fields (dict): Complete field set for new record creation
@@ -167,19 +168,19 @@ def add_record_if_not_exists(model_class, filter_fields, all_fields, record_name
         SQLAlchemy object: New or existing record instance
     """
     try:
-        with get_db_session() as session:
-            # Check if record already exists by starting query on model table
-            existing = session.query(model_class).filter_by(**filter_fields).first()
+        # Check if record already exists by starting query on model table
+        existing = session.query(model_class).filter_by(**filter_fields).first()
             
-            if not existing:
-                # creates a new instance of the model and stages it for insertion
-                new_record = model_class(**all_fields)
-                session.add(new_record)
-                print(f"Added {record_name}: {' '.join(str(v) for v in filter_fields.values() if v)}")
-                return new_record
-            else:
-                print(f"Already exists {record_name}: {' '.join(str(v) for v in filter_fields.values() if v)}")
-                return existing
+        if not existing:
+            # creates a new instance of the model and stages it for insertion
+            new_record = model_class(**all_fields)
+            session.add(new_record)
+            session.flush()  # Get the ID without committing
+            print(f"Added {record_name}: {' '.join(str(v) for v in filter_fields.values() if v)}")
+            return new_record
+        else:
+            print(f"Already exists {record_name}: {' '.join(str(v) for v in filter_fields.values() if v)}")
+            return existing
                 
     except Exception as e:
         print(f"Error adding {record_name}: {e}")
@@ -189,7 +190,7 @@ def add_record_if_not_exists(model_class, filter_fields, all_fields, record_name
 # METADATA ADDERS
 # ============================================================================
 
-def add_sequencing_tech(row):
+def add_sequencing_tech(session, row):
     """
     Create SequencingTechnology record from CSV row. (if not already exist)
     """
@@ -212,9 +213,9 @@ def add_sequencing_tech(row):
         'platform_version': row['platform_version']
     }
     
-    return add_record_if_not_exists(SequencingTechnology, filter_fields, all_fields, "sequencing tech")
+    return add_record_if_not_exists(session, SequencingTechnology, filter_fields, all_fields, "sequencing tech")
 
-def add_variant_caller(row):
+def add_variant_caller(session, row):
     """
     Create VariantCaller record from CSV row.
     """
@@ -234,9 +235,9 @@ def add_variant_caller(row):
         'type': type_enum,
         'model': row.get('caller_model', None)
     }
-    return add_record_if_not_exists(VariantCaller, filter_fields, all_fields, "variant caller")
+    return add_record_if_not_exists(session, VariantCaller, filter_fields, all_fields, "variant caller")
 
-def add_aligner(row):
+def add_aligner(session, row):
     """
     Create Aligner record from CSV row.
     """
@@ -246,9 +247,9 @@ def add_aligner(row):
         'version': row['aligner_version']
     }
     
-    return add_record_if_not_exists(Aligner, filter_fields, filter_fields, "aligner")
+    return add_record_if_not_exists(session, Aligner, filter_fields, filter_fields, "aligner")
 
-def add_truth_set(row):
+def add_truth_set(session, row):
     """
     Create TruthSet record from CSV row.
     """
@@ -265,9 +266,9 @@ def add_truth_set(row):
         'reference': reference_enum
     }
     
-    return add_record_if_not_exists(TruthSet, filter_fields, filter_fields, "truth set")
+    return add_record_if_not_exists(session, TruthSet, filter_fields, filter_fields, "truth set")
 
-def add_benchmark_tool(row):
+def add_benchmark_tool(session, row):
     """
     Create BenchmarkTool record from CSV row.
     """
@@ -280,9 +281,9 @@ def add_benchmark_tool(row):
         'version': row['benchmark_tool_version']
     }
     
-    return add_record_if_not_exists(BenchmarkTool, filter_fields, filter_fields, "benchmark tool")
+    return add_record_if_not_exists(session, BenchmarkTool, filter_fields, filter_fields, "benchmark tool")
 
-def add_variant(row):
+def add_variant(session, row):
     """
     Create Variant record from CSV row.
     """
@@ -300,9 +301,9 @@ def add_variant(row):
         'is_phased': phased_bool
     }
     
-    return add_record_if_not_exists(Variant, filter_fields, filter_fields, "variant")
+    return add_record_if_not_exists(session, Variant, filter_fields, filter_fields, "variant")
 
-def add_chemistry(row):
+def add_chemistry(session, row):
     """
     Create Chemistry record from CSV row.
     """
@@ -317,11 +318,11 @@ def add_chemistry(row):
         'version': row.get('chemistry_version', None)
     }
     
-    return add_record_if_not_exists(Chemistry, filter_fields, filter_fields, "chemistry")
+    return add_record_if_not_exists(session, Chemistry, filter_fields, filter_fields, "chemistry")
 
-def add_quality_control(row):
+def add_quality_control(session, row):
     """
-    Create Quality Control Metrics from CSV row.
+    Create Quality Control Metrics from CSV row
     """
     all_fields = {
         'mean_coverage': safe_float(row.get('mean_coverage', None)),
@@ -329,19 +330,12 @@ def add_quality_control(row):
         'mean_read_length': safe_float(row.get('mean_read_length', None)),
         'mean_insert_size': safe_float(row.get('mean_insert_size', None))
     }
-    
-    # For QC metrics, we create unique entries each time (no filtering)
-    try:
-        with get_db_session() as session:
-            new_qc = QualityControl(**all_fields)
-            session.add(new_qc)
-            print(f"Added QC metrics: coverage={row.get('mean_coverage')}, read_length={row.get('read_length')}")
-            return new_qc
-    except Exception as e:
-        print(f"Error adding quality control: {e}")
-        return None
 
-def add_experiment(row):
+    filter_fields = all_fields.copy()  # Use all fields to check for duplicates
+    
+    return add_record_if_not_exists(session, QualityControl, filter_fields, all_fields, "quality control")
+
+def add_experiment(sesesion, row):
     """
     Create Experiment record linking all metadata via foreign keys.
     """
@@ -436,7 +430,7 @@ def populate_database_from_csv(file_path=metadata_CSV_file_path):
     Returns:
         bool: True if successful, False if errors occurred
     """
-
+    
     # Load CSV file
     raw_df = load_csv_metadata(file_path)
     if raw_df is None:
@@ -444,7 +438,79 @@ def populate_database_from_csv(file_path=metadata_CSV_file_path):
     
     # Clean the entire DataFrame
     metadata_df = clean_dataframe_strings(raw_df)
+    print(f"Loaded CSV with {len(metadata_df)} rows")
     
+    try:
+        with get_db_session() as session:  # Single session for everything
+            for index, row in metadata_df.iterrows():
+                print(f"\nProcessing row {index + 1}: {row.get('name', 'Unknown')}")
+                
+                # ✅ Create all records and get objects back directly
+                seq_tech = add_sequencing_tech(session, row)
+                caller = add_variant_caller(session, row)
+                aligner = add_aligner(session, row)
+                truth_set = add_truth_set(session, row)
+                benchmark_tool = add_benchmark_tool(session, row)
+                variant = add_variant(session, row)
+                chemistry = add_chemistry(session, row)
+                qc = add_quality_control(session, row)
+                
+                # ✅ Use the objects directly (no queries needed!)
+                experiment_name = row['name']
+                
+                # Check if experiment already exists
+                existing_experiment = session.query(Experiment).filter_by(
+                    name=experiment_name,
+                    sequencing_technology_id=seq_tech.id if seq_tech else None,
+                    variant_caller_id=caller.id if caller else None
+                ).first()
+                
+                if existing_experiment:
+                    print(f"Experiment already exists: {experiment_name}")
+                    experiment = existing_experiment
+                else:
+                    # ✅ Create experiment using the objects we just created
+                    experiment = Experiment(
+                        name=experiment_name,
+                        description=f"Benchmarking experiment for {experiment_name}",
+                        sequencing_technology_id=seq_tech.id if seq_tech else None,
+                        variant_caller_id=caller.id if caller else None,
+                        aligner_id=aligner.id if aligner else None,
+                        truth_set_id=truth_set.id if truth_set else None,
+                        benchmark_tool_id=benchmark_tool.id if benchmark_tool else None,
+                        variant_id=variant.id if variant else None,
+                        chemistry_id=chemistry.id if chemistry else None,
+                        quality_control_metrics_id=qc.id if qc else None
+                    )
+                    
+                    session.add(experiment)
+                    session.flush()  # Get the ID
+                    print(f"Created experiment: {experiment_name} (ID: {experiment.id})")
+                
+                # ✅ FIXED: Use the actual database experiment ID
+                experiment_id = experiment.id  # Use database ID, not CSV ID
+                file_name = row['file_name']
+                
+                if file_name and not pd.isna(file_name):
+                    # ✅ FIXED: Pass session to parse_happy_csv (if it supports it)
+                    result = parse_happy_csv(file_name, experiment_id, session)
+                    if result["success"]:
+                        print(f"Loaded results: {result['message']}")
+                    else:
+                        print(f"Failed to load results: {result.get('error')}")
+                
+                print(f"✅ Complete setup for: {row['name']}")
+            
+            # ✅ FIXED: This should be OUTSIDE the session context
+        print("🎉 Database population completed successfully!")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Error populating database: {e}")
+        import traceback
+        traceback.print_exc()  # Print full error details for debugging
+        return False
+'''
     print(f"Loaded CSV with {len(metadata_df)} rows")
     print(f"Columns: {list(metadata_df.columns)}")
     
@@ -475,3 +541,4 @@ def populate_database_from_csv(file_path=metadata_CSV_file_path):
         
         print(f"✅ Complete setup for: {row['name']}\n")
     return True
+    '''

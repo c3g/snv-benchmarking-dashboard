@@ -32,13 +32,15 @@ def create_tables():
 def get_db_session(): 
     session = Session()
     try:
-        yield session  
-        session.commit()  # Save changes
+        yield session
+        session.commit()
     except Exception as e:
-        session.rollback()  # Undo
+        session.rollback()
+        print(f"Database error: {e}")  # Add logging
         raise e
     finally:
-        session.close() 
+        session.close()
+
 
 # Get the SQLAlchemy engine
 def get_engine():
