@@ -51,6 +51,7 @@ def test_connection():
     try:
         with get_db_session() as session: # Creates a database connection
             session.execute(text("SELECT 1"))
+            print("Connection Successful")
             return True
     except Exception as e:
         print(f"Database connection failed: {e}")
