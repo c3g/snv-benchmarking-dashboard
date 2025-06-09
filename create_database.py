@@ -1,4 +1,4 @@
-from database import create_tables, get_db_session, test_connection
+from database import create_tables, test_connection
 from models import *
 from populate_metadata import *
 import sys

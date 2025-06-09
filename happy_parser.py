@@ -1,5 +1,6 @@
 
 # happy_parser.py
+# Parses hap.py CSV output files and stores performance metrics for each experiemtn recrod
 
 import pandas as pd
 from models import BenchmarkResult
@@ -52,7 +53,7 @@ def parse_happy_csv(happy_file_name, experiment_id, session):
         # Store specific columns from the csv to the BenchmarkResult table
         for _, row in filtered_df.iterrows():
             result = BenchmarkResult(
-                experiment_id=experiment_id,
+                experiment_id=experiment_id, #links the result to the experiment ID. 
                 
                 # Main identifiers
                 variant_type=row['Type'],
@@ -108,8 +109,7 @@ def parse_happy_csv(happy_file_name, experiment_id, session):
             session.add(result)
             results_added += 1
 
-        print(f"  Successfully stored {results_added} results for experiment {experiment_id}")
-        return {"success": True, "message": f"Added {results_added} results"}
+        return {"success": True, "message": f"Added {results_added} resutls for experiment {experiment_id}"}
         
     except Exception as e:
         print(f"Error parsing {happy_file_path}: {e}")

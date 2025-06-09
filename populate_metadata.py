@@ -135,7 +135,6 @@ ENUM_MAPPINGS = {
     }
 }
 
-
 def map_enum(enum_type, value):
     """Convert CSV string value to corresponding database enum."""
     return ENUM_MAPPINGS.get(enum_type, {}).get(clean_value(value))
@@ -335,102 +334,53 @@ def add_quality_control(session, row):
     
     return add_record_if_not_exists(session, QualityControl, filter_fields, all_fields, "quality control")
 
-def add_experiment(sesesion, row):
+def add_experiment(session, row, metadata_objects):
     """
     Create Experiment record linking all metadata via foreign keys.
     """
-    
     experiment_name = row['name']
     description = row.get('description', f"Benchmarking experiment for {experiment_name}")
     
+    # Check if experiment already exists ---------------------------------------------------------------------------------------------------------
+    existing_experiment = session.query(Experiment).filter_by(
+        name=experiment_name,
+        sequencing_technology_id=metadata_objects['seq_tech'].id if metadata_objects['seq_tech'] else None,
+        variant_caller_id=metadata_objects['caller'].id if metadata_objects['caller'] else None
+    ).first()
+    
+    if existing_experiment:
+        print(f"Experiment already exists: {experiment_name}")
+        return existing_experiment
+    
     try:
-        with get_db_session() as session:
-
-            # Find all related records by querying each reference table
-            seq_tech = session.query(SequencingTechnology).filter_by(
-                technology=map_enum('technology', row['technology']),
-                platform_name=row['platform_name'],
-                platform_type=map_enum('platform_type', row['platform_type'])
-            ).first()
-            
-            variant_caller = session.query(VariantCaller).filter_by(
-                name=map_enum('caller_name', row['caller_name']),
-                version=row['caller_version']
-            ).first()
-            
-            aligner = session.query(Aligner).filter_by(
-                name=row['aligner_name'],
-                version=row['aligner_version']
-            ).first()
-            
-            truth_set = session.query(TruthSet).filter_by(
-                name=map_enum('truth_set_name', row['truth_set_name']),
-                sample=map_enum('truth_set_sample', row['truth_set_sample']),
-                version=row['truth_set_version']
-            ).first()
-            
-            benchmark_tool = session.query(BenchmarkTool).filter_by(
-                name=map_enum('benchmark_tool_name', row['benchmark_tool_name']),
-                version=row['benchmark_tool_version']
-            ).first()
-            
-            variant = session.query(Variant).filter_by(
-                type=map_enum('variant_type', row['variant_type']),
-                size=map_enum('variant_size', row['variant_size']),
-                origin=map_enum('variant_origin', row['variant_origin']),
-                is_phased=map_boolean(row['is_phased'])
-            ).first()
-            
-            chemistry = session.query(Chemistry).filter_by(
-                name=row['chemistry_name'],
-                sequencing_technology=map_enum('technology', row['technology']),
-                sequencing_platform=row['platform_name']
-            ).first()
-            
-            quality_control = session.query(QualityControl).filter_by(
-                mean_coverage=safe_float(row.get('mean_coverage')),
-                read_length=safe_float(row.get('read_length')),
-                mean_read_length=safe_float(row.get('mean_read_length')),
-                mean_insert_size=safe_float(row.get('mean_insert_size'))
-            ).first()
-            
-            # Create experiment with foreign key references
-            new_experiment = Experiment(
-                name=experiment_name,
-                description=description,
-                sequencing_technology_id=seq_tech.id if seq_tech else None,
-                variant_caller_id=variant_caller.id if variant_caller else None,
-                aligner_id=aligner.id if aligner else None,
-                truth_set_id=truth_set.id if truth_set else None,
-                benchmark_tool_id=benchmark_tool.id if benchmark_tool else None,
-                variant_id=variant.id if variant else None,
-                chemistry_id=chemistry.id if chemistry else None,
-                quality_control_metrics_id=quality_control.id if quality_control else None
-            )
-            
-            session.add(new_experiment)
-            print(f"Added experiment: {experiment_name}")
-                     
+        # Create new experiment
+        new_experiment = Experiment(
+            name=experiment_name,
+            description=description,
+            sequencing_technology_id=metadata_objects['seq_tech'].id if metadata_objects['seq_tech'] else None,
+            variant_caller_id=metadata_objects['caller'].id if metadata_objects['caller'] else None,
+            aligner_id=metadata_objects['aligner'].id if metadata_objects['aligner'] else None,
+            truth_set_id=metadata_objects['truth_set'].id if metadata_objects['truth_set'] else None,
+            benchmark_tool_id=metadata_objects['benchmark_tool'].id if metadata_objects['benchmark_tool'] else None,
+            variant_id=metadata_objects['variant'].id if metadata_objects['variant'] else None,
+            chemistry_id=metadata_objects['chemistry'].id if metadata_objects['chemistry'] else None,
+            quality_control_metrics_id=metadata_objects['qc'].id if metadata_objects['qc'] else None
+        )
+        
+        session.add(new_experiment)
+        session.flush()  # Get the ID
+        print(f"Created experiment: {experiment_name} (ID: {new_experiment.id})")
+        return new_experiment
+                    
     except Exception as e:
         print(f"Error adding experiment {experiment_name}: {e}")
+        return None
 
-
-# ============================================================================
-# POPULATE METADATA
-# ============================================================================
 
 def populate_database_from_csv(file_path=metadata_CSV_file_path):
     """
-    Main function to populate the entire database from CSV metadata AND hap.py results
-    Processes each row and calls all population functions in order.
-    
-    Args:
-        file_path (str): Path to metadata CSV file
-        
-    Returns:
-        bool: True if successful, False if errors occurred
+    Main function to populate the entire database from CSV metadata and hap.py files
     """
-    
     # Load CSV file
     raw_df = load_csv_metadata(file_path)
     if raw_df is None:
@@ -441,104 +391,45 @@ def populate_database_from_csv(file_path=metadata_CSV_file_path):
     print(f"Loaded CSV with {len(metadata_df)} rows")
     
     try:
-        with get_db_session() as session:  # Single session for everything
+        with get_db_session() as session:
             for index, row in metadata_df.iterrows():
                 print(f"\nProcessing row {index + 1}: {row.get('name', 'Unknown')}")
                 
-                # ✅ Create all records and get objects back directly
-                seq_tech = add_sequencing_tech(session, row)
-                caller = add_variant_caller(session, row)
-                aligner = add_aligner(session, row)
-                truth_set = add_truth_set(session, row)
-                benchmark_tool = add_benchmark_tool(session, row)
-                variant = add_variant(session, row)
-                chemistry = add_chemistry(session, row)
-                qc = add_quality_control(session, row)
+                # Create all metadata records and collect objects
+                metadata_objects = {
+                    'seq_tech': add_sequencing_tech(session, row),
+                    'caller': add_variant_caller(session, row),
+                    'aligner': add_aligner(session, row),
+                    'truth_set': add_truth_set(session, row),
+                    'benchmark_tool': add_benchmark_tool(session, row),
+                    'variant': add_variant(session, row),
+                    'chemistry': add_chemistry(session, row),
+                    'qc': add_quality_control(session, row)
+                }
+
+                # Create experiment (handles duplicates internally)
+                experiment = add_experiment(session, row, metadata_objects)
                 
-                # ✅ Use the objects directly (no queries needed!)
-                experiment_name = row['name']
+                if not experiment:
+                    print(f"Failed to create experiment for {row['name']}")
+                    continue
                 
-                # Check if experiment already exists
-                existing_experiment = session.query(Experiment).filter_by(
-                    name=experiment_name,
-                    sequencing_technology_id=seq_tech.id if seq_tech else None,
-                    variant_caller_id=caller.id if caller else None
-                ).first()
-                
-                if existing_experiment:
-                    print(f"Experiment already exists: {experiment_name}")
-                    experiment = existing_experiment
-                else:
-                    # ✅ Create experiment using the objects we just created
-                    experiment = Experiment(
-                        name=experiment_name,
-                        description=f"Benchmarking experiment for {experiment_name}",
-                        sequencing_technology_id=seq_tech.id if seq_tech else None,
-                        variant_caller_id=caller.id if caller else None,
-                        aligner_id=aligner.id if aligner else None,
-                        truth_set_id=truth_set.id if truth_set else None,
-                        benchmark_tool_id=benchmark_tool.id if benchmark_tool else None,
-                        variant_id=variant.id if variant else None,
-                        chemistry_id=chemistry.id if chemistry else None,
-                        quality_control_metrics_id=qc.id if qc else None
-                    )
-                    
-                    session.add(experiment)
-                    session.flush()  # Get the ID
-                    print(f"Created experiment: {experiment_name} (ID: {experiment.id})")
-                
-                # ✅ FIXED: Use the actual database experiment ID
-                experiment_id = experiment.id  # Use database ID, not CSV ID
-                file_name = row['file_name']
-                
+                # Parse hap.py results if file exists
+                file_name = row.get('file_name')
                 if file_name and not pd.isna(file_name):
-                    # ✅ FIXED: Pass session to parse_happy_csv (if it supports it)
-                    result = parse_happy_csv(file_name, experiment_id, session)
+                    result = parse_happy_csv(file_name, experiment.id, session)
                     if result["success"]:
                         print(f"Loaded results: {result['message']}")
                     else:
                         print(f"Failed to load results: {result.get('error')}")
                 
-                print(f"✅ Complete setup for: {row['name']}")
+                print(f"Complete setup for: {row['name']}")
             
-            # ✅ FIXED: This should be OUTSIDE the session context
-        print("🎉 Database population completed successfully!")
+        print("Database population completed successfully!")
         return True
         
     except Exception as e:
         print(f"❌ Error populating database: {e}")
         import traceback
-        traceback.print_exc()  # Print full error details for debugging
+        traceback.print_exc()
         return False
-'''
-    print(f"Loaded CSV with {len(metadata_df)} rows")
-    print(f"Columns: {list(metadata_df.columns)}")
-    
-    # Process each row
-    for index, row in metadata_df.iterrows():
-        print(f"\nProcessing row {index + 1}: {row.get('name', 'Unknown')}")
-        
-        # Add data to each table
-        add_sequencing_tech(row)
-        add_variant_caller(row)
-        add_aligner(row)
-        add_truth_set(row)
-        add_benchmark_tool(row)
-        add_variant(row)
-        add_chemistry(row)
-        add_quality_control(row)
-        add_experiment(row)
-        
-        experiment_id = row['ID']
-        file_name = row['file_name']
-        
-        if file_name and not pd.isna(file_name):
-            result = parse_happy_csv(file_name, experiment_id)
-            if result["success"]:
-                print(f"Loaded results: {result['message']}")
-            else:
-                print(f"Failed to load results: {result.get('error')}")
-        
-        print(f"✅ Complete setup for: {row['name']}\n")
-    return True
-    '''
