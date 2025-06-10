@@ -13,10 +13,10 @@ Base = declarative_base()
 
 class SeqTechName(enum.Enum):
     """Sequencing technologies"""
-    ILLUMINA = "Illumina"
+    ILLUMINA = "ILLUMINA"
     MGI = "MGI"
     ONT = "ONT"
-    PACBIO = "PacBio"
+    PACBIO = "PACBIO"
 
 class SeqTechTarget(enum.Enum):
     """ Sequencing targets """
@@ -30,9 +30,9 @@ class SeqTechPlatformType(enum.Enum):
 
 class CallerName(enum.Enum):
     """ Variant caller names """
-    DEEPVARIANT = "DeepVariant"
+    DEEPVARIANT = "DEEPVARIANT"
     GATK = "GATK"
-    CLAIR3 = "Clair3"
+    CLAIR3 = "CLAIR3"
 
 class CallerType(enum.Enum):
     """ Variant caller types"""
