@@ -47,8 +47,8 @@ class TruthSetName(enum.Enum):
 
 class TruthSetReference(enum.Enum):
     """ Benchmarking truth set references"""
-    GRCH37 = "GRCh37"
-    GRCH38 = "GRCh38"
+    GRCH37 = "GRCH37"
+    GRCH38 = "GRCH38"
 
 class TruthSetSample(enum.Enum): 
     """ Benchmarking samples """
@@ -60,13 +60,13 @@ class TruthSetSample(enum.Enum):
 
 class VariantOrigin(enum.Enum):
     """ Origins of variants """
-    GERMLINE = "Germline" # reproductive cells
-    SOMATIC = "Somatic"  # non-productive cells
+    GERMLINE = "GERMLINE" # reproductive cells
+    SOMATIC = "SOMATIC"  # non-productive cells
 
 class VariantSize(enum.Enum):
     """ Sizes of variants """
-    SMALL = "Small"
-    LARGE = "Large"
+    SMALL = "SMALL"
+    LARGE = "LARGE"
 
 class VariantType(enum.Enum):
     """ Types of variants """
@@ -78,9 +78,9 @@ class VariantType(enum.Enum):
 
 class BenchmarkToolName(enum.Enum):
     """benchmarking tools"""
-    HAPPY = "hap.py"
-    VCFDIST = "vcfdist"
-    TRUVARI = "truvari" 
+    HAPPY = "HAPPY"
+    VCFDIST = "VCFDIST"
+    TRUVARI = "TRUVARI" 
 
     
 # ============================================================================
