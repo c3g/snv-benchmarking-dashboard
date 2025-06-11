@@ -1,9 +1,7 @@
-
 library(reticulate)
 library(shiny)
 library(DT)
 library(ggplot2)
-
 
 # Import Python module
 db <- import("db_interface")
@@ -52,6 +50,52 @@ ui <- fluidPage(
           choices = c("DEEPVARIANT", "GATK", "CLAIR3"),
           selected = "DEEPVARIANT"
         )
+      ),
+      
+      # ====================================================================
+      # NEW: COMPARISON BUTTONS SECTION
+      # ====================================================================
+      hr(),
+      h4("Comparison Options:"),
+      
+      # Compare Technologies Button
+      actionButton(
+        "compare_techs",
+        "Compare Technologies",
+        class = "btn-primary",
+        style = "width: 100%; margin-bottom: 10px;"
+      ),
+      
+      # Compare Callers Button  
+      actionButton(
+        "compare_callers", 
+        "Compare Callers",
+        class = "btn-success",
+        style = "width: 100%; margin-bottom: 10px;"
+      ),
+      
+      # Compare Specific Experiments Button
+      actionButton(
+        "compare_experiments",
+        "Compare Specific Experiments", 
+        class = "btn-warning",
+        style = "width: 100%; margin-bottom: 10px;"
+      ),
+      
+      # ====================================================================
+      # NEW: EXPERIMENT SELECTION AREA (for specific comparison)
+      # ====================================================================
+      conditionalPanel(
+        condition = "input.compare_experiments > 0",
+        hr(),
+        h5("Selected Experiments:"),
+        verbatimTextOutput("selected_experiments_info"),
+        actionButton(
+          "clear_selection",
+          "Clear Selection",
+          class = "btn-secondary btn-sm",
+          style = "width: 100%;"
+        )
       )
     ),
     
@@ -68,6 +112,16 @@ ui <- fluidPage(
         tabPanel(
           "Experiments",
           br(),
+          # Add info about selection when in experiment comparison mode
+          conditionalPanel(
+            condition = "input.compare_experiments > 0",
+            div(
+              class = "alert alert-info",
+              h5("📋 Experiment Selection Mode"),
+              p("Click on table rows to select experiments for comparison. Selected experiments will appear in the sidebar.")
+            ),
+            br()
+          ),
           DT::dataTableOutput("experiments_table")
         ),
         
@@ -77,6 +131,7 @@ ui <- fluidPage(
           br(),
           DT::dataTableOutput("performance_table")
         )
+        
       )
     )
   )
@@ -86,6 +141,38 @@ ui <- fluidPage(
 # SERVER
 # ============================================================================
 server <- function(input, output, session) {
+  
+  # ====================================================================
+  # REACTIVE VALUES FOR TRACKING STATE
+  # ====================================================================
+  
+  # Track which comparison mode is active
+  comparison_mode <- reactiveVal("none")  # "none", "tech", "caller", "experiments"
+  
+  # Store selected experiment IDs for specific comparison
+  selected_experiment_ids <- reactiveVal(numeric(0))
+  
+  
+  # ====================================================================
+  # EXPERIMENT SELECTION LOGIC (for specific comparison)
+  # ====================================================================
+  
+  # Handle row selection in experiments table (only when in experiment comparison mode)
+  observeEvent(input$experiments_table_rows_selected, {
+    if (comparison_mode() == "experiments") {
+      current_data <- experiments_data()
+      if (length(input$experiments_table_rows_selected) > 0 && nrow(current_data) > 0) {
+        # Get the experiment IDs from selected rows
+        selected_rows <- input$experiments_table_rows_selected
+        new_ids <- current_data$id[selected_rows]
+        selected_experiment_ids(new_ids)
+      }
+    }
+  })
+  
+  # ====================================================================
+  # DATA PROCESSING FUNCTIONS
+  # ====================================================================
   
   # Get experiment IDs based on filter
   experiment_ids <- reactive({
@@ -115,7 +202,7 @@ server <- function(input, output, session) {
       # For "show all", use the lighter overview function
       return(db$get_experiments_overview())
     } else {
-      # For filtered results, get detailed metadata
+      #  Get detailed metadata
       py_ids <- r_to_py(as.list(ids))
       return(db$get_experiment_metadata(py_ids))
     }
@@ -133,13 +220,17 @@ server <- function(input, output, session) {
     return(db$get_performance_results(py_ids))
   })
   
+  # ====================================================================
+  # OUTPUTS 
+  # ====================================================================
+  
   # Show experiment count
   output$experiment_count <- renderText({
     count <- length(experiment_ids())
     paste("Showing", count, "experiments")
   })
   
-  # Experiments table
+  # Experiments table (enhanced with selection for experiment comparison)
   output$experiments_table <- DT::renderDataTable({
     df <- experiments_data()
     
@@ -147,8 +238,18 @@ server <- function(input, output, session) {
       return(DT::datatable(data.frame(Message = "No experiments found")))
     }
     
+    # Configure selection based on comparison mode
+    if (comparison_mode() == "experiments") {
+      # Multiple selection allowed when in experiment comparison mode
+      selection_config <- list(mode = 'multiple')
+    } else {
+      # No selection in other modes
+      selection_config <- 'none'
+    }
+    
     DT::datatable(
       df,
+      selection = selection_config,
       options = list(
         pageLength = 15,
         scrollX = TRUE
@@ -164,7 +265,6 @@ server <- function(input, output, session) {
     if (nrow(df) == 0) {
       return(DT::datatable(data.frame(Message = "No performance data found")))
     }
-    
     # Show key performance columns
     key_cols <- c("experiment_name", "variant_type", "recall", "precision", "f1_score")
     display_df <- df[, key_cols[key_cols %in% names(df)]]
@@ -177,8 +277,9 @@ server <- function(input, output, session) {
       ),
       rownames = FALSE
     ) %>%
-      DT::formatRound(c("recall", "precision", "f1_score"), 3)
+      DT::formatRound(c("recall", "precision", "f1_score"), 4)
   })
+  
 }
 
 # ============================================================================

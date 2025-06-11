@@ -7,7 +7,7 @@ Main Functions:
 1. get_experiments_overview() - Light overview of all experiments
 2. get_experiment_metadata(experiment_ids) - Detailed metadata for selected experiments  
 3. get_performance_results(experiment_ids, variant_types) - Performance data for selected experiments
-4. get_experiments_by_filter(**filters) - Flexible filtering to get experiment IDs/info
+4. get_experiments_by_filter() - filtering to get experiment IDs/info
 """
 
 import pandas as pd
@@ -35,10 +35,10 @@ def get_experiments_overview(filters=None):  # Might want to add filters later -
             
             experiments = query.all()
             
-            # Extract essential data only
+            # Extract essential data
             data = []
             for exp in experiments:
-                data.append({
+                data.append({ 
                     'id': exp.id,
                     'name': exp.name,
                     'technology': exp.sequencing_technology.technology.value if exp.sequencing_technology else None,
