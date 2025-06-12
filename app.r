@@ -53,7 +53,7 @@ ui <- fluidPage(
       ),
       
       # ====================================================================
-      # NEW: COMPARISON BUTTONS SECTION
+      # COMPARISON BUTTONS SECTION
       # ====================================================================
       hr(),
       h4("Comparison Options:"),
@@ -83,18 +83,117 @@ ui <- fluidPage(
       ),
       
       # ====================================================================
-      # NEW: EXPERIMENT SELECTION AREA (for specific comparison)
+      # TECHNOLOGY COMPARISON PANEL
       # ====================================================================
       conditionalPanel(
-        condition = "input.compare_experiments > 0",
+        condition = "output.comparison_mode == 'tech'",
         hr(),
-        h5("Selected Experiments:"),
-        verbatimTextOutput("selected_experiments_info"),
+        h5("Technology Comparison Setup:"),
+        
+        # Select multiple technologies
+        checkboxGroupInput(
+          "selected_technologies",
+          "Select Technologies (2 or more):",
+          choices = list(
+            "Illumina" = "ILLUMINA",
+            "PacBio" = "PACBIO",
+            "ONT" = "ONT", 
+            "MGI" = "MGI"
+          )
+        ),
+        
+        # Select one caller to keep constant
+        selectInput(
+          "tech_comparison_caller",
+          "Keep Caller Constant:",
+          choices = c("DeepVariant" = "DEEPVARIANT", 
+                      "GATK" = "GATK", 
+                      "Clair3" = "CLAIR3"),
+          selected = "DEEPVARIANT"
+        ),
+        
+        # Submit button for tech comparison
+        conditionalPanel(
+          condition = "input.selected_technologies && input.selected_technologies.length >= 2",
+          actionButton(
+            "submit_tech_comparison",
+            "Submit Technology Comparison",
+            class = "btn-primary",
+            style = "width: 100%;"
+          )
+        ),
+        
+        conditionalPanel(
+          condition = "!input.selected_technologies || input.selected_technologies.length < 2",
+          p("Please select at least 2 technologies", style = "color: red; font-size: 12px;")
+        )
+      ),
+      
+      # ====================================================================
+      # CALLER COMPARISON PANEL
+      # ====================================================================
+      conditionalPanel(
+        condition = "output.comparison_mode == 'caller'",
+        hr(),
+        h5("Caller Comparison Setup:"),
+        
+        # Select multiple callers
+        checkboxGroupInput(
+          "selected_callers",
+          "Select Callers (2 or more):",
+          choices = list(
+            "DeepVariant" = "DEEPVARIANT",
+            "GATK" = "GATK",
+            "Clair3" = "CLAIR3"
+          )
+        ),
+        
+        # Select one technology to keep constant
+        selectInput(
+          "caller_comparison_tech",
+          "Keep Technology Constant:",
+          choices = c("Illumina" = "ILLUMINA", 
+                      "PacBio" = "PACBIO", 
+                      "ONT" = "ONT",
+                      "MGI" = "MGI"),
+          selected = "ILLUMINA"
+        ),
+        
+        # Submit button for caller comparison
+        conditionalPanel(
+          condition = "input.selected_callers && input.selected_callers.length >= 2",
+          actionButton(
+            "submit_caller_comparison",
+            "Submit Caller Comparison",
+            class = "btn-success",
+            style = "width: 100%;"
+          )
+        ),
+        
+        conditionalPanel(
+          condition = "!input.selected_callers || input.selected_callers.length < 2",
+          p("Please select at least 2 callers", style = "color: red; font-size: 12px;")
+        )
+      ),
+      
+      # ====================================================================
+      # EXPERIMENT SELECTION INFO (for specific comparison)
+      # ====================================================================
+      conditionalPanel(
+        condition = "output.comparison_mode == 'experiments'",
+        hr(),
+        h5("Experiment Selection:"),
+        p("Click on experiments in the table below to select them for comparison."),
+        
+        # Show selected count
+        textOutput("selected_experiments_count"),
+        
+        # Clear selection button
         actionButton(
-          "clear_selection",
+          "clear_experiment_selection",
           "Clear Selection",
           class = "btn-secondary btn-sm",
-          style = "width: 100%;"
+          style = "width: 100%; margin-top: 10px;"
         )
       )
     ),
@@ -114,11 +213,11 @@ ui <- fluidPage(
           br(),
           # Add info about selection when in experiment comparison mode
           conditionalPanel(
-            condition = "input.compare_experiments > 0",
+            condition = "output.comparison_mode == 'experiments'",
             div(
               class = "alert alert-info",
-              h5("📋 Experiment Selection Mode"),
-              p("Click on table rows to select experiments for comparison. Selected experiments will appear in the sidebar.")
+              h5("Experiment Selection Mode"),
+              p("Click on table rows to select experiments for comparison.")
             ),
             br()
           ),
@@ -130,8 +229,132 @@ ui <- fluidPage(
           "Performance Results", 
           br(),
           DT::dataTableOutput("performance_table")
-        )
+        ),
         
+        # ================================================================
+        # COMPARISON SETUP TAB
+        # ================================================================
+        tabPanel(
+          "Comparison Setup",
+          br(),
+          
+          # Technology comparison setup display
+          conditionalPanel(
+            condition = "output.comparison_mode == 'tech'",
+            div(
+              class = "panel panel-primary",
+              div(class = "panel-heading", h4("Technology Comparison Setup")),
+              div(class = "panel-body",
+                  h5("Selected Technologies:"),
+                  verbatimTextOutput("tech_setup_display"),
+                  h5("Constant Caller:"),
+                  verbatimTextOutput("tech_caller_display"),
+                  conditionalPanel(
+                    condition = "input.submit_tech_comparison > 0",
+                    div(class = "alert alert-success",
+                        h5("✓ Technology Comparison Submitted!"),
+                        p("Comparison results would be calculated here...")
+                    )
+                  )
+              )
+            )
+          ),
+          
+          # Caller comparison setup display
+          conditionalPanel(
+            condition = "output.comparison_mode == 'caller'",
+            div(
+              class = "panel panel-success", 
+              div(class = "panel-heading", h4("Caller Comparison Setup")),
+              div(class = "panel-body",
+                  h5("Selected Callers:"),
+                  verbatimTextOutput("caller_setup_display"),
+                  h5("Constant Technology:"),
+                  verbatimTextOutput("caller_tech_display"),
+                  conditionalPanel(
+                    condition = "input.submit_caller_comparison > 0",
+                    div(class = "alert alert-success",
+                        h5("✓ Caller Comparison Submitted!"),
+                        p("Comparison results would be calculated here...")
+                    )
+                  )
+              )
+            )
+          ),
+          
+          # Experiment comparison setup display
+          conditionalPanel(
+            condition = "output.comparison_mode == 'experiments'",
+            div(
+              class = "panel panel-warning",
+              div(class = "panel-heading", h4("Specific Experiments Comparison Setup")),
+              div(class = "panel-body",
+                  h5("Selected Experiments:"),
+                  DT::dataTableOutput("selected_experiments_table"),
+                  br(),
+                  conditionalPanel(
+                    condition = "output.has_selected_experiments",
+                    actionButton(
+                      "submit_experiment_comparison",
+                      "Submit Experiment Comparison",
+                      class = "btn-warning btn-lg"
+                    )
+                  ),
+                  conditionalPanel(
+                    condition = "input.submit_experiment_comparison > 0",
+                    div(class = "alert alert-success",
+                        h5("✓ Experiment Comparison Submitted!"),
+                        p("Comparison results would be calculated here...")
+                    )
+                  )
+              )
+            )
+          ),
+          
+          # Default message when no comparison is selected
+          conditionalPanel(
+            condition = "output.comparison_mode == 'none'",
+            div(
+              class = "alert alert-info",
+              h4("No Comparison Selected"),
+              p("Choose a comparison option from the sidebar to set up your comparison."),
+              tags$ul(
+                tags$li("Technology Comparison: Compare 2+ technologies with the same caller"),
+                tags$li("Caller Comparison: Compare 2+ callers with the same technology"), 
+                tags$li("Experiment Comparison: Select specific experiments to compare")
+              )
+            )
+          )
+        )
+      ),
+      
+      # ====================================================================
+      # SELECTED EXPERIMENTS DISPLAY (Bottom of page) - COMPACT VERSION
+      # ====================================================================
+      conditionalPanel(
+        condition = "output.comparison_mode == 'experiments' && output.has_selected_experiments",
+        hr(),
+        div(
+          class = "panel panel-info",
+          div(class = "panel-heading", 
+              h5("Selected Experiments for Comparison ", 
+                 span(class = "badge", textOutput("selected_count_badge", inline = TRUE)))
+          ),
+          div(class = "panel-body", style = "padding: 10px;",
+              # Compact table with key info only
+              div(style = "max-height: 200px; overflow-y: auto;",
+                  tableOutput("compact_selected_experiments")
+              ),
+              br(),
+              div(style = "text-align: center;",
+                  actionButton(
+                    "submit_bottom_comparison",
+                    "🚀 Compare Selected Experiments",
+                    class = "btn-warning"
+                  )
+              )
+          )
+        )
       )
     )
   )
@@ -152,6 +375,52 @@ server <- function(input, output, session) {
   # Store selected experiment IDs for specific comparison
   selected_experiment_ids <- reactiveVal(numeric(0))
   
+  # ====================================================================
+  # COMPARISON BUTTON OBSERVERS
+  # ====================================================================
+  
+  # Technology comparison button
+  observeEvent(input$compare_techs, {
+    comparison_mode("tech")
+    selected_experiment_ids(numeric(0))  # Reset experiment selection
+    
+    # Reset other comparison selections
+    updateCheckboxGroupInput(session, "selected_callers", selected = character(0))
+    updateSelectInput(session, "caller_comparison_tech", selected = "ILLUMINA")
+    
+    showNotification("Technology comparison mode activated!", type = "message")
+  })
+  
+  # Caller comparison button
+  observeEvent(input$compare_callers, {
+    comparison_mode("caller") 
+    selected_experiment_ids(numeric(0))  # Reset experiment selection
+    
+    # Reset other comparison selections
+    updateCheckboxGroupInput(session, "selected_technologies", selected = character(0))
+    updateSelectInput(session, "tech_comparison_caller", selected = "DEEPVARIANT")
+    
+    showNotification("Caller comparison mode activated!", type = "message")
+  })
+  
+  # Specific experiments comparison button
+  observeEvent(input$compare_experiments, {
+    comparison_mode("experiments")
+    
+    # Reset other comparison selections
+    updateCheckboxGroupInput(session, "selected_technologies", selected = character(0))
+    updateCheckboxGroupInput(session, "selected_callers", selected = character(0))
+    updateSelectInput(session, "tech_comparison_caller", selected = "DEEPVARIANT")
+    updateSelectInput(session, "caller_comparison_tech", selected = "ILLUMINA")
+    
+    showNotification("Experiment selection mode activated! Click table rows to select experiments.", type = "message")
+  })
+  
+  # Clear experiment selection button
+  observeEvent(input$clear_experiment_selection, {
+    selected_experiment_ids(numeric(0))
+    showNotification("Experiment selection cleared!", type = "message")
+  })
   
   # ====================================================================
   # EXPERIMENT SELECTION LOGIC (for specific comparison)
@@ -171,7 +440,7 @@ server <- function(input, output, session) {
   })
   
   # ====================================================================
-  # DATA PROCESSING FUNCTIONS
+  # ORIGINAL DATA PROCESSING FUNCTIONS (unchanged)
   # ====================================================================
   
   # Get experiment IDs based on filter
@@ -221,13 +490,36 @@ server <- function(input, output, session) {
   })
   
   # ====================================================================
-  # OUTPUTS 
+  # OUTPUTS
   # ====================================================================
   
   # Show experiment count
   output$experiment_count <- renderText({
     count <- length(experiment_ids())
     paste("Showing", count, "experiments")
+  })
+  
+  # Make comparison_mode available to UI
+  output$comparison_mode <- reactive({
+    comparison_mode()
+  })
+  outputOptions(output, "comparison_mode", suspendWhenHidden = FALSE)
+  
+  # Check if experiments are selected (for conditional panels)
+  output$has_selected_experiments <- reactive({
+    length(selected_experiment_ids()) > 0
+  })
+  outputOptions(output, "has_selected_experiments", suspendWhenHidden = FALSE)
+  
+  # Selected experiments count in sidebar
+  output$selected_experiments_count <- renderText({
+    count <- length(selected_experiment_ids())
+    paste("Selected:", count, "experiments")
+  })
+  
+  # Badge count for bottom panel
+  output$selected_count_badge <- renderText({
+    length(selected_experiment_ids())
   })
   
   # Experiments table (enhanced with selection for experiment comparison)
@@ -280,6 +572,102 @@ server <- function(input, output, session) {
       DT::formatRound(c("recall", "precision", "f1_score"), 4)
   })
   
+  # ====================================================================
+  # COMPARISON SETUP DISPLAYS
+  # ====================================================================
+  
+  # Technology comparison setup displays
+  output$tech_setup_display <- renderText({
+    if (length(input$selected_technologies) > 0) {
+      paste(input$selected_technologies, collapse = ", ")
+    } else {
+      "No technologies selected"
+    }
+  })
+  
+  output$tech_caller_display <- renderText({
+    input$tech_comparison_caller
+  })
+  
+  # Caller comparison setup displays
+  output$caller_setup_display <- renderText({
+    if (length(input$selected_callers) > 0) {
+      paste(input$selected_callers, collapse = ", ")
+    } else {
+      "No callers selected"
+    }
+  })
+  
+  output$caller_tech_display <- renderText({
+    input$caller_comparison_tech
+  })
+  
+  # Selected experiments table (in setup tab)
+  output$selected_experiments_table <- DT::renderDataTable({
+    ids <- selected_experiment_ids()
+    if (length(ids) == 0) {
+      return(DT::datatable(data.frame(Message = "No experiments selected")))
+    }
+    
+    current_data <- experiments_data()
+    selected_data <- current_data[current_data$id %in% ids, ]
+    
+    # Show key columns only
+    key_cols <- c("id", "name", "technology", "caller", "sample")
+    display_data <- selected_data[, key_cols[key_cols %in% names(selected_data)]]
+    
+    DT::datatable(
+      display_data,
+      options = list(
+        pageLength = 5,
+        scrollX = TRUE,
+        dom = 't'  # Remove search/pagination for small table
+      ),
+      rownames = FALSE
+    )
+  })
+  
+  # Selected experiments table (at bottom of page) - COMPACT VERSION
+  output$compact_selected_experiments <- renderTable({
+    ids <- selected_experiment_ids()
+    if (length(ids) == 0) {
+      return(data.frame(Info = "No experiments selected"))
+    }
+    
+    current_data <- experiments_data()
+    selected_data <- current_data[current_data$id %in% ids, ]
+    
+    # Create compact display with only essential info
+    compact_data <- data.frame(
+      ID = selected_data$id,
+      Name = selected_data$name,
+      Technology = selected_data$technology,
+      Caller = selected_data$caller,
+      stringsAsFactors = FALSE
+    )
+    
+    return(compact_data)
+  }, striped = TRUE, hover = TRUE, spacing = 'xs')
+  
+  # ====================================================================
+  # SUBMISSION OBSERVERS (Placeholder for now)
+  # ====================================================================
+  
+  observeEvent(input$submit_tech_comparison, {
+    showNotification("Technology comparison submitted! (Analysis would happen here)", type = "success")
+  })
+  
+  observeEvent(input$submit_caller_comparison, {
+    showNotification("Caller comparison submitted! (Analysis would happen here)", type = "success")
+  })
+  
+  observeEvent(input$submit_experiment_comparison, {
+    showNotification("Experiment comparison submitted! (Analysis would happen here)", type = "success")
+  })
+  
+  observeEvent(input$submit_bottom_comparison, {
+    showNotification("Experiment comparison submitted! (Analysis would happen here)", type = "success")
+  })
 }
 
 # ============================================================================
