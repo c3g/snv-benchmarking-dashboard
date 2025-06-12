@@ -195,6 +195,34 @@ ui <- fluidPage(
           class = "btn-secondary btn-sm",
           style = "width: 100%; margin-top: 10px;"
         )
+      ),
+      # ====================================================================
+      # SELECTED EXPERIMENTS DISPLAY (Bottom of page) - COMPACT VERSION
+      # ====================================================================
+      conditionalPanel(
+        condition = "output.comparison_mode == 'experiments' && output.has_selected_experiments",
+        hr(),
+        div(
+          class = "panel panel-info",
+          div(class = "panel-heading", 
+              h5("Selected Experiments for Comparison ", 
+                 span(class = "badge", textOutput("selected_count_badge", inline = TRUE)))
+          ),
+          div(class = "panel-body", style = "padding: 10px;",
+              # Compact table with key info only
+              div(style = "max-height: 200px; overflow-y: auto;",
+                  tableOutput("compact_selected_experiments")
+              ),
+              br(),
+              div(style = "text-align: center;",
+                  actionButton(
+                    "submit_bottom_comparison",
+                    "🚀 Compare Selected Experiments",
+                    class = "btn-warning"
+                  )
+              )
+          )
+        )
       )
     ),
     
@@ -328,34 +356,6 @@ ui <- fluidPage(
         )
       ),
       
-      # ====================================================================
-      # SELECTED EXPERIMENTS DISPLAY (Bottom of page) - COMPACT VERSION
-      # ====================================================================
-      conditionalPanel(
-        condition = "output.comparison_mode == 'experiments' && output.has_selected_experiments",
-        hr(),
-        div(
-          class = "panel panel-info",
-          div(class = "panel-heading", 
-              h5("Selected Experiments for Comparison ", 
-                 span(class = "badge", textOutput("selected_count_badge", inline = TRUE)))
-          ),
-          div(class = "panel-body", style = "padding: 10px;",
-              # Compact table with key info only
-              div(style = "max-height: 200px; overflow-y: auto;",
-                  tableOutput("compact_selected_experiments")
-              ),
-              br(),
-              div(style = "text-align: center;",
-                  actionButton(
-                    "submit_bottom_comparison",
-                    "🚀 Compare Selected Experiments",
-                    class = "btn-warning"
-                  )
-              )
-          )
-        )
-      )
     )
   )
 )
@@ -673,4 +673,4 @@ server <- function(input, output, session) {
 # ============================================================================
 # RUN APP
 # ============================================================================
-shinyApp(ui = ui, server = server)
+shinyApp(ui = ui, server = server, options = list(launch.browser = TRUE))
