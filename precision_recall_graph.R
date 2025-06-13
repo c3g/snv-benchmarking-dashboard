@@ -1,5 +1,4 @@
-
-# Load libraries (same as original)
+# Load libraries
 library(reticulate)
 library(ggplot2)
 library(dplyr)
@@ -63,9 +62,11 @@ gg_snp <- ggplot() +
   geom_textcontour(data = contour, aes(p, r, z = f1), bins = 12, linetype = 3, size = 2, alpha = 0.35, straight = TRUE) +
   geom_text_repel(data = viz_data_snp,
                   aes(x = Precision, y = Recall, label = format(F1 * 100, digits = 4)),
-                  size = 1.6, box.padding = 0.1, point.padding = 0.125, segment.color = "grey50") +
+                  size = 1.6, box.padding = 0.1, point.padding = 0.3, segment.color = "grey50") +
   geom_point(data = viz_data_snp, aes(x = Precision, y = Recall, color = sample)) +
   scale_color_jama() +
+  #xlim(0.85, 1.0) +  # Zoom in on x-axis
+  #ylim(0.85, 1.0) +  # Zoom in on y-axis
   xlab("Precision") + ylab("Recall") + ggtitle("SNP") +
   theme(plot.title = element_text(size = 10))
 
@@ -82,9 +83,11 @@ gg_indel <- ggplot() +
   geom_textcontour(data = contour, aes(p, r, z = f1), bins = 12, linetype = 3, size = 2, alpha = 0.35, straight = TRUE) +
   geom_text_repel(data = viz_data_indel,
                   aes(x = Precision, y = Recall, label = format(F1 * 100, digits = 4)),
-                  size = 1.6, box.padding = 0.1, point.padding = 0.125, segment.color = "grey50") +
+                  size = 1.6, box.padding = 0.1, point.padding = 0.3, segment.color = "grey50") +
   geom_point(data = viz_data_indel, aes(x = Precision, y = Recall, color = sample)) +
   scale_color_jama() +
+  #xlim(0.85, 1.0) +  # Zoom in on x-axis
+  #ylim(0.85, 1.0) +  # Zoom in on y-axis
   xlab("Precision") + ylab("Recall") + ggtitle("INDEL") +
   theme(plot.title = element_text(size = 10))
 
