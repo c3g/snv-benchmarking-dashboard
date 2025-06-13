@@ -2,6 +2,11 @@ library(reticulate)
 library(shiny)
 library(DT)
 library(ggplot2)
+library(plotly)
+library(dplyr)
+library(ggsci)
+library(ggrepel)
+library(patchwork)
 
 # Import Python module
 db <- import("db_interface")
@@ -9,7 +14,9 @@ db <- import("db_interface")
 # ============================================================================
 # UI
 # ============================================================================
+
 ui <- fluidPage(
+  
   titlePanel("SNV Benchmarking Dashboard"),
   
   sidebarLayout(
@@ -177,7 +184,7 @@ ui <- fluidPage(
       ),
       
       # ====================================================================
-      # EXPERIMENT SELECTION INFO (for specific comparison)
+      # EXPERIMENT SELECTION INFO 
       # ====================================================================
       conditionalPanel(
         condition = "output.comparison_mode == 'experiments'",
@@ -193,7 +200,7 @@ ui <- fluidPage(
           "clear_experiment_selection",
           "Clear Selection",
           class = "btn-secondary btn-sm",
-          style = "width: 100%; margin-top: 10px;"
+          style = "width: 100%"
         )
       ),
       # ====================================================================
@@ -217,7 +224,7 @@ ui <- fluidPage(
               div(style = "text-align: center;",
                   actionButton(
                     "submit_bottom_comparison",
-                    "🚀 Compare Selected Experiments",
+                    "Compare Selected Experiments",
                     class = "btn-warning"
                   )
               )
@@ -225,6 +232,8 @@ ui <- fluidPage(
         )
       )
     ),
+    
+    #------------------ MAIN PANEL --------------------------
     
     mainPanel(
       width = 9,
@@ -569,7 +578,7 @@ server <- function(input, output, session) {
       ),
       rownames = FALSE
     ) %>%
-      DT::formatRound(c("recall", "precision", "f1_score"), 4)
+      DT::formatRound(c("recall", "precision", "f1_score"), 6)
   })
   
   # ====================================================================
@@ -613,7 +622,7 @@ server <- function(input, output, session) {
     selected_data <- current_data[current_data$id %in% ids, ]
     
     # Show key columns only
-    key_cols <- c("id", "name", "technology", "caller", "sample")
+    key_cols <- c("id", "name", "technology", "caller")
     display_data <- selected_data[, key_cols[key_cols %in% names(selected_data)]]
     
     DT::datatable(
@@ -626,7 +635,6 @@ server <- function(input, output, session) {
       rownames = FALSE
     )
   })
-  
   # Selected experiments table (at bottom of page) - COMPACT VERSION
   output$compact_selected_experiments <- renderTable({
     ids <- selected_experiment_ids()
