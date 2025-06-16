@@ -15,6 +15,10 @@ db <- import("db_interface")
 # UI
 # ============================================================================
 
+#######################
+#####  SIDE PANEL #####
+#######################
+
 ui <- fluidPage(
   
   titlePanel("SNV Benchmarking Dashboard"),
@@ -204,7 +208,7 @@ ui <- fluidPage(
         )
       ),
       # ====================================================================
-      # SELECTED EXPERIMENTS DISPLAY (Bottom of page) - COMPACT VERSION
+      # SELECTED EXPERIMENTS DISPLAY (Bottom of page)
       # ====================================================================
       conditionalPanel(
         condition = "output.comparison_mode == 'experiments' && output.has_selected_experiments",
@@ -233,7 +237,9 @@ ui <- fluidPage(
       )
     ),
     
-    #------------------ MAIN PANEL --------------------------
+    #######################
+    #####  MAIN PANEL #####
+    #######################
     
     mainPanel(
       width = 9,
@@ -449,7 +455,7 @@ server <- function(input, output, session) {
   })
   
   # ====================================================================
-  # ORIGINAL DATA PROCESSING FUNCTIONS (unchanged)
+  # DATA PROCESSING FUNCTIONS 
   # ====================================================================
   
   # Get experiment IDs based on filter
@@ -482,7 +488,7 @@ server <- function(input, output, session) {
     } else {
       #  Get detailed metadata
       py_ids <- r_to_py(as.list(ids))
-      return(db$get_experiment_metadata(py_ids))
+      return(db$get_experiments_overview(py_ids))
     }
   })
   
