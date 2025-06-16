@@ -19,10 +19,13 @@ from models import *
 # 1. EXPERIMENTS OVERVIEW
 # ========================================================================
 
-def get_experiments_overview(filters=None):  # Might want to add filters later ------------------------------------------
+def get_experiments_overview(filters=None):
     """
     Get basic experiment information for dashboard overview.
     returns essential info
+    
+    Args:
+        filters (dict): Optional filters like {'technology': 'ILLUMINA', 'caller': 'DEEPVARIANT'}
     """
     try:
         with get_db_session() as session:
@@ -32,6 +35,20 @@ def get_experiments_overview(filters=None):  # Might want to add filters later -
                 joinedload(Experiment.variant_caller),
                 joinedload(Experiment.truth_set)
             )
+            
+            # Apply filters if provided
+            if filters:
+                if 'technology' in filters:
+                    tech_enum = SeqTechName(filters['technology'])
+                    query = query.join(SequencingTechnology).filter(
+                        SequencingTechnology.technology == tech_enum
+                    )
+                
+                if 'caller' in filters:
+                    caller_enum = CallerName(filters['caller'])
+                    query = query.join(VariantCaller).filter(
+                        VariantCaller.name == caller_enum
+                    )
             
             experiments = query.all()
             
@@ -47,15 +64,14 @@ def get_experiments_overview(filters=None):  # Might want to add filters later -
                     'caller_version': exp.variant_caller.version if exp.variant_caller else None,
                     'truth_set': exp.truth_set.name.value if exp.truth_set else None,
                     'sample': exp.truth_set.sample.value if exp.truth_set else None,
-                    'created_at': exp.created_at.isoformat() if exp.created_at else None # Formats date/time into string
+                    'created_at': exp.created_at.isoformat() if exp.created_at else None
                 })
             
             return pd.DataFrame(data)
             
     except Exception as e:
         print(f"Error in get_experiments_overview: {e}")
-        return pd.DataFrame()  # Return empty DataFrame 
-    
+        return pd.DataFrame()
 # ========================================================================
 # 2. DETAILED EXPERIMENT METADATA
 # ========================================================================
