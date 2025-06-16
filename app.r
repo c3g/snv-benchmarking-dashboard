@@ -476,19 +476,20 @@ server <- function(input, output, session) {
   
   # Get metadata for selected experiments
   experiments_data <- reactive({
-    ids <- experiment_ids()
+    # Build filters based on current filter type
+    filters <- NULL
     
-    if (length(ids) == 0) {
-      return(data.frame())
+    if (input$filter_type == "tech") {
+      filters <- list(technology = input$technology)
+    } else if (input$filter_type == "caller") {
+      filters <- list(caller = input$caller)
     }
     
-    if (input$filter_type == "none") {
-      # For "show all", use the lighter overview function
+    # Always use overview format with appropriate filters
+    if (is.null(filters)) {
       return(db$get_experiments_overview())
     } else {
-      #  Get detailed metadata
-      py_ids <- r_to_py(as.list(ids))
-      return(db$get_experiments_overview(py_ids))
+      return(db$get_experiments_overview(filters))
     }
   })
   
