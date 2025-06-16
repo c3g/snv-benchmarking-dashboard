@@ -305,3 +305,63 @@ def get_experiments_by_caller(caller):
     except Exception as e:
         print(f"Error getting experiments by caller: {e}")
         return []
+    
+
+# ========================================================================
+# 5. GET TECHNOLOGY FROM ID
+# ========================================================================
+
+def get_technology(experiment_id):
+    """
+    Get sequencing technology name for a specific experiment.
+    
+    Args:
+        experiment_id (int): Single experiment ID
+        
+    Returns:
+        str or None: Technology name (e.g., "Illumina", "PacBio", "ONT", "MGI") or None if not found
+    """
+    try:
+        with get_db_session() as session:
+            # Query experiment with technology join
+            experiment = session.query(Experiment).options(
+                joinedload(Experiment.sequencing_technology)
+            ).filter(Experiment.id == experiment_id).first()
+            
+            if experiment and experiment.sequencing_technology and experiment.sequencing_technology.technology:
+                return experiment.sequencing_technology.technology.value
+            else:
+                return None
+            
+    except Exception as e:
+        print(f"Error getting technology for experiment {experiment_id}: {e}")
+        return None
+
+# ========================================================================
+# 5. GET CALLER FROM ID
+# ========================================================================
+def get_caller(experiment_id):
+    """
+    Get variant caller name for a specific experiment.
+    
+    Args:
+        experiment_id (int): Single experiment ID
+        
+    Returns:
+        str or None: Caller name (e.g., "DeepVariant", "GATK", "Clair3") or None if not found
+    """
+    try:
+        with get_db_session() as session:
+            # Query experiment with caller join
+            experiment = session.query(Experiment).options(
+                joinedload(Experiment.variant_caller)
+            ).filter(Experiment.id == experiment_id).first()
+            
+            if experiment and experiment.variant_caller and experiment.variant_caller.name:
+                return experiment.variant_caller.name.value
+            else:
+                return None
+            
+    except Exception as e:
+        print(f"Error getting caller for experiment {experiment_id}: {e}")
+        return None
