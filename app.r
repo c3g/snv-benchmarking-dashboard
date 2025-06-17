@@ -370,7 +370,6 @@ ui <- fluidPage(
           )
         )
       ),
-      
     )
   )
 )
@@ -403,6 +402,8 @@ server <- function(input, output, session) {
     updateCheckboxGroupInput(session, "selected_callers", selected = character(0))
     updateSelectInput(session, "caller_comparison_tech", selected = "ILLUMINA")
     
+    dataTableProxy('experiments_table') %>% selectRows(NULL)
+    
     showNotification("Technology comparison mode activated!", type = "message")
   })
   
@@ -428,12 +429,13 @@ server <- function(input, output, session) {
     updateSelectInput(session, "tech_comparison_caller", selected = "DEEPVARIANT")
     updateSelectInput(session, "caller_comparison_tech", selected = "ILLUMINA")
     
-    showNotification("Experiment selection mode activated! Click table rows to select experiments.", type = "message")
+    showNotification("Click table rows to select experiments.", type = "message")
   })
   
   # Clear experiment selection button
   observeEvent(input$clear_experiment_selection, {
     selected_experiment_ids(numeric(0))
+    dataTableProxy('experiments_table') %>% selectRows(NULL)
     showNotification("Experiment selection cleared!", type = "message")
   })
   
@@ -445,14 +447,25 @@ server <- function(input, output, session) {
   observeEvent(input$experiments_table_rows_selected, {
     if (comparison_mode() == "experiments") {
       current_data <- experiments_data()
-      if (length(input$experiments_table_rows_selected) > 0 && nrow(current_data) > 0) {
-        # Get the experiment IDs from selected rows
+      
+      # Always update based on current DataTable selection
+      if (nrow(current_data) > 0) {
         selected_rows <- input$experiments_table_rows_selected
-        new_ids <- current_data$id[selected_rows]
-        selected_experiment_ids(new_ids)
+        
+        if (is.null(selected_rows) || length(selected_rows) == 0) {
+          # No selection
+          selected_experiment_ids(numeric(0))
+        } else {
+          # Valid selection
+          new_ids <- current_data$id[selected_rows]
+          selected_experiment_ids(new_ids)
+        }
+      } else {
+        # No data available
+        selected_experiment_ids(numeric(0))
       }
     }
-  })
+  }, ignoreNULL = FALSE) 
   
   # ====================================================================
   # DATA PROCESSING FUNCTIONS 
@@ -510,9 +523,15 @@ server <- function(input, output, session) {
   # ====================================================================
   
   # Show experiment count
-  output$experiment_count <- renderText({
-    count <- length(experiment_ids())
-    paste("Showing", count, "experiments")
+  output$selected_experiments_count <- renderText({
+    count <- length(selected_experiment_ids())
+    if (count == 0) {
+      "No experiments selected"
+    } else if (count == 1) {
+      "Selected: 1 experiment"
+    } else {
+      paste("Selected:", count, "experiments")
+    }
   })
   
   # Make comparison_mode available to UI
@@ -654,15 +673,15 @@ server <- function(input, output, session) {
     
     # Create compact display with only essential info
     compact_data <- data.frame(
-      ID = selected_data$id,
+      ID = as.integer(selected_data$id),
       Name = selected_data$name,
-      Technology = selected_data$technology,
+      Tech = selected_data$technology,
       Caller = selected_data$caller,
       stringsAsFactors = FALSE
     )
     
     return(compact_data)
-  }, striped = TRUE, hover = TRUE, spacing = 'xs')
+  }, striped = TRUE, hover = TRUE, spacing = 'xs', width = "100%")
   
   # ====================================================================
   # SUBMISSION OBSERVERS (Placeholder for now)
