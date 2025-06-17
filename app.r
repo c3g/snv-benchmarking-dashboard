@@ -7,6 +7,7 @@ library(dplyr)
 library(ggsci)
 library(ggrepel)
 library(patchwork)
+library(geomtextpath)
 
 # Import Python module
 db <- import("db_interface")
@@ -274,6 +275,31 @@ ui <- fluidPage(
           DT::dataTableOutput("performance_table")
         ),
         
+        # Tab 3: Visualization
+        tabPanel(
+          "Visualizations",
+          br(),
+          fluidRow(
+            column(12,
+                   div(
+                     class = "alert alert-info",
+                     h5("Precision/Recall Performance"),
+                     textOutput("viz_experiment_info")
+                   )
+            )
+          ),
+          br(),
+          fluidRow(
+            column(6,
+                   h4("SNP Performance"),
+                   plotlyOutput("snp_plot", height = "500px")  # Note: plotlyOutput for hover
+            ),
+            column(6,
+                   h4("INDEL Performance"), 
+                   plotlyOutput("indel_plot", height = "500px")  # Note: plotlyOutput for hover
+            )
+          )
+        ),
         # ================================================================
         # COMPARISON SETUP TAB
         # ================================================================
@@ -369,7 +395,7 @@ ui <- fluidPage(
             )
           )
         )
-      ),
+      )
     )
   )
 )
@@ -473,14 +499,17 @@ server <- function(input, output, session) {
   
   # Get experiment IDs based on filter
   experiment_ids <- reactive({
+    # Handle experiment selection mode first
+    if (comparison_mode() == "experiments" && length(selected_experiment_ids()) > 0) {
+      return(selected_experiment_ids())
+    }
+    
+    # Regular filtering
     if (input$filter_type == "tech") {
-      # Filter by technology
       ids <- db$get_experiments_by_technology(input$technology)
     } else if (input$filter_type == "caller") {
-      # Filter by caller
       ids <- db$get_experiments_by_caller(input$caller)
     } else {
-      # Show all - get IDs from overview
       overview <- db$get_experiments_overview()
       ids <- overview$id
     }
@@ -518,6 +547,33 @@ server <- function(input, output, session) {
     return(db$get_performance_results(py_ids))
   })
   
+  # Visualizations
+  viz_performance_data <- reactive({
+    ids <- experiment_ids()
+    
+    if (length(ids) == 0) {
+      return(data.frame())
+    }
+    
+    py_ids <- r_to_py(as.list(ids))
+    perf_data <- db$get_performance_results(py_ids, c('SNP', 'INDEL'))
+    
+    # Filter for ALL_REGIONS subset for main plots
+    filtered_data <- perf_data %>%
+      filter(subset == "ALL_REGIONS" | subset == "*") %>%
+      filter(!is.na(recall) & !is.na(precision) & !is.na(f1_score))
+    
+    return(filtered_data)
+  })
+  
+  # Helper function for F1 contours
+  create_f1_contour <- function() {
+    f1_contour_function <- function(p, r) 2 * (p * r) / (p + r)
+    contour <- expand.grid(p = seq(0, 1, by = 0.01), r = seq(0, 1, by = 0.01)) %>%
+      mutate(f1 = f1_contour_function(p, r)) %>%
+      filter(is.finite(f1))
+    return(contour)
+  }
   # ====================================================================
   # OUTPUTS
   # ====================================================================
@@ -683,27 +739,127 @@ server <- function(input, output, session) {
     return(compact_data)
   }, striped = TRUE, hover = TRUE, spacing = 'xs', width = "100%")
   
+  # Visualization info text
+  output$viz_experiment_info <- renderText({
+    viz_data <- viz_performance_data()
+    if (nrow(viz_data) == 0) {
+      return("No performance data available for visualization")
+    }
+    
+    exp_count <- length(unique(viz_data$experiment_name))
+    snp_count <- nrow(viz_data[viz_data$variant_type == "SNP", ])
+    indel_count <- nrow(viz_data[viz_data$variant_type == "INDEL", ])
+    
+    paste("Visualizing", exp_count, "experiments:", snp_count, "SNP results,", indel_count, "INDEL results")
+  })
+  
+  # SNP Performance Plot
+  output$snp_plot <- renderPlotly({
+    viz_data <- viz_performance_data()
+    
+    if (nrow(viz_data) == 0) {
+      p <- ggplot() + 
+        annotate("text", x = 0.5, y = 0.5, label = "No SNP data available", size = 6) +
+        xlim(0, 1) + ylim(0, 1) +
+        labs(title = "SNP Performance", x = "Precision", y = "Recall")
+      return(ggplotly(p))
+    }
+    
+    snp_data <- viz_data %>% filter(variant_type == "SNP")
+    
+    if (nrow(snp_data) == 0) {
+      p <- ggplot() + 
+        annotate("text", x = 0.5, y = 0.5, label = "No SNP data", size = 6) +
+        xlim(0, 1) + ylim(0, 1) +
+        labs(title = "SNP Performance", x = "Precision", y = "Recall")
+      return(ggplotly(p))
+    }
+    
+    contour <- create_f1_contour()
+    
+    p <- ggplot() +
+      geom_textcontour(data = contour, aes(p, r, z = f1), 
+                       bins = 6, size = 2, alpha = 0.5, straight = TRUE) +
+      geom_textcontour(data = contour, aes(p, r, z = f1), 
+                       bins = 12, linetype = 3, size = 2, alpha = 0.35, straight = TRUE) +
+      geom_point(data = snp_data, 
+                 aes(x = precision, y = recall, color = experiment_name,
+                     text = paste("Experiment:", experiment_name, 
+                                  "<br>F1 Score:", round(f1_score * 100, 2), "%",
+                                  "<br>Precision:", round(precision, 4),
+                                  "<br>Recall:", round(recall, 4))), 
+                 size = 4) +
+      scale_color_jama() +
+      xlim(0, 1) + ylim(0, 1) +
+      labs(title = "SNP Performance", x = "Precision", y = "Recall", color = "Experiment") +
+      theme_minimal()
+    
+    ggplotly(p, tooltip = "text")
+  })
+  
+  # INDEL Performance Plot  
+  output$indel_plot <- renderPlotly({
+    viz_data <- viz_performance_data()
+    
+    if (nrow(viz_data) == 0) {
+      p <- ggplot() + 
+        annotate("text", x = 0.5, y = 0.5, label = "No INDEL data available", size = 6) +
+        xlim(0, 1) + ylim(0, 1) +
+        labs(title = "INDEL Performance", x = "Precision", y = "Recall")
+      return(ggplotly(p))
+    }
+    
+    indel_data <- viz_data %>% filter(variant_type == "INDEL")
+    
+    if (nrow(indel_data) == 0) {
+      p <- ggplot() + 
+        annotate("text", x = 0.5, y = 0.5, label = "No INDEL data", size = 6) +
+        xlim(0, 1) + ylim(0, 1) +
+        labs(title = "INDEL Performance", x = "Precision", y = "Recall")
+      return(ggplotly(p))
+    }
+    
+    contour <- create_f1_contour()
+    
+    p <- ggplot() +
+      geom_textcontour(data = contour, aes(p, r, z = f1), 
+                       bins = 6, size = 2, alpha = 0.5, straight = TRUE) +
+      geom_textcontour(data = contour, aes(p, r, z = f1), 
+                       bins = 12, linetype = 3, size = 2, alpha = 0.35, straight = TRUE) +
+      geom_point(data = indel_data, 
+                 aes(x = precision, y = recall, color = experiment_name,
+                     text = paste("Experiment:", experiment_name, 
+                                  "<br>F1 Score:", round(f1_score * 100, 2), "%",
+                                  "<br>Precision:", round(precision, 4),
+                                  "<br>Recall:", round(recall, 4))), 
+                 size = 4) +
+      scale_color_jama() +
+      xlim(0, 1) + ylim(0, 1) +
+      labs(title = "INDEL Performance", x = "Precision", y = "Recall", color = "Experiment") +
+      theme_minimal()
+    
+    ggplotly(p, tooltip = "text")
+  })
   # ====================================================================
   # SUBMISSION OBSERVERS (Placeholder for now)
   # ====================================================================
   
-  observeEvent(input$submit_tech_comparison, {
-    showNotification("Technology comparison submitted! (Analysis would happen here)", type = "success")
-  })
-  
-  observeEvent(input$submit_caller_comparison, {
-    showNotification("Caller comparison submitted! (Analysis would happen here)", type = "success")
-  })
-  
-  observeEvent(input$submit_experiment_comparison, {
-    showNotification("Experiment comparison submitted! (Analysis would happen here)", type = "success")
-  })
-  
-  observeEvent(input$submit_bottom_comparison, {
-    showNotification("Experiment comparison submitted! (Analysis would happen here)", type = "success")
-  })
-}
+observeEvent(input$submit_tech_comparison, {
+  cat("Tech comparison clicked\n")
+})
 
+observeEvent(input$submit_caller_comparison, {
+  cat("Caller comparison clicked\n")
+})
+
+observeEvent(input$submit_experiment_comparison, {
+  cat("Experiment comparison clicked\n")
+})
+
+observeEvent(input$submit_bottom_comparison, {
+  cat("Bottom comparison clicked\n")
+})
+}
 # ============================================================================
 # RUN APP
 # ============================================================================
