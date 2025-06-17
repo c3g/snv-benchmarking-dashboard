@@ -568,11 +568,21 @@ server <- function(input, output, session) {
   
   # Helper function for F1 contours
   create_f1_contour <- function() {
-    f1_contour_function <- function(p, r) 2 * (p * r) / (p + r)
-    contour <- expand.grid(p = seq(0, 1, by = 0.01), r = seq(0, 1, by = 0.01)) %>%
+    f1_contour_function <- function(p, r) {
+      result <- 2 * (p * r) / (p + r)
+      result[!is.finite(result)] <- NA
+      return(result)
+    }
+    
+    # Create grid for contour calculation
+    p_seq <- seq(0.01, 0.99, length.out = 100)
+    r_seq <- seq(0.01, 0.99, length.out = 100)
+    
+    contour_data <- expand.grid(p = p_seq, r = r_seq) %>%
       mutate(f1 = f1_contour_function(p, r)) %>%
-      filter(is.finite(f1))
-    return(contour)
+      filter(!is.na(f1) & is.finite(f1))
+    
+    return(contour_data)
   }
   # ====================================================================
   # OUTPUTS
@@ -753,7 +763,7 @@ server <- function(input, output, session) {
     paste("Visualizing", exp_count, "experiments:", snp_count, "SNP results,", indel_count, "INDEL results")
   })
   
-  # SNP Performance Plot
+  # SNP Performance Plot (Plotly-compatible)
   output$snp_plot <- renderPlotly({
     viz_data <- viz_performance_data()
     
@@ -761,7 +771,8 @@ server <- function(input, output, session) {
       p <- ggplot() + 
         annotate("text", x = 0.5, y = 0.5, label = "No SNP data available", size = 6) +
         xlim(0, 1) + ylim(0, 1) +
-        labs(title = "SNP Performance", x = "Precision", y = "Recall")
+        labs(title = "SNP", x = "Precision", y = "Recall") +
+        theme_bw()
       return(ggplotly(p))
     }
     
@@ -771,33 +782,71 @@ server <- function(input, output, session) {
       p <- ggplot() + 
         annotate("text", x = 0.5, y = 0.5, label = "No SNP data", size = 6) +
         xlim(0, 1) + ylim(0, 1) +
-        labs(title = "SNP Performance", x = "Precision", y = "Recall")
+        labs(title = "SNP", x = "Precision", y = "Recall") +
+        theme_bw()
       return(ggplotly(p))
     }
     
+    # Create contour data
     contour <- create_f1_contour()
     
     p <- ggplot() +
-      geom_textcontour(data = contour, aes(p, r, z = f1), 
-                       bins = 6, size = 2, alpha = 0.5, straight = TRUE) +
-      geom_textcontour(data = contour, aes(p, r, z = f1), 
-                       bins = 12, linetype = 3, size = 2, alpha = 0.35, straight = TRUE) +
-      geom_point(data = snp_data, 
-                 aes(x = precision, y = recall, color = experiment_name,
-                     text = paste("Experiment:", experiment_name, 
-                                  "<br>F1 Score:", round(f1_score * 100, 2), "%",
-                                  "<br>Precision:", round(precision, 4),
-                                  "<br>Recall:", round(recall, 4))), 
-                 size = 4) +
+      # F1 score contour lines - MAJOR (use geom_contour instead)
+      geom_contour(
+        data = contour, 
+        aes(x = p, y = r, z = f1), 
+        bins = 6,
+        color = "black", 
+        alpha = 0.8,
+        size = 0.5
+      ) +
+      # F1 score contour lines - MINOR
+      geom_contour(
+        data = contour, 
+        aes(x = p, y = r, z = f1), 
+        bins = 12,
+        color = "gray40", 
+        alpha = 0.6,
+        linetype = "dotted",
+        size = 0.3
+      ) +
+      # F1 score labels next to points
+      geom_text_repel(
+        data = snp_data,
+        aes(x = precision, y = recall, 
+            label = paste0(round(f1_score * 100, 1), "%")),
+        size = 3, 
+        box.padding = 0.3, 
+        point.padding = 0.3, 
+        segment.color = "grey50", 
+        max.overlaps = 20,
+        force = 2
+      ) +
+      # Data points
+      geom_point(
+        data = snp_data, 
+        aes(x = precision, y = recall, color = experiment_name,
+            text = paste("Experiment:", experiment_name, 
+                         "<br>F1 Score:", round(f1_score * 100, 2), "%",
+                         "<br>Precision:", round(precision, 4),
+                         "<br>Recall:", round(recall, 4))), 
+        size = 3
+      ) +
       scale_color_jama() +
       xlim(0, 1) + ylim(0, 1) +
-      labs(title = "SNP Performance", x = "Precision", y = "Recall", color = "Experiment") +
-      theme_minimal()
+      labs(title = "SNP", x = "Precision", y = "Recall", color = "sample") +
+      theme_bw() +
+      theme(
+        plot.title = element_text(size = 12),
+        panel.grid.major = element_line(color = "grey90", size = 0.5),
+        panel.grid.minor = element_line(color = "grey95", size = 0.3)
+      )
     
-    ggplotly(p, tooltip = "text")
+    ggplotly(p, tooltip = "text") %>%
+      layout(showlegend = TRUE)
   })
   
-  # INDEL Performance Plot  
+  # INDEL Performance Plot (Plotly-compatible)
   output$indel_plot <- renderPlotly({
     viz_data <- viz_performance_data()
     
@@ -805,7 +854,8 @@ server <- function(input, output, session) {
       p <- ggplot() + 
         annotate("text", x = 0.5, y = 0.5, label = "No INDEL data available", size = 6) +
         xlim(0, 1) + ylim(0, 1) +
-        labs(title = "INDEL Performance", x = "Precision", y = "Recall")
+        labs(title = "INDEL", x = "Precision", y = "Recall") +
+        theme_bw()
       return(ggplotly(p))
     }
     
@@ -815,31 +865,70 @@ server <- function(input, output, session) {
       p <- ggplot() + 
         annotate("text", x = 0.5, y = 0.5, label = "No INDEL data", size = 6) +
         xlim(0, 1) + ylim(0, 1) +
-        labs(title = "INDEL Performance", x = "Precision", y = "Recall")
+        labs(title = "INDEL", x = "Precision", y = "Recall") +
+        theme_bw()
       return(ggplotly(p))
     }
     
+    # Create contour data
     contour <- create_f1_contour()
     
     p <- ggplot() +
-      geom_textcontour(data = contour, aes(p, r, z = f1), 
-                       bins = 6, size = 2, alpha = 0.5, straight = TRUE) +
-      geom_textcontour(data = contour, aes(p, r, z = f1), 
-                       bins = 12, linetype = 3, size = 2, alpha = 0.35, straight = TRUE) +
-      geom_point(data = indel_data, 
-                 aes(x = precision, y = recall, color = experiment_name,
-                     text = paste("Experiment:", experiment_name, 
-                                  "<br>F1 Score:", round(f1_score * 100, 2), "%",
-                                  "<br>Precision:", round(precision, 4),
-                                  "<br>Recall:", round(recall, 4))), 
-                 size = 4) +
+      # F1 score contour lines - MAJOR
+      geom_contour(
+        data = contour, 
+        aes(x = p, y = r, z = f1), 
+        bins = 6,
+        color = "black", 
+        alpha = 0.8,
+        size = 0.5
+      ) +
+      # F1 score contour lines - MINOR
+      geom_contour(
+        data = contour, 
+        aes(x = p, y = r, z = f1), 
+        bins = 12,
+        color = "gray40", 
+        alpha = 0.6,
+        linetype = "dotted",
+        size = 0.3
+      ) +
+      # F1 score labels next to points
+      geom_text_repel(
+        data = indel_data,
+        aes(x = precision, y = recall, 
+            label = paste0(round(f1_score * 100, 1), "%")),
+        size = 3, 
+        box.padding = 0.3, 
+        point.padding = 0.3, 
+        segment.color = "grey50", 
+        max.overlaps = 20,
+        force = 2
+      ) +
+      # Data points
+      geom_point(
+        data = indel_data, 
+        aes(x = precision, y = recall, color = experiment_name,
+            text = paste("Experiment:", experiment_name, 
+                         "<br>F1 Score:", round(f1_score * 100, 2), "%",
+                         "<br>Precision:", round(precision, 4),
+                         "<br>Recall:", round(recall, 4))), 
+        size = 3
+      ) +
       scale_color_jama() +
       xlim(0, 1) + ylim(0, 1) +
-      labs(title = "INDEL Performance", x = "Precision", y = "Recall", color = "Experiment") +
-      theme_minimal()
+      labs(title = "INDEL", x = "Precision", y = "Recall", color = "sample") +
+      theme_bw() +
+      theme(
+        plot.title = element_text(size = 12),
+        panel.grid.major = element_line(color = "grey90", size = 0.5),
+        panel.grid.minor = element_line(color = "grey95", size = 0.3)
+      )
     
-    ggplotly(p, tooltip = "text")
+    ggplotly(p, tooltip = "text") %>%
+      layout(showlegend = TRUE)
   })
+  
   # ====================================================================
   # SUBMISSION OBSERVERS (Placeholder for now)
   # ====================================================================
