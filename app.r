@@ -299,101 +299,6 @@ ui <- fluidPage(
                    plotlyOutput("indel_plot", height = "500px")  # Note: plotlyOutput for hover
             )
           )
-        ),
-        # ================================================================
-        # COMPARISON SETUP TAB
-        # ================================================================
-        tabPanel(
-          "Comparison Setup",
-          br(),
-          
-          # Technology comparison setup display
-          conditionalPanel(
-            condition = "output.comparison_mode == 'tech'",
-            div(
-              class = "panel panel-primary",
-              div(class = "panel-heading", h4("Technology Comparison Setup")),
-              div(class = "panel-body",
-                  h5("Selected Technologies:"),
-                  verbatimTextOutput("tech_setup_display"),
-                  h5("Constant Caller:"),
-                  verbatimTextOutput("tech_caller_display"),
-                  conditionalPanel(
-                    condition = "input.submit_tech_comparison > 0",
-                    div(class = "alert alert-success",
-                        h5("✓ Technology Comparison Submitted!"),
-                        p("Comparison results would be calculated here...")
-                    )
-                  )
-              )
-            )
-          ),
-          
-          # Caller comparison setup display
-          conditionalPanel(
-            condition = "output.comparison_mode == 'caller'",
-            div(
-              class = "panel panel-success", 
-              div(class = "panel-heading", h4("Caller Comparison Setup")),
-              div(class = "panel-body",
-                  h5("Selected Callers:"),
-                  verbatimTextOutput("caller_setup_display"),
-                  h5("Constant Technology:"),
-                  verbatimTextOutput("caller_tech_display"),
-                  conditionalPanel(
-                    condition = "input.submit_caller_comparison > 0",
-                    div(class = "alert alert-success",
-                        h5("✓ Caller Comparison Submitted!"),
-                        p("Comparison results would be calculated here...")
-                    )
-                  )
-              )
-            )
-          ),
-          
-          # Experiment comparison setup display
-          conditionalPanel(
-            condition = "output.comparison_mode == 'experiments'",
-            div(
-              class = "panel panel-warning",
-              div(class = "panel-heading", h4("Specific Experiments Comparison Setup")),
-              div(class = "panel-body",
-                  h5("Selected Experiments:"),
-                  DT::dataTableOutput("selected_experiments_table"),
-                  br(),
-                  conditionalPanel(
-                    condition = "output.has_selected_experiments",
-                    actionButton(
-                      "submit_experiment_comparison",
-                      "Submit Experiment Comparison",
-                      class = "btn-warning btn-lg"
-                    )
-                  ),
-                  conditionalPanel(
-                    condition = "input.submit_experiment_comparison > 0",
-                    div(class = "alert alert-success",
-                        h5("✓ Experiment Comparison Submitted!"),
-                        p("Comparison results would be calculated here...")
-                    )
-                  )
-              )
-            )
-          ),
-          
-          # Default message when no comparison is selected
-          conditionalPanel(
-            condition = "output.comparison_mode == 'none'",
-            div(
-              class = "alert alert-info",
-              h4("No Comparison Selected"),
-              p("Choose a comparison option from the sidebar to set up your comparison."),
-              tags$ul(
-                tags$li("Technology Comparison: Compare 2+ technologies with the same caller"),
-                tags$li("Caller Comparison: Compare 2+ callers with the same technology"), 
-                tags$li("Experiment Comparison: Select specific experiments to compare")
-              )
-            )
-          )
         )
       )
     )
@@ -672,38 +577,7 @@ server <- function(input, output, session) {
     ) %>%
       DT::formatRound(c("recall", "precision", "f1_score"), 6)
   })
-  
-  # ====================================================================
-  # COMPARISON SETUP DISPLAYS
-  # ====================================================================
-  
-  # Technology comparison setup displays
-  output$tech_setup_display <- renderText({
-    if (length(input$selected_technologies) > 0) {
-      paste(input$selected_technologies, collapse = ", ")
-    } else {
-      "No technologies selected"
-    }
-  })
-  
-  output$tech_caller_display <- renderText({
-    input$tech_comparison_caller
-  })
-  
-  # Caller comparison setup displays
-  output$caller_setup_display <- renderText({
-    if (length(input$selected_callers) > 0) {
-      paste(input$selected_callers, collapse = ", ")
-    } else {
-      "No callers selected"
-    }
-  })
-  
-  output$caller_tech_display <- renderText({
-    input$caller_comparison_tech
-  })
-  
-  # Selected experiments table (in setup tab)
+  # Selected experiments table
   output$selected_experiments_table <- DT::renderDataTable({
     ids <- selected_experiment_ids()
     if (length(ids) == 0) {
