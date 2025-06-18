@@ -727,7 +727,7 @@ server <- function(input, output, session) {
       rownames = FALSE
     )
   })
-  # Selected experiments table (at bottom of page) - COMPACT VERSION
+  # Selected experiments table (at bottom of page)
   output$compact_selected_experiments <- renderTable({
     ids <- selected_experiment_ids()
     if (length(ids) == 0) {
@@ -736,8 +736,6 @@ server <- function(input, output, session) {
     
     current_data <- experiments_data()
     selected_data <- current_data[current_data$id %in% ids, ]
-    
-    # Create compact display with only essential info
     compact_data <- data.frame(
       ID = as.integer(selected_data$id),
       Name = selected_data$name,
@@ -762,6 +760,7 @@ server <- function(input, output, session) {
     
     paste("Visualizing", exp_count, "experiments:", snp_count, "SNP results,", indel_count, "INDEL results")
   })
+  
   
   # SNP Performance Plot (Plotly-compatible)
   output$snp_plot <- renderPlotly({
@@ -791,7 +790,7 @@ server <- function(input, output, session) {
     contour <- create_f1_contour()
     
     p <- ggplot() +
-      # F1 score contour lines - MAJOR (use geom_contour instead)
+      # F1 score contour lines - MAJOR
       geom_contour(
         data = contour, 
         aes(x = p, y = r, z = f1), 
@@ -830,7 +829,7 @@ server <- function(input, output, session) {
                          "<br>F1 Score:", round(f1_score * 100, 2), "%",
                          "<br>Precision:", round(precision, 4),
                          "<br>Recall:", round(recall, 4))), 
-        size = 3
+        size = 1.7
       ) +
       scale_color_jama() +
       xlim(0, 1) + ylim(0, 1) +
@@ -913,7 +912,7 @@ server <- function(input, output, session) {
                          "<br>F1 Score:", round(f1_score * 100, 2), "%",
                          "<br>Precision:", round(precision, 4),
                          "<br>Recall:", round(recall, 4))), 
-        size = 3
+        size = 1.7
       ) +
       scale_color_jama() +
       xlim(0, 1) + ylim(0, 1) +
@@ -930,24 +929,24 @@ server <- function(input, output, session) {
   })
   
   # ====================================================================
-  # SUBMISSION OBSERVERS (Placeholder for now)
+  # SUBMISSION OBSERVERS
   # ====================================================================
   
-observeEvent(input$submit_tech_comparison, {
-  cat("Tech comparison clicked\n")
-})
-
-observeEvent(input$submit_caller_comparison, {
-  cat("Caller comparison clicked\n")
-})
-
-observeEvent(input$submit_experiment_comparison, {
-  cat("Experiment comparison clicked\n")
-})
-
-observeEvent(input$submit_bottom_comparison, {
-  cat("Bottom comparison clicked\n")
-})
+  observeEvent(input$submit_tech_comparison, {
+    cat("Tech comparison clicked\n")
+  })
+  
+  observeEvent(input$submit_caller_comparison, {
+    cat("Caller comparison clicked\n")
+  })
+  
+  observeEvent(input$submit_experiment_comparison, {
+    cat("Experiment comparison clicked\n")
+  })
+  
+  observeEvent(input$submit_bottom_comparison, {
+    cat("Bottom comparison clicked\n")
+  })
 }
 # ============================================================================
 # RUN APP
