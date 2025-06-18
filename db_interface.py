@@ -33,7 +33,8 @@ def get_experiments_overview(filters=None):
             query = session.query(Experiment).options(
                 joinedload(Experiment.sequencing_technology),
                 joinedload(Experiment.variant_caller),
-                joinedload(Experiment.truth_set)
+                joinedload(Experiment.truth_set), 
+                joinedload(Experiment.chemistry)
             )
             
             # Apply filters if provided
@@ -62,6 +63,7 @@ def get_experiments_overview(filters=None):
                     'platform': exp.sequencing_technology.platform_name if exp.sequencing_technology else None,
                     'caller': exp.variant_caller.name.value if exp.variant_caller else None,
                     'caller_version': exp.variant_caller.version if exp.variant_caller else None,
+                    'chemistry': exp.chemistry.name if exp.chemistry else None,
                     'truth_set': exp.truth_set.name.value if exp.truth_set else None,
                     'sample': exp.truth_set.sample.value if exp.truth_set else None,
                     'created_at': exp.created_at.isoformat() if exp.created_at else None
