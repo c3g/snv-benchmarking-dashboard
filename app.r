@@ -1,3 +1,6 @@
+# ============================================================================
+# LIBRARIES & SETUP
+# ============================================================================
 library(reticulate)
 library(shiny)
 library(DT)
@@ -9,28 +12,25 @@ library(ggrepel)
 library(patchwork)
 library(geomtextpath)
 
-# Import Python module
+# Import Python database interface
 db <- import("db_interface")
 
 # ============================================================================
 # UI
 # ============================================================================
 
-#######################
-#####  SIDE PANEL #####
-#######################
-
 ui <- fluidPage(
-  
   titlePanel("SNV Benchmarking Dashboard"),
   
   sidebarLayout(
+    # ========================================================================
+    # SIDEBAR PANEL
+    # ========================================================================
     sidebarPanel(
       width = 3,
       
+      # Basic Filtering Section
       h4("Filter Options:"),
-      
-      # Choose filter type
       radioButtons(
         "filter_type",
         "Filter by:",
@@ -42,264 +42,157 @@ ui <- fluidPage(
         selected = "none"
       ),
       
-      # Technology dropdown (conditional)
+      # Conditional filter inputs
       conditionalPanel(
         condition = "input.filter_type == 'tech'",
-        selectInput(
-          "technology",
-          "Choose Technology:",
-          choices = c("ILLUMINA", "PACBIO", "ONT", "MGI"),
-          selected = "ILLUMINA"
-        )
+        selectInput("technology", "Choose Technology:",
+                    choices = c("ILLUMINA", "PACBIO", "ONT", "MGI"),
+                    selected = "ILLUMINA")
       ),
       
-      # Caller dropdown (conditional)  
       conditionalPanel(
         condition = "input.filter_type == 'caller'",
-        selectInput(
-          "caller",
-          "Choose Caller:",
-          choices = c("DEEPVARIANT", "GATK", "CLAIR3"),
-          selected = "DEEPVARIANT"
-        )
+        selectInput("caller", "Choose Caller:",
+                    choices = c("DEEPVARIANT", "GATK", "CLAIR3"),
+                    selected = "DEEPVARIANT")
       ),
       
-      # ====================================================================
-      # COMPARISON BUTTONS SECTION
-      # ====================================================================
       hr(),
+      
+      # Comparison Mode Selection
       h4("Comparison Options:"),
+      actionButton("compare_techs", "Compare Technologies", 
+                   class = "btn-primary", style = "width: 100%; margin-bottom: 10px;"),
+      actionButton("compare_callers", "Compare Callers", 
+                   class = "btn-success", style = "width: 100%; margin-bottom: 10px;"),
+      actionButton("compare_experiments", "Compare Specific Experiments", 
+                   class = "btn-warning", style = "width: 100%; margin-bottom: 10px;"),
       
-      # Compare Technologies Button
-      actionButton(
-        "compare_techs",
-        "Compare Technologies",
-        class = "btn-primary",
-        style = "width: 100%; margin-bottom: 10px;"
-      ),
-      
-      # Compare Callers Button  
-      actionButton(
-        "compare_callers", 
-        "Compare Callers",
-        class = "btn-success",
-        style = "width: 100%; margin-bottom: 10px;"
-      ),
-      
-      # Compare Specific Experiments Button
-      actionButton(
-        "compare_experiments",
-        "Compare Specific Experiments", 
-        class = "btn-warning",
-        style = "width: 100%; margin-bottom: 10px;"
-      ),
-      
-      # ====================================================================
-      # TECHNOLOGY COMPARISON PANEL
-      # ====================================================================
+      # Technology Comparison Panel
       conditionalPanel(
         condition = "output.comparison_mode == 'tech'",
         hr(),
         h5("Technology Comparison Setup:"),
-        
-        # Select multiple technologies
-        checkboxGroupInput(
-          "selected_technologies",
-          "Select Technologies (2 or more):",
-          choices = list(
-            "Illumina" = "ILLUMINA",
-            "PacBio" = "PACBIO",
-            "ONT" = "ONT", 
-            "MGI" = "MGI"
-          )
-        ),
-        
-        # Select one caller to keep constant
-        selectInput(
-          "tech_comparison_caller",
-          "Keep Caller Constant:",
-          choices = c("DeepVariant" = "DEEPVARIANT", 
-                      "GATK" = "GATK", 
-                      "Clair3" = "CLAIR3"),
-          selected = "DEEPVARIANT"
-        ),
-        
-        # Submit button for tech comparison
+        checkboxGroupInput("selected_technologies", "Select Technologies (2+):",
+                           choices = list("Illumina" = "ILLUMINA", "PacBio" = "PACBIO", 
+                                          "ONT" = "ONT", "MGI" = "MGI")),
+        selectInput("tech_comparison_caller", "Keep Caller Constant:",
+                    choices = c("DeepVariant" = "DEEPVARIANT", "GATK" = "GATK", "Clair3" = "CLAIR3"),
+                    selected = "DEEPVARIANT"),
         conditionalPanel(
           condition = "input.selected_technologies && input.selected_technologies.length >= 2",
-          actionButton(
-            "submit_tech_comparison",
-            "Submit Technology Comparison",
-            class = "btn-primary",
-            style = "width: 100%;"
-          )
+          actionButton("submit_tech_comparison", "Submit Technology Comparison",
+                       class = "btn-primary", style = "width: 100%;")
         ),
-        
         conditionalPanel(
           condition = "!input.selected_technologies || input.selected_technologies.length < 2",
           p("Please select at least 2 technologies", style = "color: red; font-size: 12px;")
         )
       ),
       
-      # ====================================================================
-      # CALLER COMPARISON PANEL
-      # ====================================================================
+      # Caller Comparison Panel
       conditionalPanel(
         condition = "output.comparison_mode == 'caller'",
         hr(),
         h5("Caller Comparison Setup:"),
-        
-        # Select multiple callers
-        checkboxGroupInput(
-          "selected_callers",
-          "Select Callers (2 or more):",
-          choices = list(
-            "DeepVariant" = "DEEPVARIANT",
-            "GATK" = "GATK",
-            "Clair3" = "CLAIR3"
-          )
-        ),
-        
-        # Select one technology to keep constant
-        selectInput(
-          "caller_comparison_tech",
-          "Keep Technology Constant:",
-          choices = c("Illumina" = "ILLUMINA", 
-                      "PacBio" = "PACBIO", 
-                      "ONT" = "ONT",
-                      "MGI" = "MGI"),
-          selected = "ILLUMINA"
-        ),
-        
-        # Submit button for caller comparison
+        checkboxGroupInput("selected_callers", "Select Callers (2+):",
+                           choices = list("DeepVariant" = "DEEPVARIANT", "GATK" = "GATK", "Clair3" = "CLAIR3")),
+        selectInput("caller_comparison_tech", "Keep Technology Constant:",
+                    choices = c("Illumina" = "ILLUMINA", "PacBio" = "PACBIO", 
+                                "ONT" = "ONT", "MGI" = "MGI"),
+                    selected = "ILLUMINA"),
         conditionalPanel(
           condition = "input.selected_callers && input.selected_callers.length >= 2",
-          actionButton(
-            "submit_caller_comparison",
-            "Submit Caller Comparison",
-            class = "btn-success",
-            style = "width: 100%;"
-          )
+          actionButton("submit_caller_comparison", "Submit Caller Comparison",
+                       class = "btn-success", style = "width: 100%;")
         ),
-        
         conditionalPanel(
           condition = "!input.selected_callers || input.selected_callers.length < 2",
           p("Please select at least 2 callers", style = "color: red; font-size: 12px;")
         )
       ),
       
-      # ====================================================================
-      # EXPERIMENT SELECTION INFO 
-      # ====================================================================
+      # Experiment Selection Panel
       conditionalPanel(
         condition = "output.comparison_mode == 'experiments'",
         hr(),
         h5("Experiment Selection:"),
         p("Click on experiments in the table below to select them for comparison."),
-        
-        # Show selected count
         textOutput("selected_experiments_count"),
-        
-        # Clear selection button
-        actionButton(
-          "clear_experiment_selection",
-          "Clear Selection",
-          class = "btn-secondary btn-sm",
-          style = "width: 100%"
-        )
+        actionButton("clear_experiment_selection", "Clear Selection",
+                     class = "btn-secondary btn-sm", style = "width: 100%")
       ),
-      # ====================================================================
-      # SELECTED EXPERIMENTS DISPLAY (Bottom of page)
-      # ====================================================================
+      
+      # Selected Experiments Display (Bottom)
       conditionalPanel(
         condition = "output.comparison_mode == 'experiments' && output.has_selected_experiments",
         hr(),
-        div(
-          class = "panel panel-info",
-          div(class = "panel-heading", 
-              h5("Selected Experiments for Comparison ", 
-                 span(class = "badge", textOutput("selected_count_badge", inline = TRUE)))
-          ),
-          div(class = "panel-body", style = "padding: 10px;",
-              # Compact table with key info only
-              div(style = "max-height: 200px; overflow-y: auto;",
-                  tableOutput("compact_selected_experiments")
-              ),
-              br(),
-              div(style = "text-align: center;",
-                  actionButton(
-                    "submit_bottom_comparison",
-                    "Compare Selected Experiments",
-                    class = "btn-warning"
-                  )
-              )
-          )
-        )
+        div(class = "panel panel-info",
+            div(class = "panel-heading", 
+                h5("Selected Experiments ", span(class = "badge", textOutput("selected_count_badge", inline = TRUE)))),
+            div(class = "panel-body", style = "padding: 10px;",
+                div(style = "max-height: 200px; overflow-y: auto;",
+                    tableOutput("compact_selected_experiments")),
+                br(),
+                div(style = "text-align: center;",
+                    actionButton("submit_experiment_comparison", "Compare Selected Experiments",
+                                 class = "btn-warning"))))
       )
     ),
     
-    #######################
-    #####  MAIN PANEL #####
-    #######################
-    
+    # ========================================================================
+    # MAIN PANEL
+    # ========================================================================
     mainPanel(
       width = 9,
-      
-      # Show experiment count
       h4(textOutput("experiment_count")),
       br(),
       
       tabsetPanel(
+        # Experiments Tab
+        tabPanel("Experiments",
+                 br(),
+                 conditionalPanel(
+                   condition = "output.comparison_mode == 'experiments'",
+                   div(class = "alert alert-info",
+                       h5("Experiment Selection Mode"),
+                       p("Click on table rows to select experiments for comparison."))
+                 ),
+                 conditionalPanel(
+                   condition = "output.comparison_mode == 'tech' || output.comparison_mode == 'caller'",
+                   div(class = "alert alert-warning",
+                       h5("Comparison Mode Active"),
+                       textOutput("comparison_status_text"),
+                       p("Submit your comparison to see visualizations."))
+                 ),
+                 DT::dataTableOutput("experiments_table")),
         
-        # Tab 1: Experiments Overview
-        tabPanel(
-          "Experiments",
-          br(),
-          # Add info about selection when in experiment comparison mode
-          conditionalPanel(
-            condition = "output.comparison_mode == 'experiments'",
-            div(
-              class = "alert alert-info",
-              h5("Experiment Selection Mode"),
-              p("Click on table rows to select experiments for comparison.")
-            ),
-            br()
-          ),
-          DT::dataTableOutput("experiments_table")
-        ),
+        # Performance Results Tab
+        tabPanel("Performance Results",
+                 br(),
+                 conditionalPanel(
+                   condition = "output.comparison_mode == 'tech' || output.comparison_mode == 'caller'",
+                   div(class = "alert alert-info",
+                       h5("Performance Results"),
+                       p("Performance results will be shown here after you submit your comparison selection."))
+                 ),
+                 conditionalPanel(
+                   condition = "output.comparison_mode != 'tech' && output.comparison_mode != 'caller'",
+                   DT::dataTableOutput("performance_table")
+                 )),
         
-        # Tab 2: Performance Results
-        tabPanel(
-          "Performance Results", 
-          br(),
-          DT::dataTableOutput("performance_table")
-        ),
-        
-        # Tab 3: Visualization
-        tabPanel(
-          "Visualizations",
-          br(),
-          fluidRow(
-            column(12,
-                   div(
-                     class = "alert alert-info",
-                     h5("Precision/Recall Performance"),
-                     textOutput("viz_experiment_info")
-                   )
-            )
-          ),
-          br(),
-          fluidRow(
-            column(6,
-                   h4("SNP Performance"),
-                   plotlyOutput("snp_plot", height = "500px")  # Note: plotlyOutput for hover
-            ),
-            column(6,
-                   h4("INDEL Performance"), 
-                   plotlyOutput("indel_plot", height = "500px")  # Note: plotlyOutput for hover
-            )
-          )
-        )
+        # Visualizations Tab
+        tabPanel("Visualizations",
+                 br(),
+                 fluidRow(
+                   column(12, div(class = "alert alert-info",
+                                  h5("Precision/Recall Performance - HG002 Sample"),
+                                  textOutput("viz_experiment_info")))
+                 ),
+                 fluidRow(
+                   column(6, h4("SNP Performance"), plotlyOutput("snp_plot", height = "500px")),
+                   column(6, h4("INDEL Performance"), plotlyOutput("indel_plot", height = "500px"))
+                 ))
       )
     )
   )
