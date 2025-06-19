@@ -339,6 +339,12 @@ server <- function(input, output, session) {
     updateCheckboxGroupInput(session, "selected_callers", selected = character(0))
     updateSelectInput(session, "caller_comparison_tech", selected = "ILLUMINA")
     
+    # Reset submitted comparison states
+    submitted_tech_comparison(FALSE)
+    submitted_caller_comparison(FALSE)
+    submitted_tech_ids(numeric(0))
+    submitted_caller_ids(numeric(0))
+    
     dataTableProxy('experiments_table') %>% selectRows(NULL)
     
     showNotification("Technology comparison mode activated!", type = "message")
@@ -348,6 +354,12 @@ server <- function(input, output, session) {
   observeEvent(input$compare_callers, {
     comparison_mode("caller") 
     selected_experiment_ids(numeric(0))  # Reset experiment selection
+    
+    # Reset submitted comparison states
+    submitted_tech_comparison(FALSE)
+    submitted_caller_comparison(FALSE)
+    submitted_tech_ids(numeric(0))
+    submitted_caller_ids(numeric(0))
     
     # Reset other comparison selections
     updateCheckboxGroupInput(session, "selected_technologies", selected = character(0))
@@ -359,6 +371,12 @@ server <- function(input, output, session) {
   # Specific experiments comparison button
   observeEvent(input$compare_experiments, {
     comparison_mode("experiments")
+    
+    # Reset submitted comparison states
+    submitted_tech_comparison(FALSE)
+    submitted_caller_comparison(FALSE)
+    submitted_tech_ids(numeric(0))
+    submitted_caller_ids(numeric(0))
     
     # Reset other comparison selections
     updateCheckboxGroupInput(session, "selected_technologies", selected = character(0))
@@ -436,10 +454,32 @@ server <- function(input, output, session) {
     }
     return(ids)
   })
-  
   # Get metadata for selected experiments
   experiments_data <- reactive({
-    # Build filters based on current filter type
+    # Handle submitted comparisons first - get detailed metadata for specific IDs
+    if (submitted_tech_comparison() || submitted_caller_comparison()) {
+      ids <- experiment_ids()
+      if (length(ids) == 0) {
+        return(data.frame())
+      }
+      py_ids <- r_to_py(as.list(ids))
+      detailed_data <- db$get_experiment_metadata(py_ids)
+      
+      # Convert to overview format to match expected structure
+      if (nrow(detailed_data) > 0) {
+        overview_format <- detailed_data %>%
+          select(id, name, technology, platform_name, caller_name, caller_version, 
+                 chemistry_name, truth_set_name, truth_set_sample, created_at) %>%
+          rename(platform = platform_name, caller = caller_name, 
+                 chemistry = chemistry_name, truth_set = truth_set_name, 
+                 sample = truth_set_sample)
+        return(overview_format)
+      } else {
+        return(data.frame())
+      }
+    }
+    
+    # Regular filtering for other cases
     filters <- NULL
     
     if (input$filter_type == "tech") {
@@ -454,7 +494,7 @@ server <- function(input, output, session) {
     } else {
       return(db$get_experiments_overview(filters))
     }
-  })
+  }) 
   
   # Get performance results for selected experiments
   performance_data <- reactive({
