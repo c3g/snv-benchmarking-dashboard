@@ -275,7 +275,7 @@ ui <- fluidPage(
           DT::dataTableOutput("performance_table")
         ),
         
-        # Tab 3: Visualization
+        # Tab 3: Enhanced Visualization with Metadata
         tabPanel(
           "Visualizations",
           br(),
@@ -284,6 +284,7 @@ ui <- fluidPage(
                    div(
                      class = "alert alert-info",
                      h5("Precision/Recall Performance"),
+                     p("Hover over points for key details, click for more information"),
                      textOutput("viz_experiment_info")
                    )
             )
@@ -292,14 +293,47 @@ ui <- fluidPage(
           fluidRow(
             column(6,
                    h4("SNP Performance"),
-                   plotlyOutput("snp_plot", height = "500px")  # Note: plotlyOutput for hover
+                   plotlyOutput("snp_plot", height = "500px")
             ),
             column(6,
                    h4("INDEL Performance"), 
-                   plotlyOutput("indel_plot", height = "500px")  # Note: plotlyOutput for hover
+                   plotlyOutput("indel_plot", height = "500px")
+            )
+          ),
+          
+          # THIS SECTION MUST BE PRESENT:
+          br(),
+          fluidRow(
+            column(12,
+                   conditionalPanel(
+                     condition = "output.has_selected_point",
+                     wellPanel(
+                       style = "background-color: #f8f9fa; border-left: 4px solid #007bff; margin-top: 15px;",
+                       fluidRow(
+                         column(10,
+                                h5("Selected Experiment Details"),
+                                htmlOutput("basic_experiment_info")
+                         ),
+                         column(2,
+                                div(style = "text-align: right; padding-top: 10px;",
+                                    actionButton("expand_metadata", "Show All Details", 
+                                                 class = "btn-primary btn-sm")
+                                )
+                         )
+                       ),
+                       
+                       # Expandable full metadata section
+                       conditionalPanel(
+                         condition = "input.expand_metadata % 2 == 1",
+                         hr(),
+                         htmlOutput("full_experiment_metadata")
+                       )
+                     )
+                   )
             )
           )
         )
+        
       )
     )
   )
@@ -326,6 +360,9 @@ server <- function(input, output, session) {
   submitted_tech_ids <- reactiveVal(numeric(0))
   submitted_caller_ids <- reactiveVal(numeric(0))
   
+  # NEW: Track selected experiment for metadata display
+  selected_experiment <- reactiveVal(NULL)
+  
   # ====================================================================
   # COMPARISON BUTTON OBSERVERS
   # ====================================================================
@@ -344,7 +381,6 @@ server <- function(input, output, session) {
     submitted_caller_comparison(FALSE)
     submitted_tech_ids(numeric(0))
     submitted_caller_ids(numeric(0))
-    
     dataTableProxy('experiments_table') %>% selectRows(NULL)
     
     showNotification("Technology comparison mode activated!", type = "message")
@@ -427,7 +463,6 @@ server <- function(input, output, session) {
   # ====================================================================
   
   # Get experiment IDs based on filter
-  # Get experiment IDs based on filter
   experiment_ids <- reactive({
     # Handle submitted comparisons first
     if (submitted_tech_comparison()) {
@@ -454,6 +489,7 @@ server <- function(input, output, session) {
     }
     return(ids)
   })
+  
   # Get metadata for selected experiments
   experiments_data <- reactive({
     # Handle submitted comparisons first - get detailed metadata for specific IDs
@@ -508,24 +544,68 @@ server <- function(input, output, session) {
     return(db$get_performance_results(py_ids))
   })
   
-  # Visualizations
-  viz_performance_data <- reactive({
+  viz_performance_data_with_metadata <- reactive({
     ids <- experiment_ids()
     
     if (length(ids) == 0) {
       return(data.frame())
     }
     
-    py_ids <- r_to_py(as.list(ids))
-    perf_data <- db$get_performance_results(py_ids, c('SNP', 'INDEL'))
-    
-    # Filter for ALL_REGIONS subset for main plots
-    filtered_data <- perf_data %>%
-      filter(subset == "ALL_REGIONS" | subset == "*") %>%
-      filter(!is.na(recall) & !is.na(precision) & !is.na(f1_score))
-    
-    return(filtered_data)
+    tryCatch({
+      py_ids <- r_to_py(as.list(ids))
+      perf_data <- db$get_performance_results(py_ids, c('SNP', 'INDEL'))
+      
+      # Check if performance data exists
+      if (nrow(perf_data) == 0) {
+        return(data.frame())
+      }
+      
+      # Filter performance data first
+      filtered_perf_data <- perf_data %>%
+        filter(subset == "ALL_REGIONS" | subset == "*") %>%
+        filter(!is.na(recall) & !is.na(precision) & !is.na(f1_score))
+      
+      if (nrow(filtered_perf_data) == 0) {
+        return(data.frame())
+      }
+      
+      # Get metadata for tooltip enhancement
+      metadata <- db$get_experiment_metadata(py_ids)
+      
+      # If no metadata, return performance data with basic info
+      if (nrow(metadata) == 0) {
+        # Add placeholder columns for missing metadata
+        filtered_perf_data$technology <- "N/A"
+        filtered_perf_data$platform_name <- "N/A"
+        filtered_perf_data$caller_name <- "N/A"
+        filtered_perf_data$caller_version <- "N/A"
+        filtered_perf_data$mean_coverage <- NA
+        return(filtered_perf_data)
+      }
+      
+      # Merge performance data with metadata
+      enhanced_data <- filtered_perf_data %>%
+        left_join(metadata, by = c("experiment_id" = "id"), suffix = c("", "_meta"))
+      
+      # If join fails or no data, return filtered performance data with placeholders
+      if (nrow(enhanced_data) == 0) {
+        filtered_perf_data$technology <- "N/A"
+        filtered_perf_data$platform_name <- "N/A"
+        filtered_perf_data$caller_name <- "N/A"
+        filtered_perf_data$caller_version <- "N/A"
+        filtered_perf_data$mean_coverage <- NA
+        return(filtered_perf_data)
+      }
+      
+      return(enhanced_data)
+      
+    }, error = function(e) {
+      cat("Error in viz_performance_data_with_metadata:", e$message, "\n")
+      # Return empty dataframe on error
+      return(data.frame())
+    })
   })
+  
   
   # Helper function for F1 contours
   create_f1_contour <- function() {
@@ -545,6 +625,22 @@ server <- function(input, output, session) {
     
     return(contour_data)
   }
+  
+  # NEW: Handle clicks from both plots
+  observe({
+    # SNP plot clicks
+    snp_click <- event_data("plotly_click", source = "snp_plot")
+    if (!is.null(snp_click)) {
+      selected_experiment(snp_click$customdata)
+    }
+    
+    # INDEL plot clicks
+    indel_click <- event_data("plotly_click", source = "indel_plot")
+    if (!is.null(indel_click)) {
+      selected_experiment(indel_click$customdata)
+    }
+  })
+  
   # ====================================================================
   # OUTPUTS
   # ====================================================================
@@ -573,11 +669,11 @@ server <- function(input, output, session) {
   })
   outputOptions(output, "has_selected_experiments", suspendWhenHidden = FALSE)
   
-  # Selected experiments count in sidebar
-  output$selected_experiments_count <- renderText({
-    count <- length(selected_experiment_ids())
-    paste("Selected:", count, "experiments")
+  # NEW: Check if we have a selected point
+  output$has_selected_point <- reactive({
+    !is.null(selected_experiment())
   })
+  outputOptions(output, "has_selected_point", suspendWhenHidden = FALSE)
   
   # Badge count for bottom panel
   output$selected_count_badge <- renderText({
@@ -633,30 +729,7 @@ server <- function(input, output, session) {
     ) %>%
       DT::formatRound(c("recall", "precision", "f1_score"), 6)
   })
-  # Selected experiments table
-  output$selected_experiments_table <- DT::renderDataTable({
-    ids <- selected_experiment_ids()
-    if (length(ids) == 0) {
-      return(DT::datatable(data.frame(Message = "No experiments selected")))
-    }
-    
-    current_data <- experiments_data()
-    selected_data <- current_data[current_data$id %in% ids, ]
-    
-    # Show key columns only
-    key_cols <- c("id", "name", "technology", "caller")
-    display_data <- selected_data[, key_cols[key_cols %in% names(selected_data)]]
-    
-    DT::datatable(
-      display_data,
-      options = list(
-        pageLength = 5,
-        scrollX = TRUE,
-        dom = 't'  # Remove search/pagination for small table
-      ),
-      rownames = FALSE
-    )
-  })
+  
   # Selected experiments table (at bottom of page)
   output$compact_selected_experiments <- renderTable({
     ids <- selected_experiment_ids()
@@ -677,9 +750,9 @@ server <- function(input, output, session) {
     return(compact_data)
   }, striped = TRUE, hover = TRUE, spacing = 'xs', width = "100%")
   
-  # Visualization info text
+  # Enhanced visualization info text
   output$viz_experiment_info <- renderText({
-    viz_data <- viz_performance_data()
+    viz_data <- viz_performance_data_with_metadata()
     if (nrow(viz_data) == 0) {
       return("No performance data available for visualization")
     }
@@ -691,172 +764,336 @@ server <- function(input, output, session) {
     paste("Visualizing", exp_count, "experiments:", snp_count, "SNP results,", indel_count, "INDEL results")
   })
   
+  # Enhanced SNP Performance Plot with Rich Tooltips and Click Events
   
-  # SNP Performance Plot (Plotly-compatible)
   output$snp_plot <- renderPlotly({
-    viz_data <- viz_performance_data()
-    
-    if (nrow(viz_data) == 0) {
-      p <- ggplot() + 
-        annotate("text", x = 0.5, y = 0.5, label = "No SNP data available", size = 6) +
-        xlim(0, 1) + ylim(0, 1) +
-        labs(title = "SNP", x = "Precision", y = "Recall") +
-        theme_bw()
-      return(ggplotly(p))
-    }
-    
-    snp_data <- viz_data %>% filter(variant_type == "SNP")
-    
-    if (nrow(snp_data) == 0) {
-      p <- ggplot() + 
-        annotate("text", x = 0.5, y = 0.5, label = "No SNP data", size = 6) +
-        xlim(0, 1) + ylim(0, 1) +
-        labs(title = "SNP", x = "Precision", y = "Recall") +
-        theme_bw()
-      return(ggplotly(p))
-    }
-    
-    # Create contour data
-    contour <- create_f1_contour()
-    
-    p <- ggplot() +
-      # F1 score contour lines - MAJOR
-      geom_contour(
-        data = contour, 
-        aes(x = p, y = r, z = f1), 
-        bins = 6,
-        color = "black", 
-        alpha = 0.8,
-        size = 0.5
-      ) +
-      # F1 score contour lines - MINOR
-      geom_contour(
-        data = contour, 
-        aes(x = p, y = r, z = f1), 
-        bins = 12,
-        color = "gray40", 
-        alpha = 0.6,
-        linetype = "dotted",
-        size = 0.3
-      ) +
-      # F1 score labels next to points
-      geom_text_repel(
-        data = snp_data,
-        aes(x = precision, y = recall, 
-            label = paste0(round(f1_score * 100, 1), "%")),
-        size = 3, 
-        box.padding = 0.3, 
-        point.padding = 0.3, 
-        segment.color = "grey50", 
-        max.overlaps = 20,
-        force = 2
-      ) +
-      # Data points
-      geom_point(
-        data = snp_data, 
-        aes(x = precision, y = recall, color = experiment_name,
-            text = paste("Experiment:", experiment_name, 
-                         "<br>F1 Score:", round(f1_score * 100, 2), "%",
-                         "<br>Precision:", round(precision, 4),
-                         "<br>Recall:", round(recall, 4))), 
-        size = 1.7
-      ) +
-      scale_color_jama() +
-      xlim(0, 1) + ylim(0, 1) +
-      labs(title = "SNP", x = "Precision", y = "Recall", color = "sample") +
-      theme_bw() +
-      theme(
-        plot.title = element_text(size = 12),
-        panel.grid.major = element_line(color = "grey90", size = 0.5),
-        panel.grid.minor = element_line(color = "grey95", size = 0.3)
+    tryCatch({
+      viz_data <- viz_performance_data_with_metadata()
+      
+      if (nrow(viz_data) == 0) {
+        p <- ggplot() + 
+          annotate("text", x = 0.5, y = 0.5, label = "No SNP data available", size = 6) +
+          xlim(0, 1) + ylim(0, 1) +
+          labs(title = "SNP", x = "Precision", y = "Recall") +
+          theme_bw()
+        return(ggplotly(p))
+      }
+      
+      snp_data <- viz_data %>% filter(variant_type == "SNP")
+      
+      if (nrow(snp_data) == 0) {
+        p <- ggplot() + 
+          annotate("text", x = 0.5, y = 0.5, label = "No SNP data", size = 6) +
+          xlim(0, 1) + ylim(0, 1) +
+          labs(title = "SNP", x = "Precision", y = "Recall") +
+          theme_bw()
+        return(ggplotly(p))
+      }
+      
+      # Create contour data
+      contour <- create_f1_contour()
+      
+      # Safe tooltip creation with proper null checking
+      snp_data$tooltip_text <- paste(
+        "<b>", ifelse(is.na(snp_data$experiment_name) | is.null(snp_data$experiment_name), "Unknown", snp_data$experiment_name), "</b>",
+        "<br><b>Technology:</b>", ifelse(is.na(snp_data$technology) | is.null(snp_data$technology), "N/A", snp_data$technology),
+        "<br><b>Platform:</b>", ifelse(is.na(snp_data$platform_name) | is.null(snp_data$platform_name), "N/A", snp_data$platform_name),
+        "<br><b>Caller:</b>", ifelse(is.na(snp_data$caller_name) | is.null(snp_data$caller_name), "N/A", snp_data$caller_name),
+        "<br><b>Coverage:</b>", ifelse(is.na(snp_data$mean_coverage) | is.null(snp_data$mean_coverage), "N/A", paste0(round(as.numeric(snp_data$mean_coverage), 1), "x")),
+        "<br><br><b>Performance:</b>",
+        "<br>• Precision:", paste0(round(as.numeric(snp_data$precision)*100, 2), "%"),
+        "<br>• Recall:", paste0(round(as.numeric(snp_data$recall)*100, 2), "%"),
+        "<br>• F1 Score:", paste0(round(as.numeric(snp_data$f1_score) * 100, 2), "%")
       )
-    
-    ggplotly(p, tooltip = "text") %>%
-      layout(showlegend = TRUE)
+      
+      p <- ggplot() +
+        geom_contour(
+          data = contour, 
+          aes(x = p, y = r, z = f1), 
+          bins = 6,
+          color = "black", 
+          alpha = 0.8,
+          size = 0.5
+        ) +
+        geom_contour(
+          data = contour, 
+          aes(x = p, y = r, z = f1), 
+          bins = 12,
+          color = "gray40", 
+          alpha = 0.6,
+          linetype = "dotted",
+          size = 0.3
+        ) +
+        geom_text_repel(
+          data = snp_data,
+          aes(x = precision, y = recall, 
+              label = paste0(round(f1_score * 100, 1), "%")),
+          size = 3, 
+          box.padding = 0.3, 
+          point.padding = 0.3, 
+          segment.color = "grey50", 
+          max.overlaps = 20,
+          force = 2
+        ) +
+        geom_point(
+          data = snp_data, 
+          aes(x = precision, y = recall, 
+              color = experiment_name,
+              text = tooltip_text,
+              customdata = experiment_id), 
+          size = 1.7
+        ) +
+        scale_color_jama() +
+        xlim(0, 1) + ylim(0, 1) +
+        labs(title = "SNP", x = "Precision", y = "Recall", color = "Experiment") +
+        theme_bw() +
+        theme(
+          plot.title = element_text(size = 12),
+          panel.grid.major = element_line(color = "grey90", size = 0.5),
+          panel.grid.minor = element_line(color = "grey95", size = 0.3)
+        )
+      
+      ggplotly(p, tooltip = "text", source = "snp_plot") %>%
+        layout(showlegend = TRUE) %>%
+        event_register("plotly_click")
+      
+    }, error = function(e) {
+      cat("Error in SNP plot:", e$message, "\n")
+      # Return basic error plot
+      p <- ggplot() + 
+        annotate("text", x = 0.5, y = 0.5, label = paste("Error loading SNP data:", e$message), size = 4) +
+        xlim(0, 1) + ylim(0, 1) +
+        labs(title = "SNP - Error", x = "Precision", y = "Recall") +
+        theme_bw()
+      return(ggplotly(p))
+    })
   })
   
-  # INDEL Performance Plot (Plotly-compatible)
+  # ============================================================================
+  # REPLACE YOUR INDEL PLOT OUTPUT WITH THIS SAFER VERSION:
+  # ============================================================================
+  
   output$indel_plot <- renderPlotly({
-    viz_data <- viz_performance_data()
-    
-    if (nrow(viz_data) == 0) {
-      p <- ggplot() + 
-        annotate("text", x = 0.5, y = 0.5, label = "No INDEL data available", size = 6) +
-        xlim(0, 1) + ylim(0, 1) +
-        labs(title = "INDEL", x = "Precision", y = "Recall") +
-        theme_bw()
-      return(ggplotly(p))
-    }
-    
-    indel_data <- viz_data %>% filter(variant_type == "INDEL")
-    
-    if (nrow(indel_data) == 0) {
-      p <- ggplot() + 
-        annotate("text", x = 0.5, y = 0.5, label = "No INDEL data", size = 6) +
-        xlim(0, 1) + ylim(0, 1) +
-        labs(title = "INDEL", x = "Precision", y = "Recall") +
-        theme_bw()
-      return(ggplotly(p))
-    }
-    
-    # Create contour data
-    contour <- create_f1_contour()
-    
-    p <- ggplot() +
-      # F1 score contour lines - MAJOR
-      geom_contour(
-        data = contour, 
-        aes(x = p, y = r, z = f1), 
-        bins = 6,
-        color = "black", 
-        alpha = 0.8,
-        size = 0.5
-      ) +
-      # F1 score contour lines - MINOR
-      geom_contour(
-        data = contour, 
-        aes(x = p, y = r, z = f1), 
-        bins = 12,
-        color = "gray40", 
-        alpha = 0.6,
-        linetype = "dotted",
-        size = 0.3
-      ) +
-      # F1 score labels next to points
-      geom_text_repel(
-        data = indel_data,
-        aes(x = precision, y = recall, 
-            label = paste0(round(f1_score * 100, 1), "%")),
-        size = 3, 
-        box.padding = 0.3, 
-        point.padding = 0.3, 
-        segment.color = "grey50", 
-        max.overlaps = 20,
-        force = 2
-      ) +
-      # Data points
-      geom_point(
-        data = indel_data, 
-        aes(x = precision, y = recall, color = experiment_name,
-            text = paste("Experiment:", experiment_name, 
-                         "<br>F1 Score:", round(f1_score * 100, 2), "%",
-                         "<br>Precision:", round(precision, 4),
-                         "<br>Recall:", round(recall, 4))), 
-        size = 1.7
-      ) +
-      scale_color_jama() +
-      xlim(0, 1) + ylim(0, 1) +
-      labs(title = "INDEL", x = "Precision", y = "Recall", color = "sample") +
-      theme_bw() +
-      theme(
-        plot.title = element_text(size = 12),
-        panel.grid.major = element_line(color = "grey90", size = 0.5),
-        panel.grid.minor = element_line(color = "grey95", size = 0.3)
+    tryCatch({
+      viz_data <- viz_performance_data_with_metadata()
+      
+      if (nrow(viz_data) == 0) {
+        p <- ggplot() + 
+          annotate("text", x = 0.5, y = 0.5, label = "No INDEL data available", size = 6) +
+          xlim(0, 1) + ylim(0, 1) +
+          labs(title = "INDEL", x = "Precision", y = "Recall") +
+          theme_bw()
+        return(ggplotly(p))
+      }
+      
+      indel_data <- viz_data %>% filter(variant_type == "INDEL")
+      
+      if (nrow(indel_data) == 0) {
+        p <- ggplot() + 
+          annotate("text", x = 0.5, y = 0.5, label = "No INDEL data", size = 6) +
+          xlim(0, 1) + ylim(0, 1) +
+          labs(title = "INDEL", x = "Precision", y = "Recall") +
+          theme_bw()
+        return(ggplotly(p))
+      }
+      
+      # Create contour data
+      contour <- create_f1_contour()
+      
+      # Safe tooltip creation with proper null checking
+      indel_data$tooltip_text <- paste(
+        "<b>", ifelse(is.na(indel_data$experiment_name) | is.null(indel_data$experiment_name), "Unknown", indel_data$experiment_name), "</b>",
+        "<br><b>Technology:</b>", ifelse(is.na(indel_data$technology) | is.null(indel_data$technology), "N/A", indel_data$technology),
+        "<br><b>Platform:</b>", ifelse(is.na(indel_data$platform_name) | is.null(indel_data$platform_name), "N/A", indel_data$platform_name),
+        "<br><b>Caller:</b>", ifelse(is.na(indel_data$caller_name) | is.null(indel_data$caller_name), "N/A", indel_data$caller_name),
+        "<br><b>Coverage:</b>", ifelse(is.na(indel_data$mean_coverage) | is.null(indel_data$mean_coverage), "N/A", paste0(round(as.numeric(indel_data$mean_coverage), 1), "x")),
+        "<br><br><b>Performance:</b>",
+        "<br>• Precision:", paste0(round(as.numeric(indel_data$precision)*100, 2), "%"),
+        "<br>• Recall:", paste0(round(as.numeric(indel_data$recall)*100, 2), "%"),
+        "<br>• F1 Score:", paste0(round(as.numeric(indel_data$f1_score) * 100, 2), "%")
       )
-    
-    ggplotly(p, tooltip = "text") %>%
-      layout(showlegend = TRUE)
+      
+      p <- ggplot() +
+        geom_contour(
+          data = contour, 
+          aes(x = p, y = r, z = f1), 
+          bins = 6,
+          color = "black", 
+          alpha = 0.8,
+          size = 0.5
+        ) +
+        geom_contour(
+          data = contour, 
+          aes(x = p, y = r, z = f1), 
+          bins = 12,
+          color = "gray40", 
+          alpha = 0.6,
+          linetype = "dotted",
+          size = 0.3
+        ) +
+        geom_text_repel(
+          data = indel_data,
+          aes(x = precision, y = recall, 
+              label = paste0(round(f1_score * 100, 1), "%")),
+          size = 3, 
+          box.padding = 0.3, 
+          point.padding = 0.3, 
+          segment.color = "grey50", 
+          max.overlaps = 20,
+          force = 2
+        ) +
+        geom_point(
+          data = indel_data, 
+          aes(x = precision, y = recall, 
+              color = experiment_name,
+              text = tooltip_text,
+              customdata = experiment_id), 
+          size = 1.7
+        ) +
+        scale_color_jama() +
+        xlim(0, 1) + ylim(0, 1) +
+        labs(title = "INDEL", x = "Precision", y = "Recall", color = "Experiment") +
+        theme_bw() +
+        theme(
+          plot.title = element_text(size = 12),
+          panel.grid.major = element_line(color = "grey90", size = 0.5),
+          panel.grid.minor = element_line(color = "grey95", size = 0.3)
+        )
+      
+      ggplotly(p, tooltip = "text", source = "indel_plot") %>%
+        layout(showlegend = TRUE) %>%
+        event_register("plotly_click")
+      
+    }, error = function(e) {
+      cat("Error in INDEL plot:", e$message, "\n")
+      # Return basic error plot
+      p <- ggplot() + 
+        annotate("text", x = 0.5, y = 0.5, label = paste("Error loading INDEL data:", e$message), size = 4) +
+        xlim(0, 1) + ylim(0, 1) +
+        labs(title = "INDEL - Error", x = "Precision", y = "Recall") +
+        theme_bw()
+      return(ggplotly(p))
+    })
   })
+  
+  # NEW: Basic experiment info (always shown when point is clicked)
+  output$basic_experiment_info <- renderUI({
+    exp_id <- selected_experiment()
+    if (is.null(exp_id)) return(NULL)
+    
+    # Get experiment metadata
+    py_ids <- r_to_py(list(exp_id))
+    metadata <- db$get_experiment_metadata(py_ids)
+    
+    if (nrow(metadata) == 0) return(p("No metadata found"))
+    
+    meta <- metadata[1, ]
+    
+    div(
+      h6(strong(meta$name), style = "color: #007bff; margin-bottom: 10px;"),
+      div(
+        class = "row",
+        div(class = "col-md-3",
+            p(strong("Technology: "), meta$technology %||% "N/A", style = "margin-bottom: 5px;")
+        ),
+        div(class = "col-md-3",
+            p(strong("Platform: "), meta$platform_name %||% "N/A", style = "margin-bottom: 5px;")
+        ),
+        div(class = "col-md-3",
+            p(strong("Caller: "), paste(meta$caller_name %||% "N/A", meta$caller_version %||% ""), style = "margin-bottom: 5px;")
+        ),
+        div(class = "col-md-3",
+            p(strong("Coverage: "), 
+              ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x")), 
+              style = "margin-bottom: 5px;")
+        )
+      )
+    )
+  })
+  
+  # NEW: Full experiment metadata (shown when expanded)
+  output$full_experiment_metadata <- renderUI({
+    exp_id <- selected_experiment()
+    if (is.null(exp_id)) return(NULL)
+    
+    # Get experiment metadata
+    py_ids <- r_to_py(list(exp_id))
+    metadata <- db$get_experiment_metadata(py_ids)
+    
+    if (nrow(metadata) == 0) return(p("No metadata found"))
+    
+    meta <- metadata[1, ]
+    
+    div(
+      h5("Complete Experiment Details"),
+      div(
+        class = "row",
+        
+        # Column 1: Sequencing
+        div(class = "col-md-4",
+            wellPanel(
+              style = "background-color: white; padding: 15px;",
+              h6("Sequencing Technology", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
+              p(strong("Technology: "), meta$technology %||% "N/A"),
+              p(strong("Platform: "), meta$platform_name %||% "N/A"),
+              p(strong("Platform Type: "), meta$platform_type %||% "N/A"),
+              p(strong("Platform Version: "), meta$platform_version %||% "N/A"),
+              p(strong("Target: "), meta$target %||% "N/A"),
+              p(strong("Chemistry: "), meta$chemistry_name %||% "N/A")
+            )
+        ),
+        
+        # Column 2: Analysis
+        div(class = "col-md-4",
+            wellPanel(
+              style = "background-color: white; padding: 15px;",
+              h6("Analysis Algorithms", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
+              p(strong("Variant Caller: "), meta$caller_name %||% "N/A"),
+              p(strong("Caller Version: "), meta$caller_version %||% "N/A"),
+              p(strong("Caller Type: "), meta$caller_type %||% "N/A"),
+              p(strong("Caller Model: "), meta$caller_model %||% "N/A"),
+              p(strong("Aligner: "), paste(meta$aligner_name %||% "N/A", meta$aligner_version %||% "")),
+              p(strong("Benchmark Tool: "), paste(meta$benchmark_tool_name %||% "N/A", meta$benchmark_tool_version %||% ""))
+            )
+        ),
+        
+        # Column 3: Quality & Truth
+        div(class = "col-md-4",
+            wellPanel(
+              style = "background-color: white; padding: 15px;",
+              h6("Quality & Benchmarking", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
+              p(strong("Mean Coverage: "), ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x"))),
+              p(strong("Read Length: "), ifelse(is.na(meta$read_length), "N/A", paste0(meta$read_length, " bp"))),
+              p(strong("Mean Insert Size: "), ifelse(is.na(meta$mean_insert_size), "N/A", paste0(meta$mean_insert_size, " bp"))),
+              p(strong("Truth Set: "), paste(meta$truth_set_name %||% "N/A", meta$truth_set_version %||% "")),
+              p(strong("Sample: "), meta$truth_set_sample %||% "N/A"),
+              p(strong("Reference: "), meta$truth_set_reference %||% "N/A")
+            )
+        )
+      ),
+      
+      # Additional details row
+      div(
+        class = "row",
+        div(class = "col-md-12",
+            wellPanel(
+              style = "background-color: white; padding: 15px;",
+              h6("Additional Details", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
+              div(
+                class = "row",
+                div(class = "col-md-3", p(strong("Variant Type: "), meta$variant_type %||% "N/A")),
+                div(class = "col-md-3", p(strong("Variant Origin: "), meta$variant_origin %||% "N/A")),
+                div(class = "col-md-3", p(strong("Is Phased: "), ifelse(is.na(meta$is_phased), "N/A", ifelse(meta$is_phased, "Yes", "No")))),
+                div(class = "col-md-3", p(strong("Created: "), ifelse(is.na(meta$created_at), "N/A", format(as.POSIXct(meta$created_at), "%Y-%m-%d"))))
+              )
+            )
+        )
+      )
+    )
+  })
+  
+  # NEW: Helper function for null coalescing
+  `%||%` <- function(x, y) if (is.null(x) || is.na(x) || x == "") y else x
   
   # ====================================================================
   # SUBMISSION OBSERVERS
@@ -918,7 +1155,9 @@ server <- function(input, output, session) {
     showNotification("Using selected experiments for comparison", type = "message")
   })
 }
+
 # ============================================================================
 # RUN APP
 # ============================================================================
 shinyApp(ui = ui, server = server, options = list(launch.browser = TRUE))
+
