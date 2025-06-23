@@ -73,7 +73,7 @@ ui <- fluidPage(
       # Compare Technologies Button
       actionButton(
         "compare_techs",
-        "Compare Technologies",
+        "Compare Sequencing Technologies",
         class = "btn-primary",
         style = "width: 100%; margin-bottom: 10px;"
       ),
@@ -81,7 +81,7 @@ ui <- fluidPage(
       # Compare Callers Button  
       actionButton(
         "compare_callers", 
-        "Compare Callers",
+        "Compare Variant Callers",
         class = "btn-success",
         style = "width: 100%; margin-bottom: 10px;"
       ),
@@ -105,7 +105,7 @@ ui <- fluidPage(
         # Select multiple technologies
         checkboxGroupInput(
           "selected_technologies",
-          "Select Technologies (2 or more):",
+          "Select technologies (2 or more):",
           choices = list(
             "Illumina" = "ILLUMINA",
             "PacBio" = "PACBIO",
@@ -117,7 +117,7 @@ ui <- fluidPage(
         # Select one caller (control)
         selectInput(
           "tech_comparison_caller",
-          "Keep Caller Constant:",
+          "Choose a caller (for all):",
           choices = c("DeepVariant" = "DEEPVARIANT", 
                       "GATK" = "GATK", 
                       "Clair3" = "CLAIR3"),
@@ -152,7 +152,7 @@ ui <- fluidPage(
         # Select multiple callers
         checkboxGroupInput(
           "selected_callers",
-          "Select Callers (2 or more):",
+          "Select callers (2 or more):",
           choices = list(
             "DeepVariant" = "DEEPVARIANT",
             "GATK" = "GATK",
@@ -163,7 +163,7 @@ ui <- fluidPage(
         # Select one technology (control)
         selectInput(
           "caller_comparison_tech",
-          "Keep Technology Constant:",
+          "Choose a technology (for all):",
           choices = c("Illumina" = "ILLUMINA", 
                       "PacBio" = "PACBIO", 
                       "ONT" = "ONT",
