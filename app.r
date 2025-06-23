@@ -763,7 +763,10 @@ server <- function(input, output, session) {
     paste("Visualizing", exp_count, "experiments:", snp_count, "SNP results,", indel_count, "INDEL results")
   })
   
-  # Enhanced SNP Performance Plot with Rich Tooltips and Click Events
+
+  # ============================================================================
+  # SNP PLOT OUTPUT
+  # ============================================================================
   
   output$snp_plot <- renderPlotly({
     tryCatch({
@@ -798,7 +801,6 @@ server <- function(input, output, session) {
         "<br><b>Technology:</b>", ifelse(is.na(snp_data$technology) | is.null(snp_data$technology), "N/A", snp_data$technology),
         "<br><b>Platform:</b>", ifelse(is.na(snp_data$platform_name) | is.null(snp_data$platform_name), "N/A", snp_data$platform_name),
         "<br><b>Caller:</b>", ifelse(is.na(snp_data$caller_name) | is.null(snp_data$caller_name), "N/A", snp_data$caller_name),
-        "<br><b>Coverage:</b>", ifelse(is.na(snp_data$mean_coverage) | is.null(snp_data$mean_coverage), "N/A", paste0(round(as.numeric(snp_data$mean_coverage), 1), "x")),
         "<br><br><b>Performance:</b>",
         "<br>• Precision:", paste0(round(as.numeric(snp_data$precision)*100, 2), "%"),
         "<br>• Recall:", paste0(round(as.numeric(snp_data$recall)*100, 2), "%"),
@@ -869,7 +871,7 @@ server <- function(input, output, session) {
   })
   
   # ============================================================================
-  # REPLACE YOUR INDEL PLOT OUTPUT WITH THIS SAFER VERSION:
+  # INDEL PLOT OUTPUT
   # ============================================================================
   
   output$indel_plot <- renderPlotly({
@@ -905,7 +907,6 @@ server <- function(input, output, session) {
         "<br><b>Technology:</b>", ifelse(is.na(indel_data$technology) | is.null(indel_data$technology), "N/A", indel_data$technology),
         "<br><b>Platform:</b>", ifelse(is.na(indel_data$platform_name) | is.null(indel_data$platform_name), "N/A", indel_data$platform_name),
         "<br><b>Caller:</b>", ifelse(is.na(indel_data$caller_name) | is.null(indel_data$caller_name), "N/A", indel_data$caller_name),
-        "<br><b>Coverage:</b>", ifelse(is.na(indel_data$mean_coverage) | is.null(indel_data$mean_coverage), "N/A", paste0(round(as.numeric(indel_data$mean_coverage), 1), "x")),
         "<br><br><b>Performance:</b>",
         "<br>• Precision:", paste0(round(as.numeric(indel_data$precision)*100, 2), "%"),
         "<br>• Recall:", paste0(round(as.numeric(indel_data$recall)*100, 2), "%"),
