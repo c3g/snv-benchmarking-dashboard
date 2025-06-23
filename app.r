@@ -42,7 +42,7 @@ ui <- fluidPage(
         selected = "none"
       ),
       
-      # Technology dropdown (conditional)
+      # Technology filter dropdown
       conditionalPanel(
         condition = "input.filter_type == 'tech'",
         selectInput(
@@ -53,7 +53,7 @@ ui <- fluidPage(
         )
       ),
       
-      # Caller dropdown (conditional)  
+      # Caller filter dropdown 
       conditionalPanel(
         condition = "input.filter_type == 'caller'",
         selectInput(
@@ -114,7 +114,7 @@ ui <- fluidPage(
           )
         ),
         
-        # Select one caller to keep constant
+        # Select one caller (control)
         selectInput(
           "tech_comparison_caller",
           "Keep Caller Constant:",
@@ -160,7 +160,7 @@ ui <- fluidPage(
           )
         ),
         
-        # Select one technology to keep constant
+        # Select one technology (control)
         selectInput(
           "caller_comparison_tech",
           "Keep Technology Constant:",
@@ -189,7 +189,7 @@ ui <- fluidPage(
       ),
       
       # ====================================================================
-      # EXPERIMENT SELECTION INFO 
+      # EXPERIMENT SELECTION INFO PANEL
       # ====================================================================
       conditionalPanel(
         condition = "output.comparison_mode == 'experiments'",
@@ -209,7 +209,7 @@ ui <- fluidPage(
         )
       ),
       # ====================================================================
-      # SELECTED EXPERIMENTS DISPLAY (Bottom of page)
+      # SELECTED EXPERIMENTS DISPLAY (Bottom of sidebar)
       # ====================================================================
       conditionalPanel(
         condition = "output.comparison_mode == 'experiments' && output.has_selected_experiments",
@@ -221,7 +221,6 @@ ui <- fluidPage(
                  span(class = "badge", textOutput("selected_count_badge", inline = TRUE)))
           ),
           div(class = "panel-body", style = "padding: 10px;",
-              # Compact table with key info only
               div(style = "max-height: 200px; overflow-y: auto;",
                   tableOutput("compact_selected_experiments")
               ),
