@@ -216,16 +216,16 @@ ui <- fluidPage(
         hr(),
         div(
           class = "panel panel-info",
-          div(class = "panel-heading", 
+          div(class = "panel-heading", #heading
               h5("Selected Experiments for Comparison ", 
                  span(class = "badge", textOutput("selected_count_badge", inline = TRUE)))
           ),
-          div(class = "panel-body", style = "padding: 10px;",
+          div(class = "panel-body", style = "padding: 10px;", #content (table)
               div(style = "max-height: 200px; overflow-y: auto;",
                   tableOutput("compact_selected_experiments")
               ),
               br(),
-              div(style = "text-align: center;",
+              div(style = "text-align: center;", #submit button
                   actionButton(
                     "submit_bottom_comparison",
                     "Compare Selected Experiments",
@@ -250,7 +250,9 @@ ui <- fluidPage(
       
       tabsetPanel(
         
-        # Tab 1: Experiments Overview
+        # ====================================================================
+        # TAB 1: EXPERIMENT OVERVIEW
+        # ====================================================================
         tabPanel(
           "Experiments",
           br(),
@@ -267,14 +269,18 @@ ui <- fluidPage(
           DT::dataTableOutput("experiments_table")
         ),
         
-        # Tab 2: Performance Results
+        # ====================================================================
+        # TAB 2: PERFORMANCE RESULTS 
+        # ====================================================================
         tabPanel(
           "Performance Results", 
           br(),
           DT::dataTableOutput("performance_table")
         ),
         
-        # Tab 3: Enhanced Visualization with Metadata
+        # ====================================================================
+        # TAB 3: VISUALIZATIONS (PRECISION/RECALL)
+        # ====================================================================
         tabPanel(
           "Visualizations",
           br(),
@@ -283,7 +289,8 @@ ui <- fluidPage(
                    div(
                      class = "alert alert-info",
                      h5("Precision/Recall Performance"),
-                     p("Hover over points for key details, click for more information"),
+                     p("Select area on the graph to zoom in. Hover over points for key metadata, click for more information"),
+                     br(),
                      textOutput("viz_experiment_info")
                    )
             )
@@ -300,7 +307,7 @@ ui <- fluidPage(
             )
           ),
           
-          # THIS SECTION MUST BE PRESENT:
+          # Selected point/experiment details 
           br(),
           fluidRow(
             column(12,
@@ -308,10 +315,10 @@ ui <- fluidPage(
                      condition = "output.has_selected_point",
                      wellPanel(
                        style = "background-color: #f8f9fa; border-left: 4px solid #007bff; margin-top: 15px;",
-                       fluidRow(
+                       fluidRow( 
                          column(10,
                                 h5("Selected Experiment Details"),
-                                htmlOutput("basic_experiment_info")
+                                htmlOutput("basic_experiment_info")  # General metadata details
                          ),
                          column(2,
                                 div(style = "text-align: right; padding-top: 10px;",
@@ -325,13 +332,13 @@ ui <- fluidPage(
                        conditionalPanel(
                          condition = "input.expand_metadata % 2 == 1",
                          hr(),
-                         htmlOutput("full_experiment_metadata")
+                         htmlOutput("full_experiment_metadata") # Full metadata
                        )
                      )
                    )
+              )
             )
           )
-        )
         
       )
     )
@@ -359,7 +366,7 @@ server <- function(input, output, session) {
   submitted_tech_ids <- reactiveVal(numeric(0))
   submitted_caller_ids <- reactiveVal(numeric(0))
   
-  # NEW: Track selected experiment for metadata display
+  # Track selected experiment for metadata display
   selected_experiment <- reactiveVal(NULL)
   
   # ====================================================================
@@ -760,7 +767,7 @@ server <- function(input, output, session) {
     snp_count <- nrow(viz_data[viz_data$variant_type == "SNP", ])
     indel_count <- nrow(viz_data[viz_data$variant_type == "INDEL", ])
     
-    paste("Visualizing", exp_count, "experiments:", snp_count, "SNP results,", indel_count, "INDEL results")
+    paste("Visualizing", exp_count, "experiments:")
   })
   
 
