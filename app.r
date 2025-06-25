@@ -348,6 +348,31 @@ ui <- fluidPage(
 # SERVER
 # ============================================================================
 server <- function(input, output, session) {
+  
+  # Color and shape mappings for visualization
+  # Muted colors:
+  technology_colors <- c(
+    "ILLUMINA" = "#2E5F88",    # Blue
+    "PACBIO" = "#CC7A00",      # Orange  
+    "ONT" = "#4A7C35",         # Green
+    "MGI" = "#A52A2A",         # Red
+    "Unknown" = "#5C5C5C"      # Gray
+  )
+  
+  'technology_colors <- c(
+    "ILLUMINA" = "#1f77b4",    # Blue
+    "PACBIO" = "#ff7f0e",      # Orange  
+    "ONT" = "#2ca02c",         # Green
+    "MGI" = "#d62728",         # Red
+    "Unknown" = "#7f7f7f"      # Gray
+  )'
+  
+  caller_shapes <- c(
+    "DEEPVARIANT" = 16,        # Circle
+    "GATK" = 17,              # Triangle
+    "CLAIR3" = 15,            # Square
+    "Unknown" = 4             # X
+  )
   # ====================================================================
   # REACTIVE VALUES FOR TRACKING STATE (Option 2 - Cleaner Names)
   # ====================================================================
@@ -543,7 +568,8 @@ server <- function(input, output, session) {
     return(db$get_performance_results(py_ids))
   })
   
-  viz_performance_data_with_metadata <- reactive({
+  # Replace the entire viz_performance_data_with_metadata reactive with this:
+  viz_performance_data <- reactive({
     ids <- experiment_ids()
     
     if (length(ids) == 0) {
@@ -552,55 +578,22 @@ server <- function(input, output, session) {
     
     tryCatch({
       py_ids <- r_to_py(as.list(ids))
+      # Use the enhanced get_performance_results that now includes technology and caller
       perf_data <- db$get_performance_results(py_ids, c('SNP', 'INDEL'))
       
-      # Check if performance data exists
+      # Filter for visualization
       if (nrow(perf_data) == 0) {
         return(data.frame())
       }
       
-      # Filter performance data first
-      filtered_perf_data <- perf_data %>%
+      filtered_data <- perf_data %>%
         filter(subset == "ALL_REGIONS" | subset == "*") %>%
         filter(!is.na(recall) & !is.na(precision) & !is.na(f1_score))
       
-      if (nrow(filtered_perf_data) == 0) {
-        return(data.frame())
-      }
-      
-      # Get metadata for tooltip enhancement
-      metadata <- db$get_experiment_metadata(py_ids)
-      
-      # If no metadata, return performance data with basic info
-      if (nrow(metadata) == 0) {
-        # Add placeholder columns for missing metadata
-        filtered_perf_data$technology <- "N/A"
-        filtered_perf_data$platform_name <- "N/A"
-        filtered_perf_data$caller_name <- "N/A"
-        filtered_perf_data$caller_version <- "N/A"
-        filtered_perf_data$mean_coverage <- NA
-        return(filtered_perf_data)
-      }
-      
-      # Merge performance data with metadata
-      enhanced_data <- filtered_perf_data %>%
-        left_join(metadata, by = c("experiment_id" = "id"), suffix = c("", "_meta"))
-      
-      # If join fails or no data, return filtered performance data with placeholders
-      if (nrow(enhanced_data) == 0) {
-        filtered_perf_data$technology <- "N/A"
-        filtered_perf_data$platform_name <- "N/A"
-        filtered_perf_data$caller_name <- "N/A"
-        filtered_perf_data$caller_version <- "N/A"
-        filtered_perf_data$mean_coverage <- NA
-        return(filtered_perf_data)
-      }
-      
-      return(enhanced_data)
+      return(filtered_data)
       
     }, error = function(e) {
-      cat("Error in viz_performance_data_with_metadata:", e$message, "\n")
-      # Return empty dataframe on error
+      cat("Error in viz_performance_data:", e$message, "\n")
       return(data.frame())
     })
   })
@@ -774,7 +767,7 @@ server <- function(input, output, session) {
   
   output$snp_plot <- renderPlotly({
     tryCatch({
-      viz_data <- viz_performance_data_with_metadata()
+      viz_data <- viz_performance_data()
       
       if (nrow(viz_data) == 0) {
         p <- ggplot() + 
@@ -843,12 +836,14 @@ server <- function(input, output, session) {
         geom_point(
           data = snp_data, 
           aes(x = precision, y = recall, 
-              color = experiment_name,
+              color = technology,           # color by technology
+              shape = caller,              # shape by caller
               text = tooltip_text,
               customdata = experiment_id), 
-          size = 1.7
+          size = 1.7 # dot size
         ) +
-        scale_color_jama() +
+        scale_color_manual(values = technology_colors) +    # manual colors
+        scale_shape_manual(values = caller_shapes) +       # manual shapes
         xlim(0, 1) + ylim(0, 1) +
         labs(title = "SNP", x = "Precision", y = "Recall", color = "Experiment") +
         theme_bw() +
@@ -880,7 +875,7 @@ server <- function(input, output, session) {
   
   output$indel_plot <- renderPlotly({
     tryCatch({
-      viz_data <- viz_performance_data_with_metadata()
+      viz_data <- viz_performance_data()
       
       if (nrow(viz_data) == 0) {
         p <- ggplot() + 
@@ -949,12 +944,14 @@ server <- function(input, output, session) {
         geom_point(
           data = indel_data, 
           aes(x = precision, y = recall, 
-              color = experiment_name,
+              color = technology,           # color by technology
+              shape = caller,              # shape by caller
               text = tooltip_text,
               customdata = experiment_id), 
-          size = 1.7
+          size = 1.7 # dot size
         ) +
-        scale_color_jama() +
+        scale_color_manual(values = technology_colors) +    # manual colors
+        scale_shape_manual(values = caller_shapes) +       # manual shapes
         xlim(0, 1) + ylim(0, 1) +
         labs(title = "INDEL", x = "Precision", y = "Recall", color = "Experiment") +
         theme_bw() +
