@@ -44,7 +44,7 @@ ui <- fluidPage(
       
       # Technology filter dropdown
       conditionalPanel(
-        condition = "input.filter_type == 'tech_comparison'",
+        condition = "input.filter_type == 'tech'",
         selectInput(
           "technology",
           "Choose Technology:",
@@ -55,7 +55,7 @@ ui <- fluidPage(
       
       # Caller filter dropdown 
       conditionalPanel(
-        condition = "input.filter_type == 'caller_comparison'",
+        condition = "input.filter_type == 'caller'",
         selectInput(
           "caller",
           "Choose Caller:",
@@ -288,10 +288,9 @@ ui <- fluidPage(
             column(12,
                    div(
                      class = "alert alert-info",
-                     h5("Precision/Recall Performance"),
-                     p("Select area on the graph to zoom in. Hover over points for key metadata, click for more information"),
-                     br(),
-                     textOutput("viz_experiment_info")
+                     h5("Performance Analysis"),
+                     p(strong("Click points"), " and scroll down to view experiment details below, or ", strong("hover"), " for quick metrics"),
+                     p(style = "font-size: 0.9em; color: #6c757d;", "Tip: Drag to zoom, double-click to reset")
                    )
             )
           ),
@@ -470,6 +469,7 @@ server <- function(input, output, session) {
   # ====================================================================
   # DATA PROCESSING FUNCTIONS 
   # ====================================================================
+  
   
   # Get experiment IDs based on filter
   experiment_ids <- reactive({
