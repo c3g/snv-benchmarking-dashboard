@@ -203,6 +203,8 @@ def get_performance_results(experiment_ids, variant_types=['SNP', 'INDEL']):
                     'experiment_id': result.experiment_id,
                     'experiment_name': result.experiment.name if result.experiment else None,
                     'variant_type': result.variant_type,
+                    'technology': result.experiment.sequencing_technology.technology.value if (result.experiment and result.experiment.sequencing_technology) else 'Unknown',
+                    'caller': result.experiment.variant_caller.name.value if (result.experiment and result.experiment.variant_caller) else 'Unknown',
                     'subset': result.subset,
                     'filter_type': result.filter_type,
                     
