@@ -335,9 +335,9 @@ ui <- fluidPage(
                        )
                      )
                    )
-              )
             )
           )
+        )
         
       )
     )
@@ -578,26 +578,29 @@ server <- function(input, output, session) {
     
     tryCatch({
       py_ids <- r_to_py(as.list(ids))
-      # Use the enhanced get_performance_results that now includes technology and caller
       perf_data <- db$get_performance_results(py_ids, c('SNP', 'INDEL'))
+      metadata <- db$get_experiment_metadata(py_ids)
       
-      # Filter for visualization
-      if (nrow(perf_data) == 0) {
-        return(data.frame())
-      }
-      
-      filtered_data <- perf_data %>%
+      # Filter performance data
+      filtered_perf_data <- perf_data %>%
         filter(subset == "ALL_REGIONS" | subset == "*") %>%
         filter(!is.na(recall) & !is.na(precision) & !is.na(f1_score))
       
-      return(filtered_data)
+      if (nrow(filtered_perf_data) == 0 || nrow(metadata) == 0) {
+        return(data.frame())
+      }
+      
+      # Merge for tooltip info
+      enhanced_data <- filtered_perf_data %>%
+        left_join(metadata, by = c("experiment_id" = "id"), suffix = c("", "_meta"))
+      
+      return(enhanced_data)
       
     }, error = function(e) {
       cat("Error in viz_performance_data:", e$message, "\n")
       return(data.frame())
     })
   })
-  
   
   # Helper function for F1 contours
   create_f1_contour <- function() {
