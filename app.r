@@ -836,11 +836,13 @@ server <- function(input, output, session) {
         geom_point(
           data = snp_data, 
           aes(x = precision, y = recall, 
-              color = technology,           # color by technology
+              fill = technology,           # color by technology
               shape = caller,              # shape by caller
               text = tooltip_text,
               customdata = experiment_id), 
-          size = 1.7 # dot size
+          color = "black", # outline
+          stroke = 0.15,
+          size = 2.2 # dot size
         ) +
         scale_color_manual(values = technology_colors) +    # manual colors
         scale_shape_manual(values = caller_shapes) +       # manual shapes
@@ -930,25 +932,16 @@ server <- function(input, output, session) {
           linetype = "dotted",
           size = 0.3
         ) +
-        geom_text_repel(
-          data = indel_data,
-          aes(x = precision, y = recall, 
-              label = paste0(round(f1_score * 100, 1), "%")),
-          size = 3, 
-          box.padding = 0.3, 
-          point.padding = 0.3, 
-          segment.color = "grey50", 
-          max.overlaps = 20,
-          force = 2
-        ) +
         geom_point(
           data = indel_data, 
           aes(x = precision, y = recall, 
-              color = technology,           # color by technology
+              fill = technology,           # color by technology
               shape = caller,              # shape by caller
               text = tooltip_text,
               customdata = experiment_id), 
-          size = 1.7 # dot size
+          size = 2.2,  # dot size
+          color = "black", # outline
+          stroke = 0.15,
         ) +
         scale_color_manual(values = technology_colors) +    # manual colors
         scale_shape_manual(values = caller_shapes) +       # manual shapes
