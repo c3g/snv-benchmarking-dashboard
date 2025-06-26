@@ -349,15 +349,22 @@ ui <- fluidPage(
 # ============================================================================
 server <- function(input, output, session) {
   
-  # Color and shape mappings for visualization
+  # Color and shape mappings for visualization --------------------------------------------------------------------------------------------------
   # Muted colors:
   technology_colors <- c(
+    "ILLUMINA" = "#0173B2",    # Professional blue (most common technology)
+    "PACBIO" = "#DE8F05",      # Warm orange (long-read)
+    "ONT" = "#029E73",         # Forest green (nanopore)
+    "MGI" = "#CC78BC",         # Muted purple (alternative SRS)
+    "Unknown" = "#949494"      # Neutral gray
+  )
+  'technology_colors <- c(
     "ILLUMINA" = "#2E5F88",    # Blue
     "PACBIO" = "#CC7A00",      # Orange  
     "ONT" = "#4A7C35",         # Green
     "MGI" = "#A52A2A",         # Red
     "Unknown" = "#5C5C5C"      # Gray
-  )
+  )'
   
   'technology_colors <- c(
     "ILLUMINA" = "#1f77b4",    # Blue
@@ -864,7 +871,7 @@ server <- function(input, output, session) {
           stroke = 0.15,
           size = 2.2 # dot size
         ) +
-        scale_color_manual(values = technology_colors) +    # manual colors
+        #scale_fill_manual(values = technology_colors) +    # manual colors -------------------------------------------------------------- NOT NEEDED?
         scale_shape_manual(values = caller_shapes) +       # manual shapes
         xlim(0, 1) + ylim(0, 1) +
         labs(title = "SNP", x = "Precision", y = "Recall", color = "Experiment") +
@@ -963,7 +970,7 @@ server <- function(input, output, session) {
           color = "black", # outline
           stroke = 0.15,
         ) +
-        scale_color_manual(values = technology_colors) +    # manual colors
+       # scale_color_manual(values = technology_colors) +    # manual colors -------------------------------------------------------------- NOT NEEDED?
         scale_shape_manual(values = caller_shapes) +       # manual shapes
         xlim(0, 1) + ylim(0, 1) +
         labs(title = "INDEL", x = "Precision", y = "Recall", color = "Experiment") +
