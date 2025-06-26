@@ -592,7 +592,11 @@ server <- function(input, output, session) {
       
       # Merge for tooltip info
       enhanced_data <- filtered_perf_data %>%
-        left_join(metadata, by = c("experiment_id" = "id"), suffix = c("", "_meta"))
+        left_join(metadata, by = c("experiment_id" = "id"), suffix = c("", "_meta")) %>%
+        mutate(
+       #  display_name = paste0((experiment_id), ")", caller_name, ",", technology), ------------------------------------------------------ do we need to differentiate?
+       # legend_group = paste0((experiment_id), ")", caller_name, ",", technology)
+        )
       
       return(enhanced_data)
       
@@ -622,20 +626,33 @@ server <- function(input, output, session) {
   }
   
   # Handle clicks from both plots
-  observe({
-    # SNP plot clicks
-    snp_click <- event_data("plotly_click", source = "snp_plot")
-    if (!is.null(snp_click)) {
-      plot_clicked_id(snp_click$customdata)
-    }
-    
-    # INDEL plot clicks
-    indel_click <- event_data("plotly_click", source = "indel_plot")
-    if (!is.null(indel_click)) {
-      plot_clicked_id(indel_click$customdata)
+  observeEvent(event_data("plotly_click", source = "snp_plot"), {
+    click_data <- event_data("plotly_click", source = "snp_plot")
+    if (!is.null(click_data)) {
+      plot_clicked_id(click_data$customdata)
     }
   })
   
+  observeEvent(event_data("plotly_click", source = "indel_plot"), {
+    click_data <- event_data("plotly_click", source = "indel_plot")
+    if (!is.null(click_data)) {
+      plot_clicked_id(click_data$customdata)
+    }
+  })
+  
+  # Clears plot events after filter change
+  observe({
+    # Watch for any filter/comparison changes
+    input$filter_type
+    input$technology 
+    input$caller
+    comparison_submitted()
+    
+    # Clear plot clicked data when filters change
+    plot_clicked_id(NULL)
+    
+    cat("Filter changed - clearing plot events\n")
+  })
   # ====================================================================
   # OUTPUTS
   # ====================================================================
