@@ -910,7 +910,7 @@ server <- function(input, output, session) {
       # Create contour data
       contour <- create_f1_contour()
       
-      # Safe tooltip creation with proper null checking
+      # Tooltip
       snp_data$tooltip_text <- paste(
         "<b>", ifelse(is.na(snp_data$experiment_name) | is.null(snp_data$experiment_name), "Unknown", snp_data$experiment_name), "</b>",
         "<br><b>Technology:</b>", ifelse(is.na(snp_data$technology) | is.null(snp_data$technology), "N/A", snp_data$technology),
@@ -954,15 +954,15 @@ server <- function(input, output, session) {
         geom_point(
           data = snp_data, 
           aes(x = precision, y = recall, 
-              fill = technology,           # CHANGED: back to 'fill' as you requested
-              shape = caller,              # shape by caller
+              fill = technology,          
+              shape = caller,              
               text = tooltip_text,
               customdata = experiment_id), 
-          color = "black",                 # black outline
+          color = "black",                 
           stroke = 0.15,
           size = 2.2
         ) +
-        scale_fill_manual(values = technology_colors) +    # CHANGED: scale_fill_manual for exact colors
+        scale_fill_manual(values = technology_colors) + 
         scale_shape_manual(values = caller_shapes) +       
         xlim(0, 1) + ylim(0, 1) +
         labs(title = "SNP", x = "Precision", y = "Recall") +
@@ -975,7 +975,10 @@ server <- function(input, output, session) {
         )
       
       ggplotly(p, tooltip = "text", source = "snp_plot") %>%
-        layout(showlegend = FALSE) %>%    
+        layout(
+          showlegend = FALSE,   
+        dragmode = "zoom"
+        ) %>%
         event_register("plotly_click")
       
     }, error = function(e) {
@@ -1020,7 +1023,7 @@ server <- function(input, output, session) {
       # Create contour data
       contour <- create_f1_contour()
       
-      # Safe tooltip creation with proper null checking
+      # Tooltip
       indel_data$tooltip_text <- paste(
         "<b>", ifelse(is.na(indel_data$experiment_name) | is.null(indel_data$experiment_name), "Unknown", indel_data$experiment_name), "</b>",
         "<br><b>Technology:</b>", ifelse(is.na(indel_data$technology) | is.null(indel_data$technology), "N/A", indel_data$technology),
@@ -1074,7 +1077,10 @@ server <- function(input, output, session) {
         )
       
       ggplotly(p, tooltip = "text", source = "indel_plot") %>%
-        layout(showlegend = FALSE) %>%  
+        layout(
+          showlegend = FALSE,   
+          dragmode = "zoom"
+        ) %>%
         event_register("plotly_click")
       
     }, error = function(e) {
@@ -1089,7 +1095,7 @@ server <- function(input, output, session) {
   })
   
   
-  # Basic experiment info (always shown when point is clicked)
+  # Basic experiment info 
   output$basic_experiment_info <- renderUI({
     exp_id <- plot_clicked_id()
     if (is.null(exp_id)) return(NULL)
@@ -1124,7 +1130,7 @@ server <- function(input, output, session) {
     )
   })
   
-  # Full experiment metadata (shown when expanded)
+  # Full experiment metadata 
   output$full_experiment_metadata <- renderUI({
     exp_id <- plot_clicked_id()
     if (is.null(exp_id)) return(NULL)
