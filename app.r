@@ -296,16 +296,24 @@ ui <- fluidPage(
           ),
           br(),
           fluidRow(
-            column(6,
+            # SNP Plot Column (narrower)
+            column(4,
                    h4("SNP Performance"),
                    plotlyOutput("snp_plot", height = "500px")
             ),
-            column(6,
+            # INDEL Plot Column (narrower)
+            column(4,
                    h4("INDEL Performance"), 
                    plotlyOutput("indel_plot", height = "500px")
+            ),
+            # LEGENDS Column (new third column)
+            column(4,
+                   br(), br(), # Add some spacing to align with plot titles
+                   htmlOutput("technology_legend"),
+                   br(),
+                   htmlOutput("caller_legend")
             )
           ),
-          
           # Selected point/experiment details 
           br(),
           fluidRow(
@@ -349,15 +357,24 @@ ui <- fluidPage(
 # ============================================================================
 server <- function(input, output, session) {
   
-  # Color and shape mappings for visualization --------------------------------------------------------------------------------------------------
+  # Color and shape mappings for visualization
   # Muted colors:
+  
   technology_colors <- c(
-    "ILLUMINA" = "#0173B2",    # Professional blue (most common technology)
-    "PACBIO" = "#DE8F05",      # Warm orange (long-read)
-    "ONT" = "#029E73",         # Forest green (nanopore)
-    "MGI" = "#CC78BC",         # Muted purple (alternative SRS)
-    "Unknown" = "#949494"      # Neutral gray
+    "ILLUMINA" = "#F8766D",    # Red/Pink (DEEPVARIANT,ILLUMINA)
+    "PACBIO" = "#C77CFF",      # Purple (CLAIR3,PACBIO and DEEPVARIANT,PACBIO)  
+    "ONT" = "#00BFC4",         # Teal/Cyan (CLAIR3,ONT)
+    "MGI" = "#7CAE00",         # Green (GATK,MGI)
+    "Unknown" = "#E76BF3"      # Fallback purple
   )
+  
+  caller_shapes <- c(
+    "DEEPVARIANT" = 16,        # Circle ●
+    "GATK" = 17,              # Triangle ▲
+    "CLAIR3" = 15,            # Square ■
+    "Unknown" = 4             # X ✕
+  )
+  
   'technology_colors <- c(
     "ILLUMINA" = "#2E5F88",    # Blue
     "PACBIO" = "#CC7A00",      # Orange  
@@ -374,12 +391,6 @@ server <- function(input, output, session) {
     "Unknown" = "#7f7f7f"      # Gray
   )'
   
-  caller_shapes <- c(
-    "DEEPVARIANT" = 16,        # Circle
-    "GATK" = 17,              # Triangle
-    "CLAIR3" = 15,            # Square
-    "Unknown" = 4             # X
-  )
   # ====================================================================
   # REACTIVE VALUES FOR TRACKING STATE (Option 2 - Cleaner Names)
   # ====================================================================
@@ -601,8 +612,8 @@ server <- function(input, output, session) {
       enhanced_data <- filtered_perf_data %>%
         left_join(metadata, by = c("experiment_id" = "id"), suffix = c("", "_meta")) %>%
         mutate(
-       #  display_name = paste0((experiment_id), ")", caller_name, ",", technology), ------------------------------------------------------ do we need to differentiate?
-       # legend_group = paste0((experiment_id), ")", caller_name, ",", technology)
+          #  display_name = paste0((experiment_id), ")", caller_name, ",", technology), ------------------------------------------------------ do we need to differentiate?
+          # legend_group = paste0((experiment_id), ")", caller_name, ",", technology)
         )
       
       return(enhanced_data)
@@ -787,9 +798,77 @@ server <- function(input, output, session) {
     paste("Visualizing", exp_count, "experiments:")
   })
   
+  # Legend output
+  output$technology_legend <- renderUI({
+    HTML(create_technology_legend())
+  })
+  
+  output$caller_legend <- renderUI({
+    HTML(create_caller_legend())
+  })
   
   # ============================================================================
-  # SNP PLOT OUTPUT
+  # MANUAL HTML LEGEND CREATION FUNCTIONS
+  # ============================================================================
+  
+  create_technology_legend <- function() {
+    legend_items <- ""
+    
+    for (tech in names(technology_colors)) {
+      if (tech != "Unknown") {
+        color <- technology_colors[tech]
+        legend_items <- paste0(legend_items, 
+                               '<div style="display: flex; align-items: center; margin-bottom: 5px;">',
+                               '<div style="width: 12px; height: 12px; background-color: ', color, '; border-radius: 50%; margin-right: 8px; border: 1px solid #333;"></div>',
+                               '<span style="font-size: 12px;">', tech, '</span>',
+                               '</div>'
+        )
+      }
+    }
+    
+    return(paste0(
+      '<div style="background: white; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px;">',
+      '<div style="font-weight: bold; margin-bottom: 8px; font-size: 13px;">Technology</div>',
+      legend_items,
+      '</div>'
+    ))
+  }
+  
+  create_caller_legend <- function() {
+    legend_items <- ""
+    
+    # Shape symbols for HTML
+    shape_symbols <- c(
+      "16" = "●",    # Circle (DEEPVARIANT)
+      "17" = "▲",    # Triangle (GATK)
+      "15" = "■",    # Square (CLAIR3)
+      "4" = "✕"      # X (Unknown)
+    )
+    
+    for (caller in names(caller_shapes)) {
+      if (caller != "Unknown") {
+        shape_code <- as.character(caller_shapes[caller])
+        symbol <- shape_symbols[shape_code]
+        
+        legend_items <- paste0(legend_items,
+                               '<div style="display: flex; align-items: center; margin-bottom: 5px;">',
+                               '<span style="font-size: 14px; margin-right: 8px; width: 12px; text-align: center; color: #333;">', symbol, '</span>',
+                               '<span style="font-size: 12px;">', caller, '</span>',
+                               '</div>'
+        )
+      }
+    }
+    
+    return(paste0(
+      '<div style="background: white; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">',
+      '<div style="font-weight: bold; margin-bottom: 8px; font-size: 13px;">Caller</div>',
+      legend_items,
+      '</div>'
+    ))
+  }
+  
+  # ============================================================================
+  # SNP PLOT 
   # ============================================================================
   
   output$snp_plot <- renderPlotly({
@@ -863,32 +942,32 @@ server <- function(input, output, session) {
         geom_point(
           data = snp_data, 
           aes(x = precision, y = recall, 
-              fill = technology,           # color by technology
+              fill = technology,           # CHANGED: back to 'fill' as you requested
               shape = caller,              # shape by caller
               text = tooltip_text,
               customdata = experiment_id), 
-          color = "black", # outline
+          color = "black",                 # black outline
           stroke = 0.15,
-          size = 2.2 # dot size
+          size = 2.2
         ) +
-        #scale_fill_manual(values = technology_colors) +    # manual colors -------------------------------------------------------------- NOT NEEDED?
-        scale_shape_manual(values = caller_shapes) +       # manual shapes
+        scale_fill_manual(values = technology_colors) +    # CHANGED: scale_fill_manual for exact colors
+        scale_shape_manual(values = caller_shapes) +       
         xlim(0, 1) + ylim(0, 1) +
-        labs(title = "SNP", x = "Precision", y = "Recall", color = "Experiment") +
+        labs(title = "SNP", x = "Precision", y = "Recall") +
         theme_bw() +
         theme(
           plot.title = element_text(size = 12),
           panel.grid.major = element_line(color = "grey90", size = 0.5),
-          panel.grid.minor = element_line(color = "grey95", size = 0.3)
+          panel.grid.minor = element_line(color = "grey95", size = 0.3),
+          legend.position = "none"        
         )
       
       ggplotly(p, tooltip = "text", source = "snp_plot") %>%
-        layout(showlegend = TRUE) %>%
+        layout(showlegend = FALSE) %>%    
         event_register("plotly_click")
       
     }, error = function(e) {
       cat("Error in SNP plot:", e$message, "\n")
-      # Return basic error plot
       p <- ggplot() + 
         annotate("text", x = 0.5, y = 0.5, label = paste("Error loading SNP data:", e$message), size = 4) +
         xlim(0, 1) + ylim(0, 1) +
@@ -899,7 +978,7 @@ server <- function(input, output, session) {
   })
   
   # ============================================================================
-  # INDEL PLOT OUTPUT
+  # INDEL PLOT
   # ============================================================================
   
   output$indel_plot <- renderPlotly({
@@ -962,32 +1041,32 @@ server <- function(input, output, session) {
         geom_point(
           data = indel_data, 
           aes(x = precision, y = recall, 
-              fill = technology,           # color by technology
+              fill = technology,           # fill by technology
               shape = caller,              # shape by caller
               text = tooltip_text,
               customdata = experiment_id), 
-          size = 2.2,  # dot size
-          color = "black", # outline
-          stroke = 0.15,
+          color = "black",                 # black outline
+          size = 2.2,
+          stroke = 0.15
         ) +
-       # scale_color_manual(values = technology_colors) +    # manual colors -------------------------------------------------------------- NOT NEEDED?
-        scale_shape_manual(values = caller_shapes) +       # manual shapes
+        scale_fill_manual(values = technology_colors) +   
+        scale_shape_manual(values = caller_shapes) +       
         xlim(0, 1) + ylim(0, 1) +
-        labs(title = "INDEL", x = "Precision", y = "Recall", color = "Experiment") +
+        labs(title = "INDEL", x = "Precision", y = "Recall") +
         theme_bw() +
         theme(
           plot.title = element_text(size = 12),
           panel.grid.major = element_line(color = "grey90", size = 0.5),
-          panel.grid.minor = element_line(color = "grey95", size = 0.3)
+          panel.grid.minor = element_line(color = "grey95", size = 0.3),
+          legend.position = "none"        
         )
       
       ggplotly(p, tooltip = "text", source = "indel_plot") %>%
-        layout(showlegend = TRUE) %>%
+        layout(showlegend = FALSE) %>%  
         event_register("plotly_click")
       
     }, error = function(e) {
       cat("Error in INDEL plot:", e$message, "\n")
-      # Return basic error plot
       p <- ggplot() + 
         annotate("text", x = 0.5, y = 0.5, label = paste("Error loading INDEL data:", e$message), size = 4) +
         xlim(0, 1) + ylim(0, 1) +
@@ -996,6 +1075,7 @@ server <- function(input, output, session) {
       return(ggplotly(p))
     })
   })
+  
   
   # Basic experiment info (always shown when point is clicked)
   output$basic_experiment_info <- renderUI({
