@@ -308,19 +308,19 @@ ui <- fluidPage(
           ),
           br(),
           fluidRow(
-            # SNP Plot Column (narrower)
+            # SNP Plot Column
             column(4,
                    h4("SNP Performance"),
                    plotlyOutput("snp_plot", height = "500px")
             ),
-            # INDEL Plot Column (narrower)
+            # INDEL Plot Column 
             column(4,
                    h4("INDEL Performance"), 
                    plotlyOutput("indel_plot", height = "500px")
             ),
-            # LEGENDS Column (new third column)
-            column(4,
-                   br(), br(), # Add some spacing to align with plot titles
+            # LEGENDS Column
+            column(3,
+                   br(), br(), br(), br(),
                    htmlOutput("technology_legend"),
                    br(),
                    htmlOutput("caller_legend")
@@ -622,12 +622,7 @@ server <- function(input, output, session) {
       
       # Merge for tooltip info
       enhanced_data <- filtered_perf_data %>%
-        left_join(metadata, by = c("experiment_id" = "id"), suffix = c("", "_meta")) %>%
-        mutate(
-          #  display_name = paste0((experiment_id), ")", caller_name, ",", technology), ------------------------------------------------------ do we need to differentiate?
-          # legend_group = paste0((experiment_id), ")", caller_name, ",", technology)
-        )
-      
+        left_join(metadata, by = c("experiment_id" = "id"), suffix = c("", "_meta"))
       return(enhanced_data)
       
     }, error = function(e) {
@@ -840,7 +835,7 @@ server <- function(input, output, session) {
     
     return(paste0(
       '<div style="background: white; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px;">',
-      '<div style="font-weight: bold; margin-bottom: 8px; font-size: 13px;">Technology</div>',
+      '<div style="font-weight: bold; margin-bottom: 8px; font-size: 13px;">Sequencing Technology</div>',
       legend_items,
       '</div>'
     ))
@@ -873,7 +868,7 @@ server <- function(input, output, session) {
     
     return(paste0(
       '<div style="background: white; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">',
-      '<div style="font-weight: bold; margin-bottom: 8px; font-size: 13px;">Caller</div>',
+      '<div style="font-weight: bold; margin-bottom: 8px; font-size: 13px;">Variant Caller</div>',
       legend_items,
       '</div>'
     ))
@@ -911,8 +906,9 @@ server <- function(input, output, session) {
       contour <- create_f1_contour()
       
       # Tooltip
-      snp_data$tooltip_text <- paste(
-        "<b>", ifelse(is.na(snp_data$experiment_name) | is.null(snp_data$experiment_name), "Unknown", snp_data$experiment_name), "</b>",
+      snp_data$tooltip_text <- paste(  
+        "<b>ID:", snp_data$experiment_id," - ",
+        ifelse(is.na(snp_data$experiment_name) | is.null(snp_data$experiment_name), "Unknown", snp_data$experiment_name), "</b>",
         "<br><b>Technology:</b>", ifelse(is.na(snp_data$technology) | is.null(snp_data$technology), "N/A", snp_data$technology),
         "<br><b>Platform:</b>", ifelse(is.na(snp_data$platform_name) | is.null(snp_data$platform_name), "N/A", snp_data$platform_name),
         "<br><b>Caller:</b>", ifelse(is.na(snp_data$caller_name) | is.null(snp_data$caller_name), "N/A", snp_data$caller_name),
@@ -977,7 +973,8 @@ server <- function(input, output, session) {
       ggplotly(p, tooltip = "text", source = "snp_plot") %>%
         layout(
           showlegend = FALSE,   
-        dragmode = "zoom"
+        dragmode = "zoom",
+        hoverlabel = list(align = "left")
         ) %>%
         event_register("plotly_click")
       
@@ -1025,7 +1022,8 @@ server <- function(input, output, session) {
       
       # Tooltip
       indel_data$tooltip_text <- paste(
-        "<b>", ifelse(is.na(indel_data$experiment_name) | is.null(indel_data$experiment_name), "Unknown", indel_data$experiment_name), "</b>",
+        "<b>ID:", indel_data$experiment_id," - ",
+        ifelse(is.na(indel_data$experiment_name) | is.null(indel_data$experiment_name), "Unknown", indel_data$experiment_name), "</b>",
         "<br><b>Technology:</b>", ifelse(is.na(indel_data$technology) | is.null(indel_data$technology), "N/A", indel_data$technology),
         "<br><b>Platform:</b>", ifelse(is.na(indel_data$platform_name) | is.null(indel_data$platform_name), "N/A", indel_data$platform_name),
         "<br><b>Caller:</b>", ifelse(is.na(indel_data$caller_name) | is.null(indel_data$caller_name), "N/A", indel_data$caller_name),
@@ -1079,7 +1077,8 @@ server <- function(input, output, session) {
       ggplotly(p, tooltip = "text", source = "indel_plot") %>%
         layout(
           showlegend = FALSE,   
-          dragmode = "zoom"
+          dragmode = "zoom",
+          hoverlabel = list(align = "left")
         ) %>%
         event_register("plotly_click")
       
