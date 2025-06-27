@@ -8,6 +8,8 @@ library(ggsci)
 library(ggrepel)
 library(patchwork)
 library(geomtextpath)
+library(htmltools)
+library(htmlwidgets)
 
 # Import Python module
 db <- import("db_interface")
@@ -234,7 +236,17 @@ ui <- fluidPage(
               )
           )
         )
-      )
+      ),
+      hr(),
+      h4("Export Options:"),
+      
+      actionButton(
+        "export_report", 
+        "Export HTML Report",
+        class = "btn-default",
+        style = "width: 100%; margin-bottom: 10px; font-weight: normal; 
+          background-color: #343a40; color: white; border-color: #343a40;",
+      ),
     ),
     
     #######################
