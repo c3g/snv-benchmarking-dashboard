@@ -655,6 +655,8 @@ server <- function(input, output, session) {
     click_data <- event_data("plotly_click", source = "snp_plot")
     if (!is.null(click_data)) {
       plot_clicked_id(click_data$customdata)
+      showNotification("Scroll down to view experiment details.", 
+                       type = "message", duration = 3)
     }
   })
   
