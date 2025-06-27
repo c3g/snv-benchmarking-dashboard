@@ -677,8 +677,6 @@ server <- function(input, output, session) {
     
     # Clear plot clicked data when filters change
     plot_clicked_id(NULL)
-    
-    cat("Filter changed - clearing plot events\n")
   })
   # ====================================================================
   # OUTPUTS
@@ -1110,7 +1108,10 @@ server <- function(input, output, session) {
     meta <- metadata[1, ]
     
     div(
-      h6(strong(meta$name), style = "color: #007bff; margin-bottom: 10px;"),
+      h6(
+        span(style = "color: #007bff; font-weight: bold; 15px", paste("ID:", exp_id, " - "), strong(meta$name)), 
+        style = "margin-bottom: 20px;"
+      ),
       div(
         class = "row",
         div(class = "col-md-3",
@@ -1153,7 +1154,7 @@ server <- function(input, output, session) {
         div(class = "col-md-4",
             wellPanel(
               style = "background-color: white; padding: 15px;",
-              h6("Sequencing Technology", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
+              h6("Sequencing Technology", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;font-size: 15px"),
               p(strong("Technology: "), meta$technology %||% "N/A"),
               p(strong("Platform: "), meta$platform_name %||% "N/A"),
               p(strong("Platform Type: "), meta$platform_type %||% "N/A"),
@@ -1167,7 +1168,7 @@ server <- function(input, output, session) {
         div(class = "col-md-4",
             wellPanel(
               style = "background-color: white; padding: 15px;",
-              h6("Analysis Algorithms", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
+              h6("Analysis Algorithms", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;font-size: 15px"),
               p(strong("Variant Caller: "), meta$caller_name %||% "N/A"),
               p(strong("Caller Version: "), meta$caller_version %||% "N/A"),
               p(strong("Caller Type: "), meta$caller_type %||% "N/A"),
@@ -1181,7 +1182,7 @@ server <- function(input, output, session) {
         div(class = "col-md-4",
             wellPanel(
               style = "background-color: white; padding: 15px;",
-              h6("Quality & Benchmarking", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
+              h6("Quality & Benchmarking", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;font-size: 15px"),
               p(strong("Mean Coverage: "), ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x"))),
               p(strong("Read Length: "), ifelse(is.na(meta$read_length), "N/A", paste0(meta$read_length, " bp"))),
               p(strong("Mean Insert Size: "), ifelse(is.na(meta$mean_insert_size), "N/A", paste0(meta$mean_insert_size, " bp"))),
@@ -1198,7 +1199,7 @@ server <- function(input, output, session) {
         div(class = "col-md-12",
             wellPanel(
               style = "background-color: white; padding: 15px;",
-              h6("Additional Details", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
+              h6("Additional Details", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;font-size: 15px;"),
               div(
                 class = "row",
                 div(class = "col-md-3", p(strong("Variant Type: "), meta$variant_type %||% "N/A")),
