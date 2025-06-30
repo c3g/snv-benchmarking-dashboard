@@ -1,3 +1,7 @@
+# =============================================================================
+# LIBRARIES & SETUP
+# =============================================================================
+
 library(reticulate)
 library(shiny)
 library(DT)
@@ -8,25 +12,126 @@ library(ggsci)
 library(ggrepel)
 library(patchwork)
 library(geomtextpath)
-library(htmltools)
-library(htmlwidgets)
 
 # Import Python module
 db <- import("db_interface")
 
+# Set theme
+theme_set(theme_bw())
+
+# =============================================================================
+# CONSTANTS & CONFIGURATION  
+# =============================================================================
+
+# Color and shape mappings for visualization
+technology_colors <- c(
+  "ILLUMINA" = "#F8766D",    # Red 
+  "PACBIO" = "#C77CFF",      # Purple 
+  "ONT" = "#00BFC4",         # Cyan 
+  "MGI" = "#7CAE00",         # Green 
+  "Unknown" = "#E76BF3"      # purple
+)
+
+caller_shapes <- c(
+  "DEEPVARIANT" = 16,        # Circle ●
+  "GATK" = 17,              # Triangle ▲
+  "CLAIR3" = 15,            # Square ■
+  "Unknown" = 4             # X 
+)
+# shape conversion to HTML
+shape_symbols = c("16" = "●", "17" = "▲", "15" = "■", "4" = "✕")
+
+# =============================================================================
+# HELPER FUNCTIONS
+# =============================================================================
+
+# Null coalescing operator
+`%||%` <- function(x, y) if (is.null(x) || is.na(x) || x == "") y else x
+
+# Helper function for F1 contours
+create_f1_contour <- function() {
+  f1_contour_function <- function(p, r) {
+    result <- 2 * (p * r) / (p + r)
+    result[!is.finite(result)] <- NA
+    return(result)
+  }
+  
+  # Create grid for contour calculation
+  p_seq <- seq(0.01, 0.99, length.out = 100)
+  r_seq <- seq(0.01, 0.99, length.out = 100)
+  
+  contour_data <- expand.grid(p = p_seq, r = r_seq) %>%
+    mutate(f1 = f1_contour_function(p, r)) %>%
+    filter(!is.na(f1) & is.finite(f1))
+  
+  return(contour_data)
+}
+
 # ============================================================================
-# UI
+# MANUAL HTML LEGEND CREATION FUNCTIONS
 # ============================================================================
 
-#######################
-#####  SIDE PANEL #####
-#######################
+create_technology_legend <- function() {
+  legend_items <- ""
+  
+  for (tech in names(technology_colors)) {
+    if (tech != "Unknown") {
+      color <- technology_colors[tech]
+      legend_items <- paste0(legend_items, 
+                             '<div style="display: flex; align-items: center; margin-bottom: 5px;">',
+                             '<div style="width: 12px; height: 12px; background-color: ', color, '; border-radius: 50%; margin-right: 8px; border: 1px solid #333;"></div>',
+                             '<span style="font-size: 12px;">', tech, '</span>',
+                             '</div>'
+      )
+    }
+  }
+  
+  return(paste0(
+    '<div style="background: white; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px;">',
+    '<div style="font-weight: bold; margin-bottom: 8px; font-size: 13px;">Technology</div>',
+    legend_items,
+    '</div>'
+  ))
+}
+
+create_caller_legend <- function() {
+  legend_items <- ""
+  
+  for (caller in names(caller_shapes)) {
+    if (caller != "Unknown") {
+      shape_code <- as.character(caller_shapes[caller])
+      symbol <- shape_symbols[shape_code]
+      
+      legend_items <- paste0(legend_items,
+                             '<div style="display: flex; align-items: center; margin-bottom: 5px;">',
+                             '<span style="font-size: 14px; margin-right: 8px; width: 12px; text-align: center; color: #333;">', symbol, '</span>',
+                             '<span style="font-size: 12px;">', caller, '</span>',
+                             '</div>'
+      )
+    }
+  }
+  
+  return(paste0(
+    '<div style="background: white; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">',
+    '<div style="font-weight: bold; margin-bottom: 8px; font-size: 13px;">Caller</div>',
+    legend_items,
+    '</div>'
+  ))
+}
+
+# =============================================================================
+# UI DEFINITION
+# =============================================================================
 
 ui <- fluidPage(
   
   titlePanel("SNV Benchmarking Dashboard"),
   
   sidebarLayout(
+    
+    # -------------------------------------------------------------------------
+    # SIDEBAR PANEL
+    # -------------------------------------------------------------------------
     sidebarPanel(
       width = 3,
       
@@ -210,6 +315,7 @@ ui <- fluidPage(
           style = "width: 100%"
         )
       ),
+      
       # ====================================================================
       # SELECTED EXPERIMENTS DISPLAY (Bottom of sidebar)
       # ====================================================================
@@ -236,23 +342,12 @@ ui <- fluidPage(
               )
           )
         )
-      ),
-      hr(),
-      h4("Export Options:"),
-      
-      actionButton(
-        "export_report", 
-        "Export HTML Report",
-        class = "btn-default",
-        style = "width: 100%; margin-bottom: 10px; font-weight: normal; 
-          background-color: #343a40; color: white; border-color: #343a40;",
-      ),
+      )
     ),
     
-    #######################
-    #####  MAIN PANEL #####
-    #######################
-    
+    # -------------------------------------------------------------------------
+    # MAIN PANEL
+    # -------------------------------------------------------------------------
     mainPanel(
       width = 9,
       
@@ -308,19 +403,19 @@ ui <- fluidPage(
           ),
           br(),
           fluidRow(
-            # SNP Plot Column
+            # SNP Plot Column (narrower)
             column(4,
                    h4("SNP Performance"),
                    plotlyOutput("snp_plot", height = "500px")
             ),
-            # INDEL Plot Column 
+            # INDEL Plot Column (narrower)
             column(4,
                    h4("INDEL Performance"), 
                    plotlyOutput("indel_plot", height = "500px")
             ),
-            # LEGENDS Column
+            # LEGENDS Column (new third column)
             column(3,
-                   br(), br(), br(), br(),
+                   br(), br(), # Add some spacing to align with plot titles
                    htmlOutput("technology_legend"),
                    br(),
                    htmlOutput("caller_legend")
@@ -358,71 +453,167 @@ ui <- fluidPage(
             )
           )
         )
-        
       )
     )
   )
 )
 
-# ============================================================================
-# SERVER
-# ============================================================================
+# =============================================================================
+# SERVER DEFINITION
+# =============================================================================
+
 server <- function(input, output, session) {
   
-  # Color and shape mappings for visualization
-  # Muted colors:
-  
-  technology_colors <- c(
-    "ILLUMINA" = "#F8766D",    # Red/Pink (DEEPVARIANT,ILLUMINA)
-    "PACBIO" = "#C77CFF",      # Purple (CLAIR3,PACBIO and DEEPVARIANT,PACBIO)  
-    "ONT" = "#00BFC4",         # Teal/Cyan (CLAIR3,ONT)
-    "MGI" = "#7CAE00",         # Green (GATK,MGI)
-    "Unknown" = "#E76BF3"      # Fallback purple
-  )
-  
-  caller_shapes <- c(
-    "DEEPVARIANT" = 16,        # Circle ●
-    "GATK" = 17,              # Triangle ▲
-    "CLAIR3" = 15,            # Square ■
-    "Unknown" = 4             # X ✕
-  )
-  
-  'technology_colors <- c(
-    "ILLUMINA" = "#2E5F88",    # Blue
-    "PACBIO" = "#CC7A00",      # Orange  
-    "ONT" = "#4A7C35",         # Green
-    "MGI" = "#A52A2A",         # Red
-    "Unknown" = "#5C5C5C"      # Gray
-  )'
-  
-  'technology_colors <- c(
-    "ILLUMINA" = "#1f77b4",    # Blue
-    "PACBIO" = "#ff7f0e",      # Orange  
-    "ONT" = "#2ca02c",         # Green
-    "MGI" = "#d62728",         # Red
-    "Unknown" = "#7f7f7f"      # Gray
-  )'
-  
   # ====================================================================
-  # REACTIVE VALUES FOR TRACKING STATE (Option 2 - Cleaner Names)
+  # 1. REACTIVE VALUES FOR TRACKING STATE
   # ====================================================================
   
-  # App mode and state
-  current_mode <- reactiveVal("filter")  # "filter", "tech_comparison", "caller_comparison", "manual_selection"
+  current_mode <- reactiveVal("filter")  # App mode: "filter", "tech_comparison", "caller_comparison", "manual_selection"
   
-  # Experiment IDs (single source of truth)
-  display_experiment_ids <- reactiveVal(numeric(0))  # Always contains IDs to show in tables/plots
+  display_experiment_ids <- reactiveVal(numeric(0))  # Experiemnt IDs to show in tables/plots
   
-  # Manual selection specific
   table_selected_ids <- reactiveVal(numeric(0))      # IDs selected by clicking table rows
   
-  # Plot interaction specific  
   plot_clicked_id <- reactiveVal(NULL)               # Single ID from clicking plot points
   
   # Comparison state
   comparison_submitted <- reactiveVal(FALSE)         # Whether any comparison has been submitted
   comparison_type <- reactiveVal(NULL)               # "technology" or "caller" 
   comparison_results <- reactiveVal(numeric(0))     # IDs from submitted comparison
+  
+  # ====================================================================
+  # 2. DATA PROCESSING FUNCTIONS 
+  # ====================================================================
+  
+  # 2.1
+  # Get experiment IDs based on filter
+  experiment_ids <- reactive({
+    # use specific experiments displayed 
+    if (length(display_experiment_ids()) > 0) {
+      return(display_experiment_ids())
+    }
+    
+    # filtering
+    if (input$filter_type == "tech") {
+      return(db$get_experiments_by_technology(input$technology))
+    } else if (input$filter_type == "caller") {
+      return(db$get_experiments_by_caller(input$caller))
+    } else {
+      overview <- db$get_experiments_overview()
+      return(overview$id)
+    }
+  })
+  
+  # 2.2
+  # Get overview metadata for selected experiments
+  experiments_data <- reactive({
+    # Submitted comparisons (tech/caller)
+    if (comparison_submitted() && length(comparison_results()) > 0) {
+      exp_ids <- r_to_py(as.list(comparison_results()))
+      return(db$get_experiments_overview(NULL, exp_ids))
+    }
+    # Manual selection
+    if (current_mode() == "manual_selection") {
+      filters <- NULL
+      if (input$filter_type == "tech") {
+        filters <- list(technology = input$technology)
+      } else if (input$filter_type == "caller") {
+        filters <- list(caller = input$caller)
+      }
+      return(db$get_experiments_overview(filters, NULL))
+    }
+    
+    # Regular filtering
+    filters <- NULL
+    if (input$filter_type == "tech") {
+      filters <- list(technology = input$technology)
+    } else if (input$filter_type == "caller") {
+      filters <- list(caller = input$caller)
+    }
+
+    return(db$get_experiments_overview(filters, NULL))
+  })
+  
+  # 2.3
+  # Performance results
+  performance_data <- reactive({
+    ids <- experiment_ids()
+    
+    if (length(ids) == 0) {
+      return(data.frame())
+    }
+    
+    py_ids <- r_to_py(as.list(ids))
+    return(db$get_performance_results(py_ids))
+  })
+  
+  # visualization results
+  viz_performance_data <- reactive({
+    ids <- experiment_ids()
+    
+    if (length(ids) == 0) {
+      return(data.frame())
+    }
+    
+    tryCatch({
+      py_ids <- r_to_py(as.list(ids))
+      perf_data <- db$get_performance_results(py_ids, c('SNP', 'INDEL'))
+      metadata <- db$get_experiment_metadata(py_ids)
+      
+      # Filter performance data
+      filtered_perf_data <- perf_data %>%
+        filter(subset == "ALL_REGIONS" | subset == "*") %>%
+        filter(!is.na(recall) & !is.na(precision) & !is.na(f1_score))
+      
+      if (nrow(filtered_perf_data) == 0 || nrow(metadata) == 0) {
+        return(data.frame())
+      }
+      
+      # Merge for tooltip info
+      enhanced_data <- filtered_perf_data %>%
+        left_join(metadata, by = c("experiment_id" = "id"), suffix = c("", "_meta")) %>%
+        mutate(
+          #  display_name = paste0((experiment_id), ")", caller_name, ",", technology), ------------------------------------------------------ do we need to differentiate?
+          # legend_group = paste0((experiment_id), ")", caller_name, ",", technology)
+        )
+      
+      return(enhanced_data)
+      
+    }, error = function(e) {
+      cat("Error in viz_performance_data:", e$message, "\n")
+      return(data.frame())
+    })
+  })
+  
+  # ---------------------------------------------------------------------------
+  # 3. UI STATE MANAGEMENT - UI Reactive Expressions (Interface Controller)
+  # ---------------------------------------------------------------------------
+  # Purpose: Make internal state available to UI conditionalPanels
+  # Rule: Keep these simple - just expose reactive values to UI
+  
+  # Make current_mode available to UI
+  output$comparison_mode <- reactive({
+    current_mode()
+  })
+  outputOptions(output, "comparison_mode", suspendWhenHidden = FALSE)
+  
+  # Check if experiments are selected (for conditional panels)
+  output$has_selected_experiments <- reactive({
+    current_mode() == "manual_selection" && length(table_selected_ids()) > 0
+  })
+  outputOptions(output, "has_selected_experiments", suspendWhenHidden = FALSE)
+  
+  # Check if we have a selected point
+  output$has_selected_point <- reactive({
+    !is.null(plot_clicked_id())
+  })
+  outputOptions(output, "has_selected_point", suspendWhenHidden = FALSE)
+  
+  # ---------------------------------------------------------------------------
+  # 4. EVENT HANDLING - Observers (The "Interaction Manager")
+  # ---------------------------------------------------------------------------
+  # Purpose: Respond to user interactions and update state
+  # Rule: Group by interaction type, order by frequency/importance
   
   # ====================================================================
   # COMPARISON BUTTON OBSERVERS
@@ -522,141 +713,14 @@ server <- function(input, output, session) {
   }, ignoreNULL = FALSE) 
   
   # ====================================================================
-  # DATA PROCESSING FUNCTIONS 
+  # PLOT INTERACTION OBSERVERS
   # ====================================================================
-  
-  
-  # Get experiment IDs based on filter
-  experiment_ids <- reactive({
-    # If we have specific experiments to display, use those
-    if (length(display_experiment_ids()) > 0) {
-      return(display_experiment_ids())
-    }
-    
-    # Otherwise use regular filtering
-    if (input$filter_type == "tech") {
-      return(db$get_experiments_by_technology(input$technology))
-    } else if (input$filter_type == "caller") {
-      return(db$get_experiments_by_caller(input$caller))
-    } else {
-      overview <- db$get_experiments_overview()
-      return(overview$id)
-    }
-  })
-  
-  # Get metadata for selected experiments
-  experiments_data <- reactive({
-    # Handle submitted comparisons first - get detailed metadata for specific IDs
-    if (comparison_submitted()) {
-      ids <- experiment_ids()
-      if (length(ids) == 0) {
-        return(data.frame())
-      }
-      py_ids <- r_to_py(as.list(ids))
-      detailed_data <- db$get_experiment_metadata(py_ids)
-      
-      # Convert to overview format to match expected structure
-      if (nrow(detailed_data) > 0) {
-        overview_format <- detailed_data %>%
-          select(id, name, technology, platform_name, caller_name, caller_version, 
-                 chemistry_name, truth_set_name, truth_set_sample, created_at) %>%
-          rename(platform = platform_name, caller = caller_name, 
-                 chemistry = chemistry_name, truth_set = truth_set_name, 
-                 sample = truth_set_sample)
-        return(overview_format)
-      } else {
-        return(data.frame())
-      }
-    }
-    
-    # Regular filtering for other cases
-    filters <- NULL
-    
-    if (input$filter_type == "tech") {
-      filters <- list(technology = input$technology)
-    } else if (input$filter_type == "caller") {
-      filters <- list(caller = input$caller)
-    }
-    
-    # Always use overview format with appropriate filters
-    if (is.null(filters)) {
-      return(db$get_experiments_overview())
-    } else {
-      return(db$get_experiments_overview(filters))
-    }
-  }) 
-  
-  # Get performance results for selected experiments
-  performance_data <- reactive({
-    ids <- experiment_ids()
-    
-    if (length(ids) == 0) {
-      return(data.frame())
-    }
-    
-    py_ids <- r_to_py(as.list(ids))
-    return(db$get_performance_results(py_ids))
-  })
-  
-  # Replace the entire viz_performance_data_with_metadata reactive with this:
-  viz_performance_data <- reactive({
-    ids <- experiment_ids()
-    
-    if (length(ids) == 0) {
-      return(data.frame())
-    }
-    
-    tryCatch({
-      py_ids <- r_to_py(as.list(ids))
-      perf_data <- db$get_performance_results(py_ids, c('SNP', 'INDEL'))
-      metadata <- db$get_experiment_metadata(py_ids)
-      
-      # Filter performance data
-      filtered_perf_data <- perf_data %>%
-        filter(subset == "ALL_REGIONS" | subset == "*") %>%
-        filter(!is.na(recall) & !is.na(precision) & !is.na(f1_score))
-      
-      if (nrow(filtered_perf_data) == 0 || nrow(metadata) == 0) {
-        return(data.frame())
-      }
-      
-      # Merge for tooltip info
-      enhanced_data <- filtered_perf_data %>%
-        left_join(metadata, by = c("experiment_id" = "id"), suffix = c("", "_meta"))
-      return(enhanced_data)
-      
-    }, error = function(e) {
-      cat("Error in viz_performance_data:", e$message, "\n")
-      return(data.frame())
-    })
-  })
-  
-  # Helper function for F1 contours
-  create_f1_contour <- function() {
-    f1_contour_function <- function(p, r) {
-      result <- 2 * (p * r) / (p + r)
-      result[!is.finite(result)] <- NA
-      return(result)
-    }
-    
-    # Create grid for contour calculation
-    p_seq <- seq(0.01, 0.99, length.out = 100)
-    r_seq <- seq(0.01, 0.99, length.out = 100)
-    
-    contour_data <- expand.grid(p = p_seq, r = r_seq) %>%
-      mutate(f1 = f1_contour_function(p, r)) %>%
-      filter(!is.na(f1) & is.finite(f1))
-    
-    return(contour_data)
-  }
   
   # Handle clicks from both plots
   observeEvent(event_data("plotly_click", source = "snp_plot"), {
     click_data <- event_data("plotly_click", source = "snp_plot")
     if (!is.null(click_data)) {
       plot_clicked_id(click_data$customdata)
-      showNotification("Scroll down to view experiment details.", 
-                       type = "message", duration = 3)
     }
   })
   
@@ -677,9 +741,78 @@ server <- function(input, output, session) {
     
     # Clear plot clicked data when filters change
     plot_clicked_id(NULL)
+    
+    cat("Filter changed - clearing plot events\n")
   })
+  
   # ====================================================================
-  # OUTPUTS
+  # SUBMISSION OBSERVERS
+  # ====================================================================
+  
+  observeEvent(input$submit_tech_comparison, {
+    # Get all experiment IDs for selected technologies with constant caller
+    all_ids <- c()
+    for(tech in input$selected_technologies) {
+      tech_ids <- db$get_experiments_by_technology(tech)
+      
+      # Filter by caller to keep it constant
+      for(id in tech_ids) {
+        caller <- db$get_caller(id)
+        if(!is.null(caller) && caller == input$tech_comparison_caller) {
+          all_ids <- c(all_ids, id)
+        }
+      }
+    }
+    
+    display_experiment_ids(all_ids)
+    comparison_submitted(TRUE)
+    comparison_type("technology")
+    comparison_results(all_ids)
+    
+    showNotification(paste("Comparing", length(input$selected_technologies), "technologies with", length(all_ids), "experiments"), type = "message")
+  })
+  
+  observeEvent(input$submit_caller_comparison, {
+    # Get all experiment IDs for selected callers with constant technology
+    all_ids <- c()
+    for(caller in input$selected_callers) {
+      caller_ids <- db$get_experiments_by_caller(caller)
+      
+      # Filter by technology to keep it constant
+      for(id in caller_ids) {
+        tech <- db$get_technology(id)
+        if(!is.null(tech) && tech == input$caller_comparison_tech) {
+          all_ids <- c(all_ids, id)
+        }
+      }
+    }
+    
+    display_experiment_ids(all_ids)
+    comparison_submitted(TRUE)
+    comparison_type("caller")
+    comparison_results(all_ids)
+    
+    showNotification(paste("Comparing", length(input$selected_callers), "callers with", length(all_ids), "experiments"), type = "message")
+  })
+  
+  observeEvent(input$submit_experiment_comparison, {
+    comparison_submitted(FALSE)
+    showNotification("Using selected experiments for comparison", type = "message")
+  })
+  
+  observeEvent(input$submit_bottom_comparison, {
+    comparison_submitted(FALSE)
+    showNotification("Using selected experiments for comparison", type = "message")
+  })
+  
+  # ---------------------------------------------------------------------------
+  # 5. OUTPUT RENDERERS - Display Logic (The "Display Engine")
+  # ---------------------------------------------------------------------------
+  # Purpose: Generate all visual outputs
+  # Rule: Group by output type, order by rendering dependency
+  
+  # ====================================================================
+  # TEXT/UI OUTPUTS
   # ====================================================================
   
   # Show experiment count
@@ -698,28 +831,139 @@ server <- function(input, output, session) {
     }
   })
   
-  # Make current_mode available to UI
-  output$comparison_mode <- reactive({
-    current_mode()
-  })
-  outputOptions(output, "comparison_mode", suspendWhenHidden = FALSE)
-  
-  # Check if experiments are selected (for conditional panels)
-  output$has_selected_experiments <- reactive({
-    current_mode() == "manual_selection" && length(table_selected_ids()) > 0
-  })
-  outputOptions(output, "has_selected_experiments", suspendWhenHidden = FALSE)
-  
-  # Check if we have a selected point
-  output$has_selected_point <- reactive({
-    !is.null(plot_clicked_id())
-  })
-  outputOptions(output, "has_selected_point", suspendWhenHidden = FALSE)
-  
   # Badge count for bottom panel
   output$selected_count_badge <- renderText({
     length(table_selected_ids())
   })
+  
+  # Basic experiment info (always shown when point is clicked)
+  output$basic_experiment_info <- renderUI({
+    exp_id <- plot_clicked_id()
+    if (is.null(exp_id)) return(NULL)
+    
+    # Get experiment metadata
+    py_ids <- r_to_py(list(exp_id))
+    metadata <- db$get_experiment_metadata(py_ids)
+    
+    if (nrow(metadata) == 0) return(p("No metadata found"))
+    
+    meta <- metadata[1, ]
+    
+    div(
+      h6(strong(meta$name), style = "color: #007bff; margin-bottom: 10px;"),
+      div(
+        class = "row",
+        div(class = "col-md-3",
+            p(strong("Technology: "), meta$technology %||% "N/A", style = "margin-bottom: 5px;")
+        ),
+        div(class = "col-md-3",
+            p(strong("Platform: "), meta$platform_name %||% "N/A", style = "margin-bottom: 5px;")
+        ),
+        div(class = "col-md-3",
+            p(strong("Caller: "), paste(meta$caller_name %||% "N/A", meta$caller_version %||% ""), style = "margin-bottom: 5px;")
+        ),
+        div(class = "col-md-3",
+            p(strong("Coverage: "), 
+              ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x")), 
+              style = "margin-bottom: 5px;")
+        )
+      )
+    )
+  })
+  
+  # Full experiment metadata (shown when expanded)
+  output$full_experiment_metadata <- renderUI({
+    exp_id <- plot_clicked_id()
+    if (is.null(exp_id)) return(NULL)
+    
+    # Get experiment metadata
+    py_ids <- r_to_py(list(exp_id))
+    metadata <- db$get_experiment_metadata(py_ids)
+    
+    if (nrow(metadata) == 0) return(p("No metadata found"))
+    
+    meta <- metadata[1, ]
+    
+    div(
+      h5("Complete Experiment Details"),
+      div(
+        class = "row",
+        
+        # Column 1: Sequencing
+        div(class = "col-md-4",
+            wellPanel(
+              style = "background-color: white; padding: 15px;",
+              h6("Sequencing Technology", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
+              p(strong("Technology: "), meta$technology %||% "N/A"),
+              p(strong("Platform: "), meta$platform_name %||% "N/A"),
+              p(strong("Platform Type: "), meta$platform_type %||% "N/A"),
+              p(strong("Platform Version: "), meta$platform_version %||% "N/A"),
+              p(strong("Target: "), meta$target %||% "N/A"),
+              p(strong("Chemistry: "), meta$chemistry_name %||% "N/A")
+            )
+        ),
+        
+        # Column 2: Analysis
+        div(class = "col-md-4",
+            wellPanel(
+              style = "background-color: white; padding: 15px;",
+              h6("Analysis Algorithms", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
+              p(strong("Variant Caller: "), meta$caller_name %||% "N/A"),
+              p(strong("Caller Version: "), meta$caller_version %||% "N/A"),
+              p(strong("Caller Type: "), meta$caller_type %||% "N/A"),
+              p(strong("Caller Model: "), meta$caller_model %||% "N/A"),
+              p(strong("Aligner: "), paste(meta$aligner_name %||% "N/A", meta$aligner_version %||% "")),
+              p(strong("Benchmark Tool: "), paste(meta$benchmark_tool_name %||% "N/A", meta$benchmark_tool_version %||% ""))
+            )
+        ),
+        
+        # Column 3: Quality & Truth
+        div(class = "col-md-4",
+            wellPanel(
+              style = "background-color: white; padding: 15px;",
+              h6("Quality & Benchmarking", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
+              p(strong("Mean Coverage: "), ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x"))),
+              p(strong("Read Length: "), ifelse(is.na(meta$read_length), "N/A", paste0(meta$read_length, " bp"))),
+              p(strong("Mean Insert Size: "), ifelse(is.na(meta$mean_insert_size), "N/A", paste0(meta$mean_insert_size, " bp"))),
+              p(strong("Truth Set: "), paste(meta$truth_set_name %||% "N/A", meta$truth_set_version %||% "")),
+              p(strong("Sample: "), meta$truth_set_sample %||% "N/A"),
+              p(strong("Reference: "), meta$truth_set_reference %||% "N/A")
+            )
+        )
+      ),
+      
+      # Additional details row
+      div(
+        class = "row",
+        div(class = "col-md-12",
+            wellPanel(
+              style = "background-color: white; padding: 15px;",
+              h6("Additional Details", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
+              div(
+                class = "row",
+                div(class = "col-md-3", p(strong("Variant Type: "), meta$variant_type %||% "N/A")),
+                div(class = "col-md-3", p(strong("Variant Origin: "), meta$variant_origin %||% "N/A")),
+                div(class = "col-md-3", p(strong("Is Phased: "), ifelse(is.na(meta$is_phased), "N/A", ifelse(meta$is_phased, "Yes", "No")))),
+                div(class = "col-md-3", p(strong("Created: "), ifelse(is.na(meta$created_at), "N/A", format(as.POSIXct(meta$created_at), "%Y-%m-%d"))))
+              )
+            )
+        )
+      )
+    )
+  })
+  
+  # Legend outputs
+  output$technology_legend <- renderUI({
+    HTML(create_technology_legend())
+  })
+  
+  output$caller_legend <- renderUI({
+    HTML(create_caller_legend())
+  })
+  
+  # ====================================================================
+  # TABLE OUTPUTS
+  # ====================================================================
   
   # Experiments table (enhanced with selection for experiment comparison)
   output$experiments_table <- DT::renderDataTable({
@@ -791,88 +1035,9 @@ server <- function(input, output, session) {
     return(compact_data)
   }, striped = TRUE, hover = TRUE, spacing = 'xs', width = "100%")
   
-  # Enhanced visualization info text
-  output$viz_experiment_info <- renderText({
-    viz_data <- viz_performance_data_with_metadata()
-    if (nrow(viz_data) == 0) {
-      return("No performance data available for visualization")
-    }
-    
-    exp_count <- length(unique(viz_data$experiment_name))
-    snp_count <- nrow(viz_data[viz_data$variant_type == "SNP", ])
-    indel_count <- nrow(viz_data[viz_data$variant_type == "INDEL", ])
-    
-    paste("Visualizing", exp_count, "experiments:")
-  })
-  
-  # Legend output
-  output$technology_legend <- renderUI({
-    HTML(create_technology_legend())
-  })
-  
-  output$caller_legend <- renderUI({
-    HTML(create_caller_legend())
-  })
-  
   # ============================================================================
-  # MANUAL HTML LEGEND CREATION FUNCTIONS
+  # PLOT OUTPUTS
   # ============================================================================
-  
-  create_technology_legend <- function() {
-    legend_items <- ""
-    
-    for (tech in names(technology_colors)) {
-      if (tech != "Unknown") {
-        color <- technology_colors[tech]
-        legend_items <- paste0(legend_items, 
-                               '<div style="display: flex; align-items: center; margin-bottom: 5px;">',
-                               '<div style="width: 12px; height: 12px; background-color: ', color, '; border-radius: 50%; margin-right: 8px; border: 1px solid #333;"></div>',
-                               '<span style="font-size: 12px;">', tech, '</span>',
-                               '</div>'
-        )
-      }
-    }
-    
-    return(paste0(
-      '<div style="background: white; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px;">',
-      '<div style="font-weight: bold; margin-bottom: 8px; font-size: 13px;">Sequencing Technology</div>',
-      legend_items,
-      '</div>'
-    ))
-  }
-  
-  create_caller_legend <- function() {
-    legend_items <- ""
-    
-    # Shape symbols for HTML
-    shape_symbols <- c(
-      "16" = "●",    # Circle (DEEPVARIANT)
-      "17" = "▲",    # Triangle (GATK)
-      "15" = "■",    # Square (CLAIR3)
-      "4" = "✕"      # X (Unknown)
-    )
-    
-    for (caller in names(caller_shapes)) {
-      if (caller != "Unknown") {
-        shape_code <- as.character(caller_shapes[caller])
-        symbol <- shape_symbols[shape_code]
-        
-        legend_items <- paste0(legend_items,
-                               '<div style="display: flex; align-items: center; margin-bottom: 5px;">',
-                               '<span style="font-size: 14px; margin-right: 8px; width: 12px; text-align: center; color: #333;">', symbol, '</span>',
-                               '<span style="font-size: 12px;">', caller, '</span>',
-                               '</div>'
-        )
-      }
-    }
-    
-    return(paste0(
-      '<div style="background: white; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">',
-      '<div style="font-weight: bold; margin-bottom: 8px; font-size: 13px;">Variant Caller</div>',
-      legend_items,
-      '</div>'
-    ))
-  }
   
   # ============================================================================
   # SNP PLOT 
@@ -905,10 +1070,9 @@ server <- function(input, output, session) {
       # Create contour data
       contour <- create_f1_contour()
       
-      # Tooltip
-      snp_data$tooltip_text <- paste(  
-        "<b>ID:", snp_data$experiment_id," - ",
-        ifelse(is.na(snp_data$experiment_name) | is.null(snp_data$experiment_name), "Unknown", snp_data$experiment_name), "</b>",
+      # Safe tooltip creation with proper null checking
+      snp_data$tooltip_text <- paste(
+        "<b>", ifelse(is.na(snp_data$experiment_name) | is.null(snp_data$experiment_name), "Unknown", snp_data$experiment_name), "</b>",
         "<br><b>Technology:</b>", ifelse(is.na(snp_data$technology) | is.null(snp_data$technology), "N/A", snp_data$technology),
         "<br><b>Platform:</b>", ifelse(is.na(snp_data$platform_name) | is.null(snp_data$platform_name), "N/A", snp_data$platform_name),
         "<br><b>Caller:</b>", ifelse(is.na(snp_data$caller_name) | is.null(snp_data$caller_name), "N/A", snp_data$caller_name),
@@ -950,15 +1114,15 @@ server <- function(input, output, session) {
         geom_point(
           data = snp_data, 
           aes(x = precision, y = recall, 
-              fill = technology,          
-              shape = caller,              
+              fill = technology,           # CHANGED: back to 'fill' as you requested
+              shape = caller,              # shape by caller
               text = tooltip_text,
               customdata = experiment_id), 
-          color = "black",                 
+          color = "black",                 # black outline
           stroke = 0.15,
           size = 2.2
         ) +
-        scale_fill_manual(values = technology_colors) + 
+        scale_fill_manual(values = technology_colors) +    # CHANGED: scale_fill_manual for exact colors
         scale_shape_manual(values = caller_shapes) +       
         xlim(0, 1) + ylim(0, 1) +
         labs(title = "SNP", x = "Precision", y = "Recall") +
@@ -971,11 +1135,7 @@ server <- function(input, output, session) {
         )
       
       ggplotly(p, tooltip = "text", source = "snp_plot") %>%
-        layout(
-          showlegend = FALSE,   
-        dragmode = "zoom",
-        hoverlabel = list(align = "left")
-        ) %>%
+        layout(showlegend = FALSE) %>%    
         event_register("plotly_click")
       
     }, error = function(e) {
@@ -1020,10 +1180,9 @@ server <- function(input, output, session) {
       # Create contour data
       contour <- create_f1_contour()
       
-      # Tooltip
+      # Safe tooltip creation with proper null checking
       indel_data$tooltip_text <- paste(
-        "<b>ID:", indel_data$experiment_id," - ",
-        ifelse(is.na(indel_data$experiment_name) | is.null(indel_data$experiment_name), "Unknown", indel_data$experiment_name), "</b>",
+        "<b>", ifelse(is.na(indel_data$experiment_name) | is.null(indel_data$experiment_name), "Unknown", indel_data$experiment_name), "</b>",
         "<br><b>Technology:</b>", ifelse(is.na(indel_data$technology) | is.null(indel_data$technology), "N/A", indel_data$technology),
         "<br><b>Platform:</b>", ifelse(is.na(indel_data$platform_name) | is.null(indel_data$platform_name), "N/A", indel_data$platform_name),
         "<br><b>Caller:</b>", ifelse(is.na(indel_data$caller_name) | is.null(indel_data$caller_name), "N/A", indel_data$caller_name),
@@ -1075,11 +1234,7 @@ server <- function(input, output, session) {
         )
       
       ggplotly(p, tooltip = "text", source = "indel_plot") %>%
-        layout(
-          showlegend = FALSE,   
-          dragmode = "zoom",
-          hoverlabel = list(align = "left")
-        ) %>%
+        layout(showlegend = FALSE) %>%  
         event_register("plotly_click")
       
     }, error = function(e) {
@@ -1093,191 +1248,10 @@ server <- function(input, output, session) {
     })
   })
   
-  
-  # Basic experiment info 
-  output$basic_experiment_info <- renderUI({
-    exp_id <- plot_clicked_id()
-    if (is.null(exp_id)) return(NULL)
-    
-    # Get experiment metadata
-    py_ids <- r_to_py(list(exp_id))
-    metadata <- db$get_experiment_metadata(py_ids)
-    
-    if (nrow(metadata) == 0) return(p("No metadata found"))
-    
-    meta <- metadata[1, ]
-    
-    div(
-      h6(
-        span(style = "color: #007bff; font-weight: bold; 15px", paste("ID:", exp_id, " - "), strong(meta$name)), 
-        style = "margin-bottom: 20px;"
-      ),
-      div(
-        class = "row",
-        div(class = "col-md-3",
-            p(strong("Technology: "), meta$technology %||% "N/A", style = "margin-bottom: 5px;")
-        ),
-        div(class = "col-md-3",
-            p(strong("Platform: "), meta$platform_name %||% "N/A", style = "margin-bottom: 5px;")
-        ),
-        div(class = "col-md-3",
-            p(strong("Caller: "), paste(meta$caller_name %||% "N/A", meta$caller_version %||% ""), style = "margin-bottom: 5px;")
-        ),
-        div(class = "col-md-3",
-            p(strong("Coverage: "), 
-              ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x")), 
-              style = "margin-bottom: 5px;")
-        )
-      )
-    )
-  })
-  
-  # Full experiment metadata 
-  output$full_experiment_metadata <- renderUI({
-    exp_id <- plot_clicked_id()
-    if (is.null(exp_id)) return(NULL)
-    
-    # Get experiment metadata
-    py_ids <- r_to_py(list(exp_id))
-    metadata <- db$get_experiment_metadata(py_ids)
-    
-    if (nrow(metadata) == 0) return(p("No metadata found"))
-    
-    meta <- metadata[1, ]
-    
-    div(
-      h5("Complete Experiment Details"),
-      div(
-        class = "row",
-        
-        # Column 1: Sequencing
-        div(class = "col-md-4",
-            wellPanel(
-              style = "background-color: white; padding: 15px;",
-              h6("Sequencing Technology", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;font-size: 15px"),
-              p(strong("Technology: "), meta$technology %||% "N/A"),
-              p(strong("Platform: "), meta$platform_name %||% "N/A"),
-              p(strong("Platform Type: "), meta$platform_type %||% "N/A"),
-              p(strong("Platform Version: "), meta$platform_version %||% "N/A"),
-              p(strong("Target: "), meta$target %||% "N/A"),
-              p(strong("Chemistry: "), meta$chemistry_name %||% "N/A")
-            )
-        ),
-        
-        # Column 2: Analysis
-        div(class = "col-md-4",
-            wellPanel(
-              style = "background-color: white; padding: 15px;",
-              h6("Analysis Algorithms", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;font-size: 15px"),
-              p(strong("Variant Caller: "), meta$caller_name %||% "N/A"),
-              p(strong("Caller Version: "), meta$caller_version %||% "N/A"),
-              p(strong("Caller Type: "), meta$caller_type %||% "N/A"),
-              p(strong("Caller Model: "), meta$caller_model %||% "N/A"),
-              p(strong("Aligner: "), paste(meta$aligner_name %||% "N/A", meta$aligner_version %||% "")),
-              p(strong("Benchmark Tool: "), paste(meta$benchmark_tool_name %||% "N/A", meta$benchmark_tool_version %||% ""))
-            )
-        ),
-        
-        # Column 3: Quality & Truth
-        div(class = "col-md-4",
-            wellPanel(
-              style = "background-color: white; padding: 15px;",
-              h6("Quality & Benchmarking", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;font-size: 15px"),
-              p(strong("Mean Coverage: "), ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x"))),
-              p(strong("Read Length: "), ifelse(is.na(meta$read_length), "N/A", paste0(meta$read_length, " bp"))),
-              p(strong("Mean Insert Size: "), ifelse(is.na(meta$mean_insert_size), "N/A", paste0(meta$mean_insert_size, " bp"))),
-              p(strong("Truth Set: "), paste(meta$truth_set_name %||% "N/A", meta$truth_set_version %||% "")),
-              p(strong("Sample: "), meta$truth_set_sample %||% "N/A"),
-              p(strong("Reference: "), meta$truth_set_reference %||% "N/A")
-            )
-        )
-      ),
-      
-      # Additional details row
-      div(
-        class = "row",
-        div(class = "col-md-12",
-            wellPanel(
-              style = "background-color: white; padding: 15px;",
-              h6("Additional Details", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;font-size: 15px;"),
-              div(
-                class = "row",
-                div(class = "col-md-3", p(strong("Variant Type: "), meta$variant_type %||% "N/A")),
-                div(class = "col-md-3", p(strong("Variant Origin: "), meta$variant_origin %||% "N/A")),
-                div(class = "col-md-3", p(strong("Is Phased: "), ifelse(is.na(meta$is_phased), "N/A", ifelse(meta$is_phased, "Yes", "No")))),
-                div(class = "col-md-3", p(strong("Created: "), ifelse(is.na(meta$created_at), "N/A", format(as.POSIXct(meta$created_at), "%Y-%m-%d"))))
-              )
-            )
-        )
-      )
-    )
-  })
-  
-  # Helper function for null coalescing
-  `%||%` <- function(x, y) if (is.null(x) || is.na(x) || x == "") y else x
-  
-  # ====================================================================
-  # SUBMISSION OBSERVERS
-  # ====================================================================
-  
-  observeEvent(input$submit_tech_comparison, {
-    # Get all experiment IDs for selected technologies with constant caller
-    all_ids <- c()
-    for(tech in input$selected_technologies) {
-      tech_ids <- db$get_experiments_by_technology(tech)
-      
-      # Filter by caller to keep it constant
-      for(id in tech_ids) {
-        caller <- db$get_caller(id)
-        if(!is.null(caller) && caller == input$tech_comparison_caller) {
-          all_ids <- c(all_ids, id)
-        }
-      }
-    }
-    
-    display_experiment_ids(all_ids)
-    comparison_submitted(TRUE)
-    comparison_type("technology")
-    comparison_results(all_ids)
-    
-    showNotification(paste("Comparing", length(input$selected_technologies), "technologies with", length(all_ids), "experiments"), type = "message")
-  })
-  
-  observeEvent(input$submit_caller_comparison, {
-    # Get all experiment IDs for selected callers with constant technology
-    all_ids <- c()
-    for(caller in input$selected_callers) {
-      caller_ids <- db$get_experiments_by_caller(caller)
-      
-      # Filter by technology to keep it constant
-      for(id in caller_ids) {
-        tech <- db$get_technology(id)
-        if(!is.null(tech) && tech == input$caller_comparison_tech) {
-          all_ids <- c(all_ids, id)
-        }
-      }
-    }
-    
-    display_experiment_ids(all_ids)
-    comparison_submitted(TRUE)
-    comparison_type("caller")
-    comparison_results(all_ids)
-    
-    showNotification(paste("Comparing", length(input$selected_callers), "callers with", length(all_ids), "experiments"), type = "message")
-  })
-  
-  observeEvent(input$submit_experiment_comparison, {
-    comparison_submitted(FALSE)
-    showNotification("Using selected experiments for comparison", type = "message")
-  })
-  
-  observeEvent(input$submit_bottom_comparison, {
-    comparison_submitted(FALSE)
-    showNotification("Using selected experiments for comparison", type = "message")
-  })
-}
+} # End of server function
 
-# ============================================================================
-# RUN APP
-# ============================================================================
+# =============================================================================
+# APP LAUNCH
+# =============================================================================
+
 shinyApp(ui = ui, server = server, options = list(launch.browser = TRUE))
