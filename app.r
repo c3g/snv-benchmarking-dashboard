@@ -593,11 +593,9 @@ server <- function(input, output, session) {
     return(viz_data[, key_cols[key_cols %in% names(viz_data)]])
   })
   
-  # ---------------------------------------------------------------------------
-  # 3. UI STATE MANAGEMENT - UI Reactive Expressions (Interface Controller)
-  # ---------------------------------------------------------------------------
-  # Purpose: Make internal state available to UI conditionalPanels
-  # Rule: Keep these simple - just expose reactive values to UI
+  # ====================================================================
+  # 3. UI OUTPUTS FOR STATE MANAGEMENT
+  # ====================================================================
   
   # Make current_mode available to UI
   output$comparison_mode <- reactive({
@@ -605,7 +603,7 @@ server <- function(input, output, session) {
   })
   outputOptions(output, "comparison_mode", suspendWhenHidden = FALSE)
   
-  # Check if experiments are selected (for conditional panels)
+  # Check if experiments are selected
   output$has_selected_experiments <- reactive({
     current_mode() == "manual_selection" && length(table_selected_ids()) > 0
   })
@@ -617,16 +615,12 @@ server <- function(input, output, session) {
   })
   outputOptions(output, "has_selected_point", suspendWhenHidden = FALSE)
   
-  # ---------------------------------------------------------------------------
-  # 4. EVENT HANDLING - Observers (The "Interaction Manager")
-  # ---------------------------------------------------------------------------
-  # Purpose: Respond to user interactions and update state
-  # Rule: Group by interaction type, order by frequency/importance
   
   # ====================================================================
-  # COMPARISON BUTTON OBSERVERS
+  # 4. BUTTON OBSERVERS FOR EVENT HANDLING
   # ====================================================================
   
+  # 4.1
   # Technology comparison button
   observeEvent(input$compare_techs, {
     current_mode("tech_comparison")
@@ -645,7 +639,9 @@ server <- function(input, output, session) {
     
     showNotification("Technology comparison mode activated!", type = "message")
   })
+  # -----------------------------------------------------------
   
+  # 4.2 
   # Caller comparison button
   observeEvent(input$compare_callers, {
     current_mode("caller_comparison")
@@ -663,7 +659,9 @@ server <- function(input, output, session) {
     
     showNotification("Caller comparison mode activated!", type = "message")
   })
+  # -----------------------------------------------------------
   
+  # 4.3
   # Specific experiments comparison button
   observeEvent(input$compare_experiments, {
     current_mode("manual_selection")
@@ -683,7 +681,9 @@ server <- function(input, output, session) {
     
     showNotification("Click table rows to select experiments.", type = "message")
   })
+  # -----------------------------------------------------------
   
+  # 4.4
   # Clear experiment selection button
   observeEvent(input$clear_experiment_selection, {
     table_selected_ids(numeric(0))
@@ -691,40 +691,33 @@ server <- function(input, output, session) {
     dataTableProxy('experiments_table') %>% selectRows(NULL)
     showNotification("Experiment selection cleared!", type = "message")
   })
+  # -----------------------------------------------------------
   
-  # ====================================================================
-  # EXPERIMENT SELECTION LOGIC (for manual selection)
-  # ====================================================================
+  # 4.5
+  # Experiment table selection
   
-  # Handle row selection in experiments table (only when in manual selection mode)
+  # Row selection in experiments table (only in manual selection mode)
   observeEvent(input$experiments_table_rows_selected, {
-    if (current_mode() == "manual_selection") {
-      current_data <- experiments_data()
-      
-      # Always update based on current DataTable selection
-      if (nrow(current_data) > 0) {
-        selected_rows <- input$experiments_table_rows_selected
-        
-        if (is.null(selected_rows) || length(selected_rows) == 0) {
-          table_selected_ids(numeric(0))
-          display_experiment_ids(numeric(0))
-        } else {
-          new_ids <- current_data$id[selected_rows]
-          table_selected_ids(new_ids)
-          display_experiment_ids(new_ids)
-        }
-      } else {
-        table_selected_ids(numeric(0))
-        display_experiment_ids(numeric(0))
-      }
+    if (current_mode() != "manual_selection") 
+      return()
+    
+    current_data <- experiments_data()
+    selected_rows <- input$experiments_table_rows_selected
+    
+    # Get selected IDs or empty vector if no selection/no data
+    new_ids <- if (nrow(current_data) > 0 && length(selected_rows) > 0) {
+      current_data$id[selected_rows]
+    } else {
+      numeric(0)
     }
-  }, ignoreNULL = FALSE) 
+    
+    # Update reactive value
+    table_selected_ids(new_ids)
+  }, ignoreNULL = FALSE)
+  # -----------------------------------------------------------
   
-  # ====================================================================
-  # PLOT INTERACTION OBSERVERS
-  # ====================================================================
-  
-  # Handle clicks from both plots
+  # 4.6
+  # Plot interaction observers - Handle clicks from both plots
   observeEvent(event_data("plotly_click", source = "snp_plot"), {
     click_data <- event_data("plotly_click", source = "snp_plot")
     if (!is.null(click_data)) {
@@ -739,9 +732,8 @@ server <- function(input, output, session) {
     }
   })
   
-  # Clears plot events after filter change
+  # Clears plot events after any comparison or filter change
   observe({
-    # Watch for any filter/comparison changes
     input$filter_type
     input$technology 
     input$caller
@@ -752,18 +744,19 @@ server <- function(input, output, session) {
     
     cat("Filter changed - clearing plot events\n")
   })
+  # -----------------------------------------------------------
   
-  # ====================================================================
-  # SUBMISSION OBSERVERS
-  # ====================================================================
+  # 4.7
+  # Comparison submission observers 
   
+  ### Tech comparison ###
   observeEvent(input$submit_tech_comparison, {
-    # Get all experiment IDs for selected technologies with constant caller
+    # Get all experiment IDs for selected technologies
     all_ids <- c()
     for(tech in input$selected_technologies) {
       tech_ids <- db$get_experiments_by_technology(tech)
       
-      # Filter by caller to keep it constant
+      # Filter by caller
       for(id in tech_ids) {
         caller <- db$get_caller(id)
         if(!is.null(caller) && caller == input$tech_comparison_caller) {
@@ -780,13 +773,14 @@ server <- function(input, output, session) {
     showNotification(paste("Comparing", length(input$selected_technologies), "technologies with", length(all_ids), "experiments"), type = "message")
   })
   
+  ### Caller comparison ###
   observeEvent(input$submit_caller_comparison, {
-    # Get all experiment IDs for selected callers with constant technology
+    # Get all experiment IDs for selected callers
     all_ids <- c()
     for(caller in input$selected_callers) {
       caller_ids <- db$get_experiments_by_caller(caller)
       
-      # Filter by technology to keep it constant
+      # Filter by technology
       for(id in caller_ids) {
         tech <- db$get_technology(id)
         if(!is.null(tech) && tech == input$caller_comparison_tech) {
@@ -803,24 +797,14 @@ server <- function(input, output, session) {
     showNotification(paste("Comparing", length(input$selected_callers), "callers with", length(all_ids), "experiments"), type = "message")
   })
   
-  observeEvent(input$submit_experiment_comparison, {
-    comparison_submitted(FALSE)
-    showNotification("Using selected experiments for comparison", type = "message")
-  })
-  
+  ### Specific experiment comparison ###
   observeEvent(input$submit_bottom_comparison, {
     comparison_submitted(FALSE)
     showNotification("Using selected experiments for comparison", type = "message")
   })
   
-  # ---------------------------------------------------------------------------
-  # 5. OUTPUT RENDERERS - Display Logic (The "Display Engine")
-  # ---------------------------------------------------------------------------
-  # Purpose: Generate all visual outputs
-  # Rule: Group by output type, order by rendering dependency
-  
   # ====================================================================
-  # TEXT/UI OUTPUTS
+  # 5. UI OUTPUTS FOR DISPALY
   # ====================================================================
   
   # Show experiment count
