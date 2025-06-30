@@ -18,18 +18,20 @@ from models import *
 # ========================================================================
 # 1. EXPERIMENTS OVERVIEW
 # ========================================================================
-
-def get_experiments_overview(filters=None):
+def get_experiments_overview(filters=None, experiment_ids=None):
     """
     Get basic experiment information for dashboard overview.
-    returns essential info
     
     Args:
         filters (dict): Optional filters like {'technology': 'ILLUMINA', 'caller': 'DEEPVARIANT'}
+        experiment_ids (list): Optional list of specific experiment IDs to retrieve
+        
+    Returns:
+        pandas.DataFrame: Experiment overview data
     """
     try:
         with get_db_session() as session:
-            # Lightweight query with minimal necessary joins
+            # Base query with necessary joins
             query = session.query(Experiment).options(
                 joinedload(Experiment.sequencing_technology),
                 joinedload(Experiment.variant_caller),
@@ -37,19 +39,31 @@ def get_experiments_overview(filters=None):
                 joinedload(Experiment.chemistry)
             )
             
-            # Apply filters if provided
+            # If specific experiment IDs provided, filter by them first
+            if experiment_ids and len(experiment_ids) > 0:
+                query = query.filter(Experiment.id.in_(experiment_ids))
+            
+            # Apply additional filters if provided
             if filters:
                 if 'technology' in filters:
-                    tech_enum = SeqTechName(filters['technology'])
-                    query = query.join(SequencingTechnology).filter(
-                        SequencingTechnology.technology == tech_enum
-                    )
+                    try:
+                        tech_enum = SeqTechName(filters['technology'].upper())
+                        query = query.join(SequencingTechnology).filter(
+                            SequencingTechnology.technology == tech_enum
+                        )
+                    except ValueError:
+                        print(f"Invalid technology filter: {filters['technology']}")
+                        return pd.DataFrame()
                 
                 if 'caller' in filters:
-                    caller_enum = CallerName(filters['caller'])
-                    query = query.join(VariantCaller).filter(
-                        VariantCaller.name == caller_enum
-                    )
+                    try:
+                        caller_enum = CallerName(filters['caller'].upper())
+                        query = query.join(VariantCaller).filter(
+                            VariantCaller.name == caller_enum
+                        )
+                    except ValueError:
+                        print(f"Invalid caller filter: {filters['caller']}")
+                        return pd.DataFrame()
             
             experiments = query.all()
             
