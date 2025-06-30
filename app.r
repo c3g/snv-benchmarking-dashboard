@@ -1049,22 +1049,23 @@ server <- function(input, output, session) {
   # 6. PLOT OUTPUTS 
   # ============================================================================
   
+  # 6.1 - SNP Plot
   output$snp_plot <- renderPlotly({
     tryCatch({
       viz_data <- viz_performance_data()
       
-      if (nrow(viz_data) == 0) {
+      if (nrow(viz_data) == 0) { # No performance data
         p <- ggplot() + 
-          annotate("text", x = 0.5, y = 0.5, label = "No SNP data available", size = 6) +
+          annotate("text", x = 0.5, y = 0.5, label = "No data available", size = 6) +
           xlim(0, 1) + ylim(0, 1) +
           labs(title = "SNP", x = "Precision", y = "Recall") +
           theme_bw()
         return(ggplotly(p))
       }
       
-      snp_data <- viz_data %>% filter(variant_type == "SNP")
+      snp_data <- viz_data %>% filter(variant_type == "SNP") # Filter SNP data only
       
-      if (nrow(snp_data) == 0) {
+      if (nrow(snp_data) == 0) { # No SNP data
         p <- ggplot() + 
           annotate("text", x = 0.5, y = 0.5, label = "No SNP data", size = 6) +
           xlim(0, 1) + ylim(0, 1) +
@@ -1076,7 +1077,7 @@ server <- function(input, output, session) {
       # Create contour data
       contour <- create_f1_contour()
       
-      # Safe tooltip creation with proper null checking
+      # Tooltip with null checking ------------------------------ ------------------------------ ------------------------------ ------------------------------FIX BOTH TOOLTIPs WITH ID + LEGEND NAMES
       snp_data$tooltip_text <- paste(
         "<b>", ifelse(is.na(snp_data$experiment_name) | is.null(snp_data$experiment_name), "Unknown", snp_data$experiment_name), "</b>",
         "<br><b>Technology:</b>", ifelse(is.na(snp_data$technology) | is.null(snp_data$technology), "N/A", snp_data$technology),
@@ -1155,10 +1156,7 @@ server <- function(input, output, session) {
     })
   })
   
-  # ============================================================================
-  # INDEL PLOT
-  # ============================================================================
-  
+  # 6.2 - INDEL Plot
   output$indel_plot <- renderPlotly({
     tryCatch({
       viz_data <- viz_performance_data()
