@@ -807,7 +807,8 @@ server <- function(input, output, session) {
   # 5. UI OUTPUTS FOR DISPALY
   # ====================================================================
   
-  # Show experiment count
+  # 5.1
+  # Selected experiment count
   output$selected_experiments_count <- renderText({
     if (current_mode() != "manual_selection") {
       return("Not in selection mode")
@@ -822,12 +823,13 @@ server <- function(input, output, session) {
       paste("Selected:", count, "experiments")
     }
   })
-  
   # Badge count for bottom panel
   output$selected_count_badge <- renderText({
     length(table_selected_ids())
   })
+  # -----------------------------------------------------------
   
+  # 5.2
   # Basic experiment info (always shown when point is clicked)
   output$basic_experiment_info <- renderUI({
     exp_id <- plot_clicked_id()
@@ -862,7 +864,9 @@ server <- function(input, output, session) {
       )
     )
   })
+  # -----------------------------------------------------------
   
+  # 5.3
   # Full experiment metadata (shown when expanded)
   output$full_experiment_metadata <- renderUI({
     exp_id <- plot_clicked_id()
@@ -944,6 +948,9 @@ server <- function(input, output, session) {
     )
   })
   
+  # -----------------------------------------------------------
+  
+  # 5.4
   # Legend outputs
   output$technology_legend <- renderUI({
     HTML(create_technology_legend())
@@ -953,11 +960,11 @@ server <- function(input, output, session) {
     HTML(create_caller_legend())
   })
   
-  # ====================================================================
-  # TABLE OUTPUTS
-  # ====================================================================
+  # -----------------------------------------------------------
   
-  # Experiments table (enhanced with selection for experiment comparison)
+  # 5.5 
+  # Table outputs
+  # Experiments table (including selection for experiment comparison)
   output$experiments_table <- DT::renderDataTable({
     df <- experiments_data()
     
@@ -965,7 +972,7 @@ server <- function(input, output, session) {
       return(DT::datatable(data.frame(Message = "No experiments found")))
     }
     
-    # Configure selection based on comparison mode
+    # Configure selection based on mode
     if (current_mode() == "manual_selection") {
       # Multiple selection allowed when in manual selection mode
       selection_config <- list(mode = 'multiple')
@@ -974,6 +981,7 @@ server <- function(input, output, session) {
       selection_config <- 'none'
     }
     
+    # Experiments overview table
     DT::datatable(
       df,
       selection = selection_config,
@@ -985,6 +993,9 @@ server <- function(input, output, session) {
     )
   })
   
+  # -----------------------------------------------------------
+  
+  # 5.6
   # Performance table  
   output$performance_table <- DT::renderDataTable({
     df <- performance_data()
@@ -993,21 +1004,28 @@ server <- function(input, output, session) {
       return(DT::datatable(data.frame(Message = "No performance data found")))
     }
     # Show key performance columns
-    key_cols <- c("experiment_name", "variant_type", "recall", "precision", "f1_score")
+    key_cols <- c("experiment_id","experiment_name", "variant_type", "recall", "precision", "f1_score")
     display_df <- df[, key_cols[key_cols %in% names(df)]]
     
     DT::datatable(
       display_df,
       options = list(
         pageLength = 15,
-        scrollX = TRUE
+        scrollX = TRUE,
+        columnDefs = list(
+          list(targets = 0, className = "dt-center", width = "50px"),    
+          list(targets = c(3,4,5), className = "dt-left")            
+        )
       ),
       rownames = FALSE
     ) %>%
       DT::formatRound(c("recall", "precision", "f1_score"), 6)
   })
   
-  # Selected experiments table (at bottom of page)
+  # -----------------------------------------------------------
+  
+  # 5.7
+  # Selected experiments table (bottom of side panel)
   output$compact_selected_experiments <- renderTable({
     ids <- table_selected_ids()
     if (length(ids) == 0) {
@@ -1028,11 +1046,7 @@ server <- function(input, output, session) {
   }, striped = TRUE, hover = TRUE, spacing = 'xs', width = "100%")
   
   # ============================================================================
-  # PLOT OUTPUTS
-  # ============================================================================
-  
-  # ============================================================================
-  # SNP PLOT 
+  # 6. PLOT OUTPUTS 
   # ============================================================================
   
   output$snp_plot <- renderPlotly({
