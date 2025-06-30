@@ -535,21 +535,24 @@ server <- function(input, output, session) {
   })
   
   # 2.3
-  # Performance results
-  performance_data <- reactive({
-    ids <- experiment_ids()
-    
-    if (length(ids) == 0) {
-      return(data.frame())
+  # experiment IDs for performance
+  performance_experiment_ids <- reactive({
+    if (current_mode() == "manual_selection") {
+      # Selected experiment IDs
+      return(table_selected_ids())
+    } else if (comparison_submitted()) {
+      # Comparison results IDs
+      return(comparison_results())
+    } else {
+      # Regular filtering IDs
+      return(experiment_ids())
     }
-    
-    py_ids <- r_to_py(as.list(ids))
-    return(db$get_performance_results(py_ids))
   })
   
-  # visualization results
+  # 2.4
+  # Complete metadata and performance results for visualization
   viz_performance_data <- reactive({
-    ids <- experiment_ids()
+    ids <- performance_experiment_ids()
     
     if (length(ids) == 0) {
       return(data.frame())
@@ -560,22 +563,11 @@ server <- function(input, output, session) {
       perf_data <- db$get_performance_results(py_ids, c('SNP', 'INDEL'))
       metadata <- db$get_experiment_metadata(py_ids)
       
-      # Filter performance data
-      filtered_perf_data <- perf_data %>%
+      # Filter and join performance data with metadata
+      enhanced_data <- perf_data %>%
         filter(subset == "ALL_REGIONS" | subset == "*") %>%
-        filter(!is.na(recall) & !is.na(precision) & !is.na(f1_score))
-      
-      if (nrow(filtered_perf_data) == 0 || nrow(metadata) == 0) {
-        return(data.frame())
-      }
-      
-      # Merge for tooltip info
-      enhanced_data <- filtered_perf_data %>%
-        left_join(metadata, by = c("experiment_id" = "id"), suffix = c("", "_meta")) %>%
-        mutate(
-          #  display_name = paste0((experiment_id), ")", caller_name, ",", technology), ------------------------------------------------------ do we need to differentiate?
-          # legend_group = paste0((experiment_id), ")", caller_name, ",", technology)
-        )
+        filter(!is.na(recall) & !is.na(precision) & !is.na(f1_score)) %>% #remove incomplete data
+        left_join(metadata, by = c("experiment_id" = "id"), suffix = c("", "_meta")) # join all data
       
       return(enhanced_data)
       
@@ -583,6 +575,22 @@ server <- function(input, output, session) {
       cat("Error in viz_performance_data:", e$message, "\n")
       return(data.frame())
     })
+  })
+  
+  # 2.5
+  # Subset of performance data for table
+  performance_data <- reactive({
+    viz_data <- viz_performance_data()
+    
+    if (nrow(viz_data) == 0) {
+      return(data.frame())
+    }
+    
+    # Performance columns for the table
+    key_cols <- c("experiment_name", "variant_type", "recall", "precision", "f1_score", 
+                  "subset", "filter_type", "experiment_id")
+    
+    return(viz_data[, key_cols[key_cols %in% names(viz_data)]])
   })
   
   # ---------------------------------------------------------------------------
