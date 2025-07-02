@@ -1,5 +1,6 @@
 # database manager (connects to the database, creates sessions tests connection)
-
+import os
+from config import DATABASE_PATH
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from contextlib import contextmanager
@@ -8,8 +9,13 @@ from models import Base
 # ============================================================================
 # SQLITE/POSTGRES CONFIGURATION
 # ============================================================================
+# Create data directory if it doesn't exist
+data_dir = os.path.dirname(DATABASE_PATH)
+if not os.path.exists(data_dir):
+    os.makedirs(data_dir, exist_ok=True)
 
-DATABASE_URL = "sqlite:///benchmarking.db" # to be switched to postgres later ------------------------------------------------------------
+DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
+# to be switched to postgres later ------------------------------------------------------------
 
 # Create the databse engine
 engine = create_engine(DATABASE_URL)

@@ -1,6 +1,6 @@
-from .database import create_tables, test_connection
-from .models import *
-from .populate_metadata import *
+from database import create_tables, test_connection
+from models import *
+from populate_metadata import *
 import sys
 
 def main():

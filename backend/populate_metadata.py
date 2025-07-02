@@ -13,10 +13,10 @@ Main workflow:
 """
 
 import pandas as pd
-from .database import get_db_session
-from .models import *
-from .config import METADATA_CSV_PATH
-from .happy_parser import parse_happy_csv
+from database import get_db_session
+from models import *
+from config import METADATA_CSV_PATH
+from happy_parser import parse_happy_csv
 
 # Path to metadata CSV file
 metadata_CSV_file_path = METADATA_CSV_PATH

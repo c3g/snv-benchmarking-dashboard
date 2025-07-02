@@ -3,8 +3,8 @@
 # Parses hap.py CSV output files and stores performance metrics for each experiemtn recrod
 
 import pandas as pd
-from .models import BenchmarkResult
-from .config import get_data_file_path
+from models import BenchmarkResult
+from config import get_data_file_path
 
 def safe_float(value):
     """Convert value to float, handle NaN"""

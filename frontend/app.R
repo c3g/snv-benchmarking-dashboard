@@ -13,9 +13,10 @@ library(ggrepel)
 library(patchwork)
 library(geomtextpath)
 
-# Import Python module
-sys <- import("sys")
-sys$path$insert(0L, file.path(dirname(getwd()), "backend"))
+py_run_string("import sys")
+py_run_string("sys.path.append('../backend')")
+
+# Import database interface
 db <- import("db_interface")
 
 # Set theme
