@@ -88,7 +88,7 @@ create_technology_legend <- function() {
   
   return(paste0(
     '<div style="background: white; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px;">',
-    '<div style="font-weight: bold; margin-bottom: 8px; font-size: 13px;">Technology</div>',
+    '<div style="font-weight: bold; margin-bottom: 8px; font-size: 13px;">Sequencing Technology</div>',
     legend_items,
     '</div>'
   ))
@@ -113,7 +113,7 @@ create_caller_legend <- function() {
   
   return(paste0(
     '<div style="background: white; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">',
-    '<div style="font-weight: bold; margin-bottom: 8px; font-size: 13px;">Caller</div>',
+    '<div style="font-weight: bold; margin-bottom: 8px; font-size: 13px;">Variant Caller</div>',
     legend_items,
     '</div>'
   ))
@@ -403,19 +403,19 @@ ui <- fluidPage(
           ),
           br(),
           fluidRow(
-            # SNP Plot Column (narrower)
+            # SNP Plot Column 
             column(4,
                    h4("SNP Performance"),
                    plotlyOutput("snp_plot", height = "500px")
             ),
-            # INDEL Plot Column (narrower)
+            # INDEL Plot Column 
             column(4,
                    h4("INDEL Performance"), 
                    plotlyOutput("indel_plot", height = "500px")
             ),
-            # LEGENDS Column (new third column)
+            # LEGENDS Column 
             column(3,
-                   br(), br(), # Add some spacing to align with plot titles
+                   br(), br(), br(), br(),
                    htmlOutput("technology_legend"),
                    br(),
                    htmlOutput("caller_legend")
@@ -722,6 +722,8 @@ server <- function(input, output, session) {
     click_data <- event_data("plotly_click", source = "snp_plot")
     if (!is.null(click_data)) {
       plot_clicked_id(click_data$customdata)
+      showNotification("Scroll down to view experiment details.",
+                       type = "message", duration = 3)
     }
   })
   
@@ -729,6 +731,8 @@ server <- function(input, output, session) {
     click_data <- event_data("plotly_click", source = "indel_plot")
     if (!is.null(click_data)) {
       plot_clicked_id(click_data$customdata)
+      showNotification("Scroll down to view experiment details.",
+                       type = "message", duration = 3)
     }
   })
   
@@ -881,6 +885,10 @@ server <- function(input, output, session) {
     meta <- metadata[1, ]
     
     div(
+      h6(
+        span(style = "color: #007bff; font-weight: bold; 15px", paste("ID:", exp_id, " - "), strong(meta$name)),
+        style = "margin-bottom: 20px;"
+      ),
       h5("Complete Experiment Details"),
       div(
         class = "row",
@@ -889,7 +897,7 @@ server <- function(input, output, session) {
         div(class = "col-md-4",
             wellPanel(
               style = "background-color: white; padding: 15px;",
-              h6("Sequencing Technology", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
+              h6("Sequencing Technology", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 10px;font-size: 15px;"),
               p(strong("Technology: "), meta$technology %||% "N/A"),
               p(strong("Platform: "), meta$platform_name %||% "N/A"),
               p(strong("Platform Type: "), meta$platform_type %||% "N/A"),
@@ -903,7 +911,7 @@ server <- function(input, output, session) {
         div(class = "col-md-4",
             wellPanel(
               style = "background-color: white; padding: 15px;",
-              h6("Analysis Algorithms", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
+              h6("Analysis Algorithms", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 10px;font-size: 15px;"),
               p(strong("Variant Caller: "), meta$caller_name %||% "N/A"),
               p(strong("Caller Version: "), meta$caller_version %||% "N/A"),
               p(strong("Caller Type: "), meta$caller_type %||% "N/A"),
@@ -917,7 +925,7 @@ server <- function(input, output, session) {
         div(class = "col-md-4",
             wellPanel(
               style = "background-color: white; padding: 15px;",
-              h6("Quality & Benchmarking", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
+              h6("Quality & Benchmarking", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 10px;font-size: 15px;"),
               p(strong("Mean Coverage: "), ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x"))),
               p(strong("Read Length: "), ifelse(is.na(meta$read_length), "N/A", paste0(meta$read_length, " bp"))),
               p(strong("Mean Insert Size: "), ifelse(is.na(meta$mean_insert_size), "N/A", paste0(meta$mean_insert_size, " bp"))),
@@ -934,7 +942,7 @@ server <- function(input, output, session) {
         div(class = "col-md-12",
             wellPanel(
               style = "background-color: white; padding: 15px;",
-              h6("Additional Details", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
+              h6("Additional Details", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 10px;font-size: 15px;"),
               div(
                 class = "row",
                 div(class = "col-md-3", p(strong("Variant Type: "), meta$variant_type %||% "N/A")),
@@ -1077,8 +1085,9 @@ server <- function(input, output, session) {
       # Create contour data
       contour <- create_f1_contour()
       
-      # Tooltip with null checking ------------------------------ ------------------------------ ------------------------------ ------------------------------FIX BOTH TOOLTIPs WITH ID + LEGEND NAMES
+      # Tooltip 
       snp_data$tooltip_text <- paste(
+        "<b>ID:", snp_data$experiment_id," - ",
         "<b>", ifelse(is.na(snp_data$experiment_name) | is.null(snp_data$experiment_name), "Unknown", snp_data$experiment_name), "</b>",
         "<br><b>Technology:</b>", ifelse(is.na(snp_data$technology) | is.null(snp_data$technology), "N/A", snp_data$technology),
         "<br><b>Platform:</b>", ifelse(is.na(snp_data$platform_name) | is.null(snp_data$platform_name), "N/A", snp_data$platform_name),
@@ -1121,15 +1130,15 @@ server <- function(input, output, session) {
         geom_point(
           data = snp_data, 
           aes(x = precision, y = recall, 
-              fill = technology,           # CHANGED: back to 'fill' as you requested
+              fill = technology,           # fill by technology
               shape = caller,              # shape by caller
-              text = tooltip_text,
+              text = tooltip_text,         # tooltip text
               customdata = experiment_id), 
           color = "black",                 # black outline
           stroke = 0.15,
           size = 2.2
         ) +
-        scale_fill_manual(values = technology_colors) +    # CHANGED: scale_fill_manual for exact colors
+        scale_fill_manual(values = technology_colors) + 
         scale_shape_manual(values = caller_shapes) +       
         xlim(0, 1) + ylim(0, 1) +
         labs(title = "SNP", x = "Precision", y = "Recall") +
@@ -1142,7 +1151,10 @@ server <- function(input, output, session) {
         )
       
       ggplotly(p, tooltip = "text", source = "snp_plot") %>%
-        layout(showlegend = FALSE) %>%    
+        layout(showlegend = FALSE,
+               dragmode = "zoom",
+               hoverlabel = list(align = "left")
+               ) %>%    
         event_register("plotly_click")
       
     }, error = function(e) {
@@ -1186,6 +1198,7 @@ server <- function(input, output, session) {
       
       # Safe tooltip creation with proper null checking
       indel_data$tooltip_text <- paste(
+        "<b>ID:", indel_data$experiment_id," - ",
         "<b>", ifelse(is.na(indel_data$experiment_name) | is.null(indel_data$experiment_name), "Unknown", indel_data$experiment_name), "</b>",
         "<br><b>Technology:</b>", ifelse(is.na(indel_data$technology) | is.null(indel_data$technology), "N/A", indel_data$technology),
         "<br><b>Platform:</b>", ifelse(is.na(indel_data$platform_name) | is.null(indel_data$platform_name), "N/A", indel_data$platform_name),
@@ -1219,7 +1232,7 @@ server <- function(input, output, session) {
           aes(x = precision, y = recall, 
               fill = technology,           # fill by technology
               shape = caller,              # shape by caller
-              text = tooltip_text,
+              text = tooltip_text,         # tooltip text
               customdata = experiment_id), 
           color = "black",                 # black outline
           size = 2.2,
@@ -1238,7 +1251,10 @@ server <- function(input, output, session) {
         )
       
       ggplotly(p, tooltip = "text", source = "indel_plot") %>%
-        layout(showlegend = FALSE) %>%  
+        layout(showlegend = FALSE,
+               dragmode = "zoom",
+               hoverlabel = list(align = "left")
+               ) %>%  
         event_register("plotly_click")
       
     }, error = function(e) {
@@ -1252,7 +1268,7 @@ server <- function(input, output, session) {
     })
   })
   
-} # End of server function
+}
 
 # =============================================================================
 # APP LAUNCH
