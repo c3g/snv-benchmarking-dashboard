@@ -5,7 +5,7 @@ import os
 # ============================================================================
 
 # Folder containing all data files
-DATA_FOLDER = 'happy_files'
+DATA_FOLDER = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'happy_files')
 
 # Metadata CSV filename  
 METADATA_CSV_FILENAME = '000_benchmark_dashboard_default_metadata.csv'

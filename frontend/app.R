@@ -14,6 +14,8 @@ library(patchwork)
 library(geomtextpath)
 
 # Import Python module
+sys <- import("sys")
+sys$path$insert(0L, file.path(dirname(getwd()), "backend"))
 db <- import("db_interface")
 
 # Set theme
