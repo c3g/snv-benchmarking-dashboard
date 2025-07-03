@@ -1,8 +1,9 @@
 name: Build Container
-
 on:
   push:
     branches: [main]
+  release:
+    types: [published]
 
 jobs:
   build:
@@ -17,7 +18,16 @@ jobs:
     - name: Login to GitHub Container Registry
       run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
     
+    - name: Set image tag
+      id: tag
+      run: |
+        if [[ "${{ github.event_name }}" == "release" ]]; then
+          echo "tag=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+        else
+          echo "tag=latest" >> $GITHUB_OUTPUT
+        fi
+    
     - name: Build and push
       run: |
-        docker build -t ghcr.io/${{ github.repository_owner }}/snv-dashboard:latest .
-        docker push ghcr.io/${{ github.repository_owner }}/snv-dashboard:latest
+        docker build -t ghcr.io/${{ github.repository_owner }}/snv-dashboard:${{ steps.tag.outputs.tag }} .
+        docker push ghcr.io/${{ github.repository_owner }}/snv-dashboard:${{ steps.tag.outputs.tag }}
