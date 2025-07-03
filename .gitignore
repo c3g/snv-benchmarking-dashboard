@@ -1,5 +1,8 @@
 .DS_Store
 
+# Data files (local only)
+data/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
