@@ -314,9 +314,7 @@ ui <- fluidPage(
       # ====================================================================
       conditionalPanel(
         condition = "output.comparison_mode == 'manual_selection'",
-        hr(),
-        h5("Experiment Selection:"),
-        p("Click on experiments in the table below to select them for comparison."),
+        p("Click on experiments in the table select them for comparison.", style ="font-size: 13px;"),
         
         # Show selected count
         textOutput("selected_experiments_count"),
@@ -338,12 +336,13 @@ ui <- fluidPage(
         hr(),
         div(
           class = "panel panel-info",
-          div(class = "panel-heading", #heading
-              h5("Selected Experiments for Comparison ", 
-                 span(class = "badge", textOutput("selected_count_badge", inline = TRUE)))
+          div(class = "panel-heading d-flex justify-content-between align-items-center", #heading
+              h5("Selected Experiments for Comparison", class = "mb-0"),
+              span(class = "badge badge-info rounded-pill", 
+                   textOutput("selected_count_badge", inline = TRUE))
           ),
           div(class = "panel-body", style = "padding: 10px;", #content (table)
-              div(style = "max-height: 200px; overflow-y: auto;",
+              div(style = "max-height: 90px; overflow-y: auto; overflow-x: auto; border: 1px solid #dee2e6;",
                   tableOutput("compact_selected_experiments")
               ),
               br(),
@@ -1071,14 +1070,15 @@ server <- function(input, output, session) {
     selected_data <- current_data[current_data$id %in% ids, ]
     compact_data <- data.frame(
       ID = as.integer(selected_data$id),
-      Name = selected_data$name,
       Tech = selected_data$technology,
       Caller = selected_data$caller,
       stringsAsFactors = FALSE
     )
     
     return(compact_data)
-  }, striped = TRUE, hover = TRUE, spacing = 'xs', width = "100%")
+  }, striped = TRUE, hover = TRUE, spacing = 'xs', width = "100%",
+  class = "table-condensed",
+  style = "font-size: 11px; margin-bottom: 5px;")
   
   # ============================================================================
   # 6. PLOT OUTPUTS 
@@ -1202,7 +1202,7 @@ server <- function(input, output, session) {
       
       if (nrow(viz_data) == 0) {
         p <- ggplot() + 
-          annotate("text", x = 0.5, y = 0.5, label = "No INDEL data available", size = 6) +
+          annotate("text", x = 0.5, y = 0.5, label = "No data available", size = 6) +
           xlim(0, 1) + ylim(0, 1) +
           labs(title = "INDEL", x = "Precision", y = "Recall") +
           theme_bw()
