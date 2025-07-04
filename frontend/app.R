@@ -132,26 +132,6 @@ ui <- fluidPage(
   
   titlePanel("SNV Benchmarking Dashboard"),
   
-  # CSS
-  tags$style(HTML('
-  .expand-btn {
-    background: white;
-    border: 1px solid #dee2e6;
-    color: #495057;
-    cursor: pointer;
-    font-size: 12px;
-    padding: 3px 8px;
-    border-radius: 4px;
-    transition: all 0.2s ease;
-  }
-  
-  .expand-btn:hover {
-    border-color: #007bff;
-    color: #007bff;
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-  }
-')),
-  
   
   sidebarLayout(
     
@@ -566,22 +546,13 @@ server <- function(input, output, session) {
     } else if (input$filter_type == "caller") {
       filters <- list(caller = input$caller)
     }
-
-    df <- db$get_experiments_overview(filters, NULL)
     
-    # Add expand button column
-    if (nrow(df) > 0) {
-      df$expand_btn <- sprintf('<button class="expand-btn" data-exp-id="%s" title="Show details">
-                          +
-                         </button>', df$id)
-      
-      # Reorder columns to put expand button first
-      df <- df[, c("expand_btn", names(df)[names(df) != "expand_btn"])]
-    }
-    return(df)
+    return (db$get_experiments_overview(filters, NULL))
+    
+
     
   })
-
+  
   # 2.3
   # experiment IDs for performance
   performance_experiment_ids <- reactive({
@@ -1019,7 +990,7 @@ server <- function(input, output, session) {
   # -----------------------------------------------------------
   
   # 5.5 
-  # Table outputs
+  # Table outputs # Table outputs
   # Experiments table (including selection for experiment comparison)
   output$experiments_table <- DT::renderDataTable({
     df <- experiments_data()
@@ -1041,25 +1012,11 @@ server <- function(input, output, session) {
     DT::datatable(
       df,
       selection = selection_config,
-      escape = FALSE,  # ← ADD THIS LINE
       options = list(
         pageLength = 15,
-        scrollX = TRUE,
-        columnDefs = list(  # ← ADD THIS SECTION
-          list(targets = 0, orderable = FALSE, width = "30px", className = "text-center")
-        ),
-        initComplete = DT::JS(  # ← ADD THIS SECTION
-          "function(settings, json) {",
-          "  $(this.api().table().container()).find('.expand-btn').on('click', function(e) {",
-          "    e.stopPropagation();",
-          "    var expId = $(this).data('exp-id');",
-          "    alert('Clicked experiment ID: ' + expId);",
-          "  });",
-          "}"
-        )
+        scrollX = TRUE
       ),
-      rownames = FALSE,
-      colnames = c("", names(df)[-1])  # ← MODIFY THIS LINE
+      rownames = FALSE
     )
   })
   
@@ -1216,7 +1173,7 @@ server <- function(input, output, session) {
         layout(showlegend = FALSE,
                dragmode = "zoom",
                hoverlabel = list(align = "left")
-               ) %>%    
+        ) %>%    
         event_register("plotly_click")
       
     }, error = function(e) {
@@ -1316,7 +1273,7 @@ server <- function(input, output, session) {
         layout(showlegend = FALSE,
                dragmode = "zoom",
                hoverlabel = list(align = "left")
-               ) %>%  
+        ) %>%  
         event_register("plotly_click")
       
     }, error = function(e) {
