@@ -77,7 +77,7 @@ create_f1_contour <- function() {
     if (is.null(data) || length(data) == 0) {
       return("[]")
     }
-    jsonlite::toJSON(data, auto_unbox = TRUE)
+    jsonlite::toJSON(data)
   }
   
 # ============================================================================
@@ -867,8 +867,8 @@ server <- function(input, output, session) {
     if (is.null(exp_id)) return(NULL)
     
     # Get experiment metadata
-    py_ids <- r_to_py(list(exp_id))
-    metadata <- db$get_experiment_metadata(py_ids)
+    exp_id_json <- json_param(list(exp_id))
+    metadata <- db$get_experiment_metadata(exp_id_json)
     
     if (nrow(metadata) == 0) return(p("No metadata found"))
     
@@ -904,8 +904,8 @@ server <- function(input, output, session) {
     if (is.null(exp_id)) return(NULL)
     
     # Get experiment metadata
-    py_ids <- r_to_py(list(exp_id))
-    metadata <- db$get_experiment_metadata(py_ids)
+    exp_id_json <- json_param(list(exp_id))
+    metadata <- db$get_experiment_metadata(exp_id_json)
     
     if (nrow(metadata) == 0) return(p("No metadata found"))
     

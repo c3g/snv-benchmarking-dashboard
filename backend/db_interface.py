@@ -36,6 +36,8 @@ def get_experiments_overview(filters=None, experiment_ids_param=None):
         try:
             if isinstance(experiment_ids_param, str):
                 experiment_ids = json.loads(experiment_ids_param)
+                if not isinstance(experiment_ids, list):
+                    experiment_ids = [experiment_ids]  # Convert single value to list
             else:
                 experiment_ids = experiment_ids_param
         except json.JSONDecodeError as e:
@@ -120,6 +122,8 @@ def get_experiment_metadata(experiment_ids_param):
     try:
         if isinstance(experiment_ids_param, str):
             experiment_ids = json.loads(experiment_ids_param)
+            if not isinstance(experiment_ids, list):
+                experiment_ids = [experiment_ids]  # Convert single value to list
         else:
             experiment_ids = experiment_ids_param
     except json.JSONDecodeError as e:
@@ -225,6 +229,8 @@ def get_performance_results(experiment_ids_param, variant_types=['SNP', 'INDEL']
     try:
         if isinstance(experiment_ids_param, str):
             experiment_ids = json.loads(experiment_ids_param)
+            if not isinstance(experiment_ids, list):
+                experiment_ids = [experiment_ids]  # Convert single value to list
         else:
             experiment_ids = experiment_ids_param  # Backward compatibility
     except json.JSONDecodeError as e:
