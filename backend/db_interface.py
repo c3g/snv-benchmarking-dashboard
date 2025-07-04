@@ -11,6 +11,7 @@ Main Functions:
 """
 
 import pandas as pd
+import json
 from sqlalchemy.orm import joinedload
 from database import get_db_session
 from models import *
@@ -18,7 +19,7 @@ from models import *
 # ========================================================================
 # 1. EXPERIMENTS OVERVIEW
 # ========================================================================
-def get_experiments_overview(filters=None, experiment_ids=None):
+def get_experiments_overview(filters=None, experiment_ids_param=None):
     """
     Get basic experiment information for dashboard overview.
     
@@ -29,6 +30,19 @@ def get_experiments_overview(filters=None, experiment_ids=None):
     Returns:
         pandas.DataFrame: Experiment overview data
     """
+    # Parse JSON IDs
+    experiment_ids = None
+    if experiment_ids_param is not None:
+        try:
+            if isinstance(experiment_ids_param, str):
+                experiment_ids = json.loads(experiment_ids_param)
+            else:
+                experiment_ids = experiment_ids_param
+        except json.JSONDecodeError as e:
+            print(f"Error parsing experiment_ids JSON: {e}")
+            return pd.DataFrame()
+        
+    # Get metadata from database
     try:
         with get_db_session() as session:
             # Base query with necessary joins
@@ -91,7 +105,7 @@ def get_experiments_overview(filters=None, experiment_ids=None):
 # ========================================================================
 # 2. DETAILED EXPERIMENT METADATA
 # ========================================================================
-def get_experiment_metadata(experiment_ids):
+def get_experiment_metadata(experiment_ids_param):
     """
     Get complete metadata for specific experiments.
     Use after user selects experiments from overview or filtering.
@@ -102,10 +116,20 @@ def get_experiment_metadata(experiment_ids):
     Returns:
         pandas.DataFrame: Complete metadata for selected experiments
     """
-    # If experiment ID does not exist
+    # Parse JSON IDs
+    try:
+        if isinstance(experiment_ids_param, str):
+            experiment_ids = json.loads(experiment_ids_param)
+        else:
+            experiment_ids = experiment_ids_param
+    except json.JSONDecodeError as e:
+        print(f"Error parsing experiment_ids JSON: {e}")
+        return pd.DataFrame()
+    
     if not experiment_ids:
         return pd.DataFrame()
-        
+    
+    # Get full metadata   
     try:
         with get_db_session() as session:
             # Complete query of all tables with metadata joins
@@ -185,7 +209,7 @@ def get_experiment_metadata(experiment_ids):
 # ========================================================================
 # 3. DETAILED EXPERIMENT PERFORMANCE RESULTS
 # ======================================================================== 
-def get_performance_results(experiment_ids, variant_types=['SNP', 'INDEL']):
+def get_performance_results(experiment_ids_param, variant_types=['SNP', 'INDEL']):
     """
     Get benchmark performance results for specific experiments.
     
@@ -196,9 +220,21 @@ def get_performance_results(experiment_ids, variant_types=['SNP', 'INDEL']):
     Returns:
         pandas.DataFrame: Performance metrics and counts
     """
+
+    # Parse JSON IDs   
+    try:
+        if isinstance(experiment_ids_param, str):
+            experiment_ids = json.loads(experiment_ids_param)
+        else:
+            experiment_ids = experiment_ids_param  # Backward compatibility
+    except json.JSONDecodeError as e:
+        print(f"Error parsing experiment_ids JSON: {e}")
+        return pd.DataFrame()
+    
     if not experiment_ids:
         return pd.DataFrame()
-        
+
+    # get performance data    
     try:
         with get_db_session() as session:
             query = session.query(BenchmarkResult).options(
