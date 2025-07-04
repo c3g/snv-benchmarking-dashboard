@@ -25,7 +25,11 @@ RUN install2.r --error \
     ggsci \
     ggrepel \
     patchwork \
-    geomtextpath
+    geomtextpath \
+    jsonlite \
+    htmltools \
+    htmlwidgets \
+    tidyr
 
 # Copy app code
 COPY backend/ /app/backend/
