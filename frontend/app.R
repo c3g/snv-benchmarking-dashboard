@@ -14,6 +14,7 @@ library(patchwork)
 library(geomtextpath)
 library(htmltools)
 library(htmlwidgets)
+library(jsonlite)
 
 py_run_string("import sys")
 py_run_string("sys.path.append('../backend')")
@@ -71,7 +72,14 @@ create_f1_contour <- function() {
   
   return(contour_data)
 }
-
+  # JSON helper function 
+  json_param <- function(data) {
+    if (is.null(data) || length(data) == 0) {
+      return("[]")
+    }
+    jsonlite::toJSON(data, auto_unbox = TRUE)
+  }
+  
 # ============================================================================
 # MANUAL HTML LEGEND CREATION FUNCTIONS
 # ============================================================================
@@ -525,8 +533,8 @@ server <- function(input, output, session) {
   experiments_data <- reactive({
     # Submitted comparisons (tech/caller)
     if (comparison_submitted() && length(comparison_results()) > 0) {
-      exp_ids <- r_to_py(as.list(comparison_results()))
-      return(db$get_experiments_overview(NULL, exp_ids))
+      exp_ids_json <- json_param(comparison_results()) # IDs in JSON format
+      return(db$get_experiments_overview(NULL, exp_ids_json))
     }
     # Manual selection
     if (current_mode() == "manual_selection") {
@@ -577,10 +585,10 @@ server <- function(input, output, session) {
       return(data.frame())
     }
     
-    tryCatch({
-      py_ids <- r_to_py(as.list(ids))
-      perf_data <- db$get_performance_results(py_ids, c('SNP', 'INDEL'))
-      metadata <- db$get_experiment_metadata(py_ids)
+    tryCatch({ # input IDs in JSON format
+      ids_json <- json_param(ids)
+      perf_data <- db$get_performance_results(ids_json, c('SNP', 'INDEL'))
+      metadata <- db$get_experiment_metadata(ids_json)
       
       # Filter and join performance data with metadata
       enhanced_data <- perf_data %>%
