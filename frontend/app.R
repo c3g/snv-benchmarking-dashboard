@@ -77,7 +77,7 @@ create_f1_contour <- function() {
     if (is.null(data) || length(data) == 0) {
       return("[]")
     }
-    jsonlite::toJSON(data)
+    jsonlite::toJSON(data,auto_unbox = TRUE)
   }
   
 # ============================================================================
