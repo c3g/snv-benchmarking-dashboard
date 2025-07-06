@@ -518,6 +518,7 @@ ui <- fluidPage(
               " and one for ", 
               span(style = "color: #4575b4; font-weight: bold;", "INDEL variants"), 
               ". Metrics are shown as percentages for easy comparison."),
+          ),
           DT::dataTableOutput("performance_table")
         ),
         
@@ -1249,9 +1250,8 @@ server <- function(input, output, session) {
   })
   
   # -----------------------------------------------------------
-  
-  # 5.6
-  # Performance table  
+    # 5.6
+  # Performance table with DT built-in conditional formatting
   output$performance_table <- DT::renderDataTable({
     df <- performance_data()
     
@@ -1259,17 +1259,22 @@ server <- function(input, output, session) {
       return(DT::datatable(data.frame(Message = "No performance data found")))
     }
     
-    DT::datatable(
+    # Remove the row_class column if it exists
+    if ("row_class" %in% names(df)) {
+      df <- df %>% select(-row_class)
+    }
+    
+    dt <- DT::datatable(
       df,
       selection = 'none',
       options = list(
         pageLength = 15,
         scrollX = TRUE,
         columnDefs = list(
-          list(targets = 0, className = "dt-center", width = "50px"),           # ID column
-          list(targets = c(8, 9, 10), className = "dt-center"),                # Performance columns (Recall, Precision, F1)
-          list(targets = 6, className = "dt-center"),                          # Coverage column
-          list(targets = "_all", className = "dt-body-nowrap")                 # Prevent text wrapping
+          list(targets = 0, className = "dt-center", width = "50px"),     # ID column
+          list(targets = c(8, 9, 10), className = "dt-center"),          # Performance columns
+          list(targets = 6, className = "dt-center"),                    # Coverage column
+          list(targets = "_all", className = "dt-body-nowrap")           # Prevent text wrapping
         )
       ),
       rownames = FALSE,
@@ -1278,7 +1283,17 @@ server <- function(input, output, session) {
         "Platform", "Chemistry", "Coverage", "Variant Type", 
         "Recall (%)", "Precision (%)", "F1 Score (%)"
       )
-    )
+    ) %>%
+      formatStyle(
+        "Variant",
+        target = "row",
+        backgroundColor = styleEqual(
+          c("SNP", "INDEL"), 
+          c("#fdf2f2", "#f2f7fd")  # Light red for SNP, light blue for INDEL
+        )
+      )
+    
+    return(dt)
   })
   # -----------------------------------------------------------
   
