@@ -488,6 +488,19 @@ ui <- fluidPage(
         tabPanel(
           "Experiments",
           br(),
+          div(
+            class = "alert alert-info",
+            style = "margin-bottom: 20px;",
+            h5("Experiment Overview"),
+            p("This table displays all available benchmarking experiments with their key metadata. ", 
+              "Use the sidebar to ", strong("filter by technology or variant caller"), 
+              ", or choose from the comparison options to ", 
+              strong("analyze multiple technologies"), ", ", 
+              strong("compare variant callers"), ", or ", 
+              strong("select specific experiments"), " for detailed analysis."),
+            p(style = "font-size: 0.9em; margin-bottom: 0;"
+              , strong("Navigation:"), " Click the ▶ button in any row to expand detailed metadata, or switch to other tabs to view performance results and visualizations.")
+          ),
           # Add info about selection when in experiment comparison mode
           conditionalPanel(
             condition = "output.comparison_mode == 'manual_selection'",
@@ -511,7 +524,7 @@ ui <- fluidPage(
           div(
             class = "alert alert-info",
             style = "margin-bottom: 20px;",
-            h5("Performance Results Overview"),
+            h5("Performance Results"),
             p("This table shows detailed performance metrics for each experiment. Each experiment displays ", 
               strong("two rows"), ": one for ", 
               span(style = "color: #d73027; font-weight: bold;", "SNP variants"), 
@@ -532,7 +545,9 @@ ui <- fluidPage(
             column(12,
                    div(
                      class = "alert alert-info",
-                     h5("Performance Analysis"),
+                     h5(" Performance Visualizations"),
+                     p("These scatter plots display precision vs recall performance for each experiment, with ", 
+                       strong("F1 contour lines"), " showing performance benchmarks. "),
                      p(strong("Click points"), " and scroll down to view experiment details below, or ", strong("hover"), " for quick metrics"),
                      p(style = "font-size: 0.9em; color: #6c757d;", "Tip: Drag to zoom, double-click to reset")
                    )
