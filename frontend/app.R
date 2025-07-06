@@ -507,6 +507,17 @@ ui <- fluidPage(
         tabPanel(
           "Performance Results", 
           br(),
+          # Add informative message
+          div(
+            class = "alert alert-info",
+            style = "margin-bottom: 20px;",
+            h5("Performance Results Overview"),
+            p("This table shows detailed performance metrics for each experiment. Each experiment displays ", 
+              strong("two rows"), ": one for ", 
+              span(style = "color: #d73027; font-weight: bold;", "SNP variants"), 
+              " and one for ", 
+              span(style = "color: #4575b4; font-weight: bold;", "INDEL variants"), 
+              ". Metrics are shown as percentages for easy comparison."),
           DT::dataTableOutput("performance_table")
         ),
         
@@ -708,7 +719,7 @@ server <- function(input, output, session) {
   })
   
   # 2.5
-  # Subset of performance data for table
+  #  performance data for table with metadata and formatting
   performance_data <- reactive({
     viz_data <- viz_performance_data()
     
@@ -716,11 +727,47 @@ server <- function(input, output, session) {
       return(data.frame())
     }
     
-    # Performance columns for the table
-    key_cols <- c("experiment_name", "variant_type", "recall", "precision", "f1_score", 
-                  "subset", "filter_type", "experiment_id")
+    # Select and enhance columns with proper formatting
+    enhanced_data <- viz_data %>%
+      select(
+        experiment_id, experiment_name, 
+        technology, caller_name,
+        platform_name, chemistry_name, mean_coverage,
+        variant_type, recall, precision, f1_score
+      ) %>%
+      # Convert metrics to percentages and format nicely
+      mutate(
+        recall = round(recall * 100, 2),
+        precision = round(precision * 100, 2), 
+        f1_score = round(f1_score * 100, 2),
+        # Format coverage with units
+        mean_coverage = case_when(
+          is.na(mean_coverage) ~ "N/A",
+          TRUE ~ paste0(round(mean_coverage, 1), "x")
+        ),
+        # Clean up chemistry name
+        chemistry_name = ifelse(is.na(chemistry_name) | chemistry_name == "", "N/A", chemistry_name),
+        # Clean up platform name
+        platform_name = ifelse(is.na(platform_name) | platform_name == "", "N/A", platform_name)
+      ) %>%
+      # Order by experiment ID first, then variant type (SNP first, then INDEL for visual grouping)
+      arrange(experiment_id, variant_type) %>%
+      # Rename columns for better display
+      rename(
+        "ID" = experiment_id,
+        "Experiment" = experiment_name,
+        "Technology" = technology,
+        "Caller" = caller_name,
+        "Platform" = platform_name,
+        "Chemistry" = chemistry_name,
+        "Coverage" = mean_coverage,
+        "Variant" = variant_type,
+        "Recall (%)" = recall,
+        "Precision (%)" = precision,
+        "F1 Score (%)" = f1_score
+      )
     
-    return(viz_data[, key_cols[key_cols %in% names(viz_data)]])
+    return(enhanced_data)
   })
   
   # ====================================================================
@@ -1184,7 +1231,7 @@ server <- function(input, output, session) {
       options = list(
         pageLength = 15,
         scrollX = TRUE,
-        autoWidth = FALSE,  # This is key!
+        autoWidth = FALSE,
         columnDefs = list(
           list(targets = 0, orderable = FALSE, width = "20px", className = "dt-center"),
           list(targets = 1, width = "60px", className = "dt-center"),
@@ -1211,25 +1258,28 @@ server <- function(input, output, session) {
     if (nrow(df) == 0) {
       return(DT::datatable(data.frame(Message = "No performance data found")))
     }
-    # Show key performance columns
-    key_cols <- c("experiment_id","experiment_name", "variant_type", "recall", "precision", "f1_score")
-    display_df <- df[, key_cols[key_cols %in% names(df)]]
     
     DT::datatable(
-      display_df,
+      df,
+      selection = 'none',
       options = list(
         pageLength = 15,
         scrollX = TRUE,
         columnDefs = list(
-          list(targets = 0, className = "dt-center", width = "50px"),    
-          list(targets = c(3,4,5), className = "dt-left")            
+          list(targets = 0, className = "dt-center", width = "50px"),           # ID column
+          list(targets = c(8, 9, 10), className = "dt-center"),                # Performance columns (Recall, Precision, F1)
+          list(targets = 6, className = "dt-center"),                          # Coverage column
+          list(targets = "_all", className = "dt-body-nowrap")                 # Prevent text wrapping
         )
       ),
-      rownames = FALSE
-    ) %>%
-      DT::formatRound(c("recall", "precision", "f1_score"), 6)
+      rownames = FALSE,
+      colnames = c(
+        "ID", "Experiment", "Technology", "Caller", 
+        "Platform", "Chemistry", "Coverage", "Variant Type", 
+        "Recall (%)", "Precision (%)", "F1 Score (%)"
+      )
+    )
   })
-  
   # -----------------------------------------------------------
   
   # 5.7
