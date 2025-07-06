@@ -80,67 +80,6 @@ create_f1_contour <- function() {
     jsonlite::toJSON(data,auto_unbox = TRUE)
   }
   
-  # Helper function to create experiment details (Shiny UI only)
-  create_experiment_details_ui <- function(meta, exp_id = NULL) {
-    
-    # Common data processing
-    coverage_text <- ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x"))
-    read_length_text <- ifelse(is.na(meta$read_length), "N/A", paste0(meta$read_length, " bp"))
-    insert_size_text <- ifelse(is.na(meta$mean_insert_size), "N/A", paste0(meta$mean_insert_size, " bp"))
-    phased_text <- ifelse(is.na(meta$is_phased), "N/A", ifelse(meta$is_phased, "Yes", "No"))
-    aligner_text <- paste(meta$aligner_name %||% "N/A", meta$aligner_version %||% "")
-    truth_set_text <- paste(meta$truth_set_name %||% "N/A", meta$truth_set_version %||% "")
-    benchmark_tool_text <- paste(meta$benchmark_tool_name %||% "N/A", meta$benchmark_tool_version %||% "")
-    
-    return(
-      div(
-        class = "row",
-        
-        # Column 1: Platform
-        div(class = "col-md-4",
-            wellPanel(
-              style = "background-color: white; padding: 15px;",
-              h6("Platform Details", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 10px; font-size: 13px;"),
-              p(strong("Technology: "), meta$technology %||% "N/A"),
-              p(strong("Platform: "), meta$platform_name %||% "N/A"),
-              p(strong("Platform Type: "), meta$platform_type %||% "N/A"),
-              p(strong("Platform Version: "), meta$platform_version %||% "N/A"),
-              p(strong("Target: "), meta$target %||% "N/A"),
-              p(strong("Chemistry: "), meta$chemistry_name %||% "N/A")
-            )
-        ),
-        
-        # Column 2: Analysis
-        div(class = "col-md-4",
-            wellPanel(
-              style = "background-color: white; padding: 15px;",
-              h6("Analysis Details", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 10px; font-size: 13px;"),
-              p(strong("Variant Caller: "), meta$caller_name %||% "N/A"),
-              p(strong("Caller Version: "), meta$caller_version %||% "N/A"),
-              p(strong("Caller Type: "), meta$caller_type %||% "N/A"),
-              p(strong("Caller Model: "), meta$caller_model %||% "N/A"),
-              p(strong("Aligner: "), aligner_text),
-              p(strong("Benchmark Tool: "), benchmark_tool_text)
-            )
-        ),
-        
-        # Column 3: Quality & Truth
-        div(class = "col-md-4",
-            wellPanel(
-              style = "background-color: white; padding: 15px;",
-              h6("Quality & Benchmarking", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 10px; font-size: 13px;"),
-              p(strong("Coverage: "), coverage_text),
-              p(strong("Read Length: "), read_length_text),
-              p(strong("Mean Insert Size: "), insert_size_text),
-              p(strong("Truth Set: "), truth_set_text),
-              p(strong("Sample: "), meta$truth_set_sample %||% "N/A"),
-              p(strong("Reference: "), meta$truth_set_reference %||% "N/A"),
-              p(strong("Phased: "), phased_text)
-            )
-        )
-      )
-    )
-  }
 # ============================================================================
 # MANUAL HTML LEGEND CREATION FUNCTIONS
 # ============================================================================
@@ -201,7 +140,7 @@ ui <- fluidPage(
   
   titlePanel("SNV Benchmarking Dashboard"),
   
-  #CSS for row espansion
+  #CSS for row expansion
   tags$head(
     tags$style(HTML("
     .details-toggle {
@@ -927,19 +866,7 @@ server <- function(input, output, session) {
     }
   })
   
-  # Clears plot events after any comparison or filter change
-  observe({
-    input$filter_type
-    input$technology 
-    input$caller
-    comparison_submitted()
-    
-    # Clear plot clicked data when filters change
-    plot_clicked_id(NULL)
-    
-    cat("Filter changed - clearing plot events\n")
-  })
-  # -----------------------------------------------------------
+  # ----------------------------------------------------------
   
   # 4.7
   # Comparison submission observers 
