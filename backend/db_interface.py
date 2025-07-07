@@ -96,7 +96,7 @@ def get_experiments_overview(filters=None, experiment_ids_param=None):
                     'chemistry': exp.chemistry.name if exp.chemistry else None,
                     'truth_set': exp.truth_set.name.value if exp.truth_set else None,
                     'sample': exp.truth_set.sample.value if exp.truth_set else None,
-                    'created_at': exp.created_at.isoformat() if exp.created_at else None
+                    'created_at': exp.created_at.strftime('%Y-%m-%d') if exp.created_at else None
                 })
             
             return pd.DataFrame(data)
