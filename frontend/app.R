@@ -37,7 +37,6 @@ technology_colors <- c(
   "MGI" = "#7CAE00",         # Green 
   "Unknown" = "#E76BF3"      # purple
 )
-
 caller_shapes <- c(
   "DEEPVARIANT" = 16,        # Circle ●
   "GATK" = 17,              # Triangle ▲
@@ -416,7 +415,7 @@ ui <- fluidPage(
       # ====================================================================
       conditionalPanel(
         condition = "output.comparison_mode == 'manual_selection'",
-        p("Click on experiments in the table select them for comparison.", style ="font-size: 13px;"),
+        p("Click on experiments in the table select them for comparison.", style ="font-size: 15px;"),
         
         # Show selected count
         textOutput("selected_experiments_count"),
@@ -500,16 +499,6 @@ ui <- fluidPage(
               strong("select specific experiments"), " for detailed analysis."),
             p(style = "font-size: 0.9em; margin-bottom: 0;"
               , strong("Navigation:"), " Click the ▶ button in any row to expand detailed metadata, or switch to other tabs to view performance results and visualizations.")
-          ),
-          # Add info about selection when in experiment comparison mode
-          conditionalPanel(
-            condition = "output.comparison_mode == 'manual_selection'",
-            div(
-              class = "alert alert-info",
-              h5("Experiment Selection Mode"),
-              p("Click on table rows to select experiments for comparison.")
-            ),
-            br()
           ),
           DT::dataTableOutput("experiments_table")
         ),
@@ -1214,7 +1203,7 @@ server <- function(input, output, session) {
   # -----------------------------------------------------------
   
   # 5.5 
-  # Table outputs # Table outputs
+  # Table outputs 
   # Experiments table (including selection for experiment comparison)
   output$experiments_table <- DT::renderDataTable({
     df <- experiments_data()
@@ -1240,7 +1229,7 @@ server <- function(input, output, session) {
       selection_config <- 'none'
     }
     
-    DT::datatable(
+    dt <- DT::datatable(
       df,
       selection = selection_config,
       escape = FALSE,
@@ -1251,7 +1240,6 @@ server <- function(input, output, session) {
         columnDefs = list(
           list(targets = 0, orderable = FALSE, width = "20px", className = "dt-center"),
           list(targets = 1, width = "60px", className = "dt-center"),
-          # Define widths for other columns too
           list(targets = 2, width = "250px"),  # Name
           list(targets = 3, width = "100px"),  # Technology
           list(targets = 4, width = "120px"),  # Platform
@@ -1261,7 +1249,18 @@ server <- function(input, output, session) {
       ),
       rownames = FALSE,
       colnames = c("", "ID", "Name", "Technology", "Platform", "Caller", "Version", "Chemistry", "Truth Set", "Sample", "Created")
-    )
+    ) %>%
+      # Add  technology-based row coloring 
+      formatStyle(
+        "technology", 
+        target = "row",
+        backgroundColor = styleEqual(
+          c("ILLUMINA", "PACBIO", "ONT", "MGI"),  
+          c("#fef6f6", "#faf8ff", "#f0fcfd", "#f7fbf5")  # Light colors
+        )
+      )
+    
+    return(dt)
   })
   
   # -----------------------------------------------------------
