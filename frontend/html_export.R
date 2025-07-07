@@ -382,8 +382,11 @@ generate_performance_table <- function(data, variant_type) {
             <thead>
                 <tr>
                     <th>Rank</th>
+                    <th>ID</th>
                     <th>Experiment</th>
                     <th>Technology</th>
+                    <th>Platform</th>
+                    <th>Chemistry</th>
                     <th>Caller</th>
                     <th>Precision (%)</th>
                     <th>Recall (%)</th>
@@ -399,8 +402,11 @@ generate_performance_table <- function(data, variant_type) {
     html_table <- paste0(html_table, '
                 <tr class="', row_class, '">
                     <td>', i, '</td>
+                    <td><strong>', safe_value(row$experiment_id), '</strong></td>
                     <td>', safe_value(row$experiment_name), '</td>
                     <td>', safe_value(row$technology), '</td>
+                    <td>', safe_value(row$platform_name), '</td>
+                    <td>', safe_value(row$chemistry_name), '</td>
                     <td>', safe_value(row$caller_name), '</td>
                     <td>', safe_percent(row$precision), '</td>
                     <td>', safe_percent(row$recall), '</td>
