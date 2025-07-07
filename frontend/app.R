@@ -137,7 +137,10 @@ create_caller_legend <- function() {
 
 ui <- fluidPage(
   
-  titlePanel("SNV Benchmarking Dashboard"),
+  titlePanel(
+    h3("SNV Benchmarking Dashboard", 
+       style = "color: #007bff; font-weight: 600; margin-bottom: 20px; font-size: 1.4em;")
+  ),
   
   #CSS for row expansion
   tags$head(
@@ -457,16 +460,6 @@ ui <- fluidPage(
           )
         )
       ),
-      hr(),
-      h4("Export Options:"),
-      
-      actionButton(
-        "export_report", 
-        "Export HTML Report",
-        class = "btn-default",
-        style = "width: 100%; margin-bottom: 10px; font-weight: normal; 
-          background-color: #343a40; color: white; border-color: #343a40;",
-      ),
     ),
     
     # -------------------------------------------------------------------------
@@ -475,8 +468,24 @@ ui <- fluidPage(
     mainPanel(
       width = 9,
       
-      # Show experiment count
-      h4(textOutput("experiment_count")),
+      # Export button (top right)
+      div(
+        style = "display: flex; justify-content: space-between; align-items: center; 
+             margin-bottom: 0; padding-bottom: 0;",
+        div(
+          style = "flex-grow: 1;",
+        ),
+        div(
+          style = "margin-left: 20px; padding-top: 5px;",
+          downloadButton(
+            "export_html_report", 
+            label = tagList( "Export Report"),
+            class = "btn-primary btn-sm",
+            style = "font-size: 14px; padding: 6px 12px; white-space: nowrap;"
+          )
+        )
+      ),
+      
       br(),
       
       tabsetPanel(
@@ -1042,6 +1051,25 @@ server <- function(input, output, session) {
     }
   })
   
+  # Export html report (download)
+  output$export_html_report <- downloadHandler(
+    
+    filename = function() {
+      paste0("benchmarking_report_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".html")
+    },
+    
+    content = function(file) {
+      # Get current data
+      overview_data <- experiments_data()
+      performance_data_current <- performance_data()
+      
+      # Generate HTML content
+      html_content <- generate_html_report(overview_data, performance_data_current)
+      
+      # Write to file for download
+      writeLines(html_content, file)
+    }
+  )
   
   # ====================================================================
   # 5. UI OUTPUTS FOR DISPALY
@@ -1551,6 +1579,151 @@ server <- function(input, output, session) {
       return(ggplotly(p))
     })
   })
+  
+  #--------------------------------------------
+  
+  # 6.3 
+  # generate html report
+  generate_html_report <- function(overview_data, performance_data) {
+    
+    # Calculate some basic stats
+    total_experiments <- nrow(overview_data)
+    technologies <- unique(overview_data$technology[!is.na(overview_data$technology)])
+    callers <- unique(overview_data$caller[!is.na(overview_data$caller)])
+    
+    # Start building HTML
+    html_content <- paste0('
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SNV Benchmarking Report</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            line-height: 1.6; 
+            margin: 40px; 
+            background-color: #f8f9fa; 
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        h1 { 
+            color: #007bff; 
+            text-align: center; 
+            margin-bottom: 10px; 
+        }
+        h2 { 
+            color: #495057; 
+            border-bottom: 2px solid #dee2e6; 
+            padding-bottom: 10px; 
+            margin-top: 30px; 
+        }
+        .summary { 
+            background: #f8f9fa; 
+            padding: 20px; 
+            border-radius: 5px; 
+            margin: 20px 0; 
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin: 20px 0; 
+        }
+        th, td { 
+            padding: 12px; 
+            text-align: left; 
+            border-bottom: 1px solid #dee2e6; 
+        }
+        th { 
+            background-color: #f8f9fa; 
+            font-weight: 600; 
+            color: #495057; 
+        }
+        tr:nth-child(even) { 
+            background-color: #f8f9fa; 
+        }
+        .footer { 
+            margin-top: 30px; 
+            padding-top: 20px; 
+            border-top: 1px solid #dee2e6; 
+            color: #6c757d; 
+            font-size: 12px; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SNV Benchmarking Report</h1>
+        <p style="text-align: center; color: #6c757d;">Generated on ', format(Sys.time(), "%B %d, %Y at %H:%M"), '</p>
+        
+        <div class="summary">
+            <h3>Summary</h3>
+            <ul>
+                <li><strong>Total Experiments:</strong> ', total_experiments, '</li>
+                <li><strong>Technologies:</strong> ', paste(technologies, collapse = ", "), '</li>
+                <li><strong>Variant Callers:</strong> ', paste(callers, collapse = ", "), '</li>
+            </ul>
+        </div>')
+    
+    
+    # Add performance results table if available
+    if (!is.null(performance_data) && nrow(performance_data) > 0) {
+      html_content <- paste0(html_content, '
+        <h2>Performance Results</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Experiment</th>
+                    <th>Technology</th>
+                    <th>Caller</th>
+                    <th>Variant Type</th>
+                    <th>Recall (%)</th>
+                    <th>Precision (%)</th>
+                    <th>F1 Score (%)</th>
+                </tr>
+            </thead>
+            <tbody>')
+      
+      # Add performance rows
+      for (i in 1:nrow(performance_data)) {
+        row <- performance_data[i, ]
+        html_content <- paste0(html_content, '
+                <tr>
+                    <td>', row$ID, '</td>
+                    <td>', row$Experiment, '</td>
+                    <td>', row$Technology, '</td>
+                    <td>', row$Caller, '</td>
+                    <td>', row$Variant, '</td>
+                    <td>', row$`Recall (%)`, '</td>
+                    <td>', row$`Precision (%)`, '</td>
+                    <td>', row$`F1 Score (%)`, '</td>
+                </tr>')
+      }
+      
+      html_content <- paste0(html_content, '
+            </tbody>
+        </table>')
+    }
+    
+    # Add footer
+    html_content <- paste0(html_content, '
+        <div class="footer">
+            <p>Report generated by SNV Benchmarking Dashboard</p>
+            <p>Export timestamp: ', format(Sys.time(), "%Y-%m-%d %H:%M:%S"), '</p>
+        </div>
+    </div>
+</body>
+</html>')
+    
+    return(html_content)
+  }
   
 }
 
