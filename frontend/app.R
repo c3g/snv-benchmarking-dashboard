@@ -1236,15 +1236,19 @@ server <- function(input, output, session) {
       options = list(
         pageLength = 15,
         scrollX = TRUE,
-        autoWidth = FALSE,
+        autoWidth = TRUE,
         columnDefs = list(
-          list(targets = 0, orderable = FALSE, width = "20px", className = "dt-center"),
-          list(targets = 1, width = "60px", className = "dt-center"),
-          list(targets = 2, width = "250px"),  # Name
-          list(targets = 3, width = "100px"),  # Technology
-          list(targets = 4, width = "120px"),  # Platform
-          list(targets = 5, width = "120px"),  # Caller
-          list(targets = 6, width = "80px")    # Version
+          list(targets = 0, orderable = FALSE, width = "15px", className = "dt-center"),   # Expand button
+          list(targets = 1, width = "15px", className = "dt-center"),                      # ID
+          list(targets = 2, width = "80px"),                                              # Name
+          list(targets = 3, width = "80px"),                                               # Technology  
+          list(targets = 4, width = "60px"),                                              # Platform
+          list(targets = 5, width = "80px"),                                               # Caller
+          list(targets = 6, width = "60px"),                                               # Version
+          list(targets = 7, width = "80px"),                                               # Chemistry
+          list(targets = 8, width = "40px"),                                               # Truth Set
+          list(targets = 9, width = "40px"),                                               # Sample
+          list(targets = 10, width = "65px")                                               # Created
         )
       ),
       rownames = FALSE,
