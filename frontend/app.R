@@ -143,9 +143,10 @@ ui <- fluidPage(
        style = "color: #007bff; font-weight: 600; margin-bottom: 20px; font-size: 1.7em;")
   ),
   
-  #CSS for row expansion
+  #CSS for row expansion AND new metadata cards
   tags$head(
     tags$style(HTML("
+    /* Existing styles... */
     .details-toggle {
       background: none;
       border: none;
@@ -168,28 +169,55 @@ ui <- fluidPage(
       font-size: 12px;
     }
     
-    .detail-grid {
+    /* NEW: 4-Column Metadata Cards */
+    .metadata-grid-4col {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 15px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-top: 15px;
     }
     
-    .detail-section h6 {
-      margin: 0 0 8px 0;
+    .metadata-card {
+      background: #ffffff;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: box-shadow 0.3s ease;
+    }
+    
+    .metadata-card:hover {
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    
+    .metadata-card h6 {
       color: #495057;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      margin: 0 0 15px 0;
+      font-size: 16px;
       font-weight: 600;
+      border-bottom: 2px solid #007bff;
+      padding-bottom: 8px;
     }
     
-    .detail-item {
-      margin-bottom: 4px;
+    .metadata-item {
+      margin-bottom: 8px;
       color: #6c757d;
+      font-size: 14px;
+      line-height: 1.4;
     }
     
-    .detail-item strong {
+    .metadata-item strong {
       color: #495057;
+      font-weight: 600;
+      display: inline-block;
+      min-width: 120px;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .metadata-grid-4col {
+        grid-template-columns: 1fr;
+      }
     }
   "))
   ),
@@ -1043,8 +1071,6 @@ server <- function(input, output, session) {
         '</td>',
         '</tr>'
       )
-      
-      # Send HTML to JavaScript to insert into table
       session$sendCustomMessage("insertDetailsRow", list(
         experimentId = exp_id,
         html = details_html
@@ -1146,72 +1172,59 @@ server <- function(input, output, session) {
     
     div(
       h5("Complete Experiment Details"),
-      div(
-        class = "row",
-        
-        # Column 1: Sequencing
-        div(class = "col-md-4",
-            wellPanel(
-              style = "background-color: white; padding: 15px;",
-              h6("Sequencing Technology", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 10px;font-size: 15px;"),
-              p(strong("Technology: "), meta$technology %||% "N/A"),
-              p(strong("Platform: "), meta$platform_name %||% "N/A"),
-              p(strong("Platform Type: "), meta$platform_type %||% "N/A"),
-              p(strong("Platform Version: "), meta$platform_version %||% "N/A"),
-              p(strong("Target: "), meta$target %||% "N/A"),
-              p(strong("Chemistry: "), meta$chemistry_name %||% "N/A")
-            )
-        ),
-        
-        # Column 2: Analysis
-        div(class = "col-md-4",
-            wellPanel(
-              style = "background-color: white; padding: 15px;",
-              h6("Analysis Algorithms", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 10px;font-size: 15px;"),
-              p(strong("Variant Caller: "), meta$caller_name %||% "N/A"),
-              p(strong("Caller Version: "), meta$caller_version %||% "N/A"),
-              p(strong("Caller Type: "), meta$caller_type %||% "N/A"),
-              p(strong("Caller Model: "), meta$caller_model %||% "N/A"),
-              p(strong("Aligner: "), paste(meta$aligner_name %||% "N/A", meta$aligner_version %||% "")),
-              p(strong("Benchmark Tool: "), paste(meta$benchmark_tool_name %||% "N/A", meta$benchmark_tool_version %||% ""))
-            )
-        ),
-        
-        # Column 3: Quality & Truth
-        div(class = "col-md-4",
-            wellPanel(
-              style = "background-color: white; padding: 15px;",
-              h6("Quality & Benchmarking", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 10px;font-size: 15px;"),
-              p(strong("Mean Coverage: "), ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x"))),
-              p(strong("Read Length: "), ifelse(is.na(meta$read_length), "N/A", paste0(meta$read_length, " bp"))),
-              p(strong("Mean Insert Size: "), ifelse(is.na(meta$mean_insert_size), "N/A", paste0(meta$mean_insert_size, " bp"))),
-              p(strong("Truth Set: "), paste(meta$truth_set_name %||% "N/A", meta$truth_set_version %||% "")),
-              p(strong("Sample: "), meta$truth_set_sample %||% "N/A"),
-              p(strong("Reference: "), meta$truth_set_reference %||% "N/A")
-            )
-        )
-      ),
       
-      # Additional details row
+      # Use the new 4-column card layout
       div(
-        class = "row",
-        div(class = "col-md-12",
-            wellPanel(
-              style = "background-color: white; padding: 15px;",
-              h6("Additional Details", style = "color: #495057; border-bottom: 1px solid #dee2e6; padding-bottom: 10px;font-size: 15px;"),
-              div(
-                class = "row",
-                div(class = "col-md-3", p(strong("Variant Type: "), meta$variant_type %||% "N/A")),
-                div(class = "col-md-3", p(strong("Variant Origin: "), meta$variant_origin %||% "N/A")),
-                div(class = "col-md-3", p(strong("Is Phased: "), ifelse(is.na(meta$is_phased), "N/A", ifelse(meta$is_phased, "Yes", "No")))),
-                div(class = "col-md-3", p(strong("Created: "), ifelse(is.na(meta$created_at), "N/A", format(as.POSIXct(meta$created_at), "%Y-%m-%d"))))
-              )
-            )
+        class = "metadata-grid-4col",
+        
+        # SEQUENCING PLATFORM CARD
+        div(class = "metadata-card",
+            h6("Sequencing Platform"),
+            p(strong("Technology: "), meta$technology %||% "N/A"),
+            p(strong("Platform: "), meta$platform_name %||% "N/A"),
+            p(strong("Platform Type: "), meta$platform_type %||% "N/A"),
+            p(strong("Platform Version: "), meta$platform_version %||% "N/A"),
+            p(strong("Target: "), meta$target %||% "N/A"),
+            p(strong("Chemistry: "), meta$chemistry_name %||% "N/A")
+        ),
+        
+        # ANALYSIS PIPELINE CARD
+        div(class = "metadata-card",
+            h6("Analysis Pipeline"),
+            p(strong("Variant Caller: "), meta$caller_name %||% "N/A"),
+            p(strong("Caller Version: "), meta$caller_version %||% "N/A"),
+            p(strong("Caller Type: "), meta$caller_type %||% "N/A"),
+            p(strong("Caller Model: "), meta$caller_model %||% "N/A"),
+            p(strong("Aligner: "), paste(meta$aligner_name %||% "N/A", meta$aligner_version %||% "")),
+            p(strong("Benchmark Tool: "), paste(meta$benchmark_tool_name %||% "N/A", meta$benchmark_tool_version %||% ""))
+        ),
+        
+        # QUALITY METRICS CARD
+        div(class = "metadata-card",
+            h6("Quality Metrics"),
+            p(strong("Mean Coverage: "), ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x"))),
+            p(strong("Read Length: "), 
+              ifelse(is.na(meta$read_length), 
+                     ifelse(is.na(meta$mean_read_length), "N/A", paste0(meta$mean_read_length, " bp (mean)")), 
+                     paste0(meta$read_length, " bp"))),
+            p(strong("Mean Insert Size: "), ifelse(is.na(meta$mean_insert_size), "N/A", paste0(meta$mean_insert_size, " bp"))),
+            p(strong("Created: "), ifelse(is.na(meta$created_at), "N/A", format(as.POSIXct(meta$created_at), "%Y-%m-%d")))
+        ),
+        
+        # VARIANTS & TRUTH SET CARD
+        div(class = "metadata-card",
+            h6("Variants & Truth Set"),
+            p(strong("Variant Type: "), meta$variant_type %||% "N/A"),
+            p(strong("Variant Origin: "), meta$variant_origin %||% "N/A"),
+            p(strong("Variant Size: "), meta$variant_size %||% "N/A"),
+            p(strong("Is Phased: "), ifelse(is.na(meta$is_phased), "N/A", ifelse(meta$is_phased, "Yes", "No"))),
+            p(strong("Truth Set: "), paste(meta$truth_set_name %||% "N/A", meta$truth_set_version %||% "")),
+            p(strong("Sample: "), meta$truth_set_sample %||% "N/A"),
+            p(strong("Reference: "), meta$truth_set_reference %||% "N/A")
         )
       )
     )
   })
-  
   # -----------------------------------------------------------
   
   # 5.4
@@ -1563,13 +1576,6 @@ server <- function(input, output, session) {
       return(ggplotly(p))
     })
   })
-  
-  
-  # =============================================================================
-  # APP LAUNCH
-  # =============================================================================
-  
-  shinyApp(ui = ui, server = server, options = list(launch.browser = TRUE))
 }
 # =============================================================================
 # APP LAUNCH

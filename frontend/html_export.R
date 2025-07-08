@@ -145,8 +145,8 @@ create_zoomed_performance_plot <- function(data, variant_type) {
     geom_point( # Data points
       data = data, 
       aes(x = precision, y = recall, 
-          color = Technology,        # Color by technology
-          shape = Caller),      # Shape by caller
+          color = technology,        # Color by technology
+          shape = caller_name),      # Shape by caller
       size = 3.5, 
       alpha = 0.8,
       stroke = 1            
@@ -303,21 +303,41 @@ generate_html_header <- function() {
             border-radius: 5px;
             border-left: 4px solid #007bff;
         }
-        .metadata-grid {
+        .metadata-grid-4col {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
             margin-top: 15px;
         }
-        .metadata-item { margin-bottom: 8px; font-size: 14px; }
-        .metadata-item strong { color: #495057; }
-        .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #dee2e6;
-            color: #6c757d;
-            font-size: 12px;
-            text-align: center;
+        
+        .metadata-card {
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: box-shadow 0.3s ease;
+        }
+        
+        .metadata-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .metadata-card h4 {
+            color: #495057;
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            font-weight: 600;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .metadata-card h4 i {
+            margin-right: 8px;
+            font-size: 18px;
+            color: #007bff;
         }
         .error-message {
             background: #f8d7da;
@@ -415,23 +435,54 @@ generate_metadata_section <- function(viz_data, experiment_ids) {
       html_metadata <- paste0(html_metadata, '
         <div class="metadata-section">
             <h3>Experiment ', exp_id, ': ', safe_value(exp_data$experiment_name), '</h3>
-            <div class="metadata-grid">
-                <div>
-                    <h4>Sequencing Technology</h4>
+            
+            <!-- 4-column semantic grid -->
+            <div class="metadata-grid-4col">
+                <!-- SEQUENCING PLATFORM -->
+                <div class="metadata-card">
+                    <h4><i class="icon-dna"></i> Sequencing Platform</h4>
                     <div class="metadata-item"><strong>Technology:</strong> ', safe_value(exp_data$technology), '</div>
                     <div class="metadata-item"><strong>Platform:</strong> ', safe_value(exp_data$platform_name), '</div>
+                    <div class="metadata-item"><strong>Version:</strong> ', safe_value(exp_data$platform_version), '</div>
+                    <div class="metadata-item"><strong>Type:</strong> ', safe_value(exp_data$platform_type), '</div>
+                    <div class="metadata-item"><strong>Target:</strong> ', safe_value(exp_data$target), '</div>
                     <div class="metadata-item"><strong>Chemistry:</strong> ', safe_value(exp_data$chemistry_name), '</div>
-                    <div class="metadata-item"><strong>Coverage:</strong> ', safe_coverage(exp_data$mean_coverage), '</div>
                 </div>
-                <div>
-                    <h4>Analysis Pipeline</h4>
+                
+                <!-- ANALYSIS PIPELINE -->
+                <div class="metadata-card">
+                    <h4><i class="icon-pipeline"></i> Analysis Pipeline</h4>
                     <div class="metadata-item"><strong>Variant Caller:</strong> ', safe_value(exp_data$caller_name), '</div>
                     <div class="metadata-item"><strong>Caller Version:</strong> ', safe_value(exp_data$caller_version), '</div>
-                    <div class="metadata-item"><strong>Aligner:</strong> ', safe_value(exp_data$aligner_name), '</div>
+                    <div class="metadata-item"><strong>Caller Type:</strong> ', safe_value(exp_data$caller_type), '</div>
+                    <div class="metadata-item"><strong>Caller Model:</strong> ', safe_value(exp_data$caller_model), '</div>
+                    <div class="metadata-item"><strong>Aligner:</strong> ', safe_value(exp_data$aligner_name), ' ', safe_value(exp_data$aligner_version), '</div>
+                    <div class="metadata-item"><strong>Benchmark Tool:</strong> ', safe_value(exp_data$benchmark_tool_name), ' ', safe_value(exp_data$benchmark_tool_version), '</div>
                 </div>
-                <div>
-                    <h4>Truth Set & Quality</h4>
-                    <div class="metadata-item"><strong>Truth Set:</strong> ', safe_value(exp_data$truth_set_name), '</div>
+                
+                <!-- QUALITY METRICS -->
+                <div class="metadata-card">
+                    <h4><i class="icon-quality"></i> Quality Metrics</h4>
+                    <div class="metadata-item"><strong>Mean Coverage:</strong> ', safe_coverage(exp_data$mean_coverage), '</div>
+                    <div class="metadata-item"><strong>Read Length:</strong> ', 
+                              ifelse(is.na(exp_data$read_length), 
+                                     ifelse(is.na(exp_data$mean_read_length), "N/A", paste0(exp_data$mean_read_length, " bp (mean)")), 
+                                     paste0(exp_data$read_length, " bp")), '</div>
+                    <div class="metadata-item"><strong>Insert Size:</strong> ', 
+                              ifelse(is.na(exp_data$mean_insert_size), "N/A", paste0(exp_data$mean_insert_size, " bp")), '</div>
+                    <div class="metadata-item"><strong>Created:</strong> ', 
+                              ifelse(is.na(exp_data$created_at), "N/A", format(as.POSIXct(exp_data$created_at), "%Y-%m-%d")), '</div>
+                </div>
+                
+                <!-- VARIANT & TRUTH SET -->
+                <div class="metadata-card">
+                    <h4><i class="icon-truth"></i> Variants & Truth Set</h4>
+                    <div class="metadata-item"><strong>Variant Type:</strong> ', safe_value(exp_data$variant_type), '</div>
+                    <div class="metadata-item"><strong>Variant Origin:</strong> ', safe_value(exp_data$variant_origin), '</div>
+                    <div class="metadata-item"><strong>Variant Size:</strong> ', safe_value(exp_data$variant_size), '</div>
+                    <div class="metadata-item"><strong>Is Phased:</strong> ', 
+                              ifelse(is.na(exp_data$is_phased), "N/A", ifelse(exp_data$is_phased, "Yes", "No")), '</div>
+                    <div class="metadata-item"><strong>Truth Set:</strong> ', safe_value(exp_data$truth_set_name), ' ', safe_value(exp_data$truth_set_version), '</div>
                     <div class="metadata-item"><strong>Sample:</strong> ', safe_value(exp_data$truth_set_sample), '</div>
                     <div class="metadata-item"><strong>Reference:</strong> ', safe_value(exp_data$truth_set_reference), '</div>
                 </div>
@@ -443,17 +494,19 @@ generate_metadata_section <- function(viz_data, experiment_ids) {
   return(html_metadata)
 }
 
+
+ # Footer section
 generate_html_footer <- function() {
   paste0('
         <div class="footer">
             <p>Report generated by SNV Benchmarking Dashboard on ', format(Sys.time(), "%Y-%m-%d %H:%M:%S"), '</p>
-            <p>This report contains only the currently selected/filtered experiments</p>
         </div>
     </div>
 </body>
 </html>')
 }
 
+# Error message
 generate_error_html <- function(error_message) {
   paste0('<!DOCTYPE html>
 <html>
@@ -485,7 +538,7 @@ generate_benchmarking_report <- function(viz_data) {
     # Generate HTML sections
     html_header <- generate_html_header()
     html_summary <- generate_summary_section(viz_data, experiment_ids)
-    html_plots <- generate_plots_section(viz_data)  # Plots section with facet_zoom
+    html_plots <- generate_plots_section(viz_data)
     html_snp_table <- generate_performance_table(snp_data, "SNP")
     html_indel_table <- generate_performance_table(indel_data, "INDEL")
     html_metadata <- generate_metadata_section(viz_data, experiment_ids)
