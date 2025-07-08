@@ -8,7 +8,11 @@ library(base64enc)
 library(ggforce)
 library(geomtextpath) 
 
-# Helper functions for safe data handling
+# =============================================================================
+# 1. HELPER FUNCTIONS
+# =============================================================================
+# 1.1
+# Safe data handling
 safe_percent <- function(x) {
   if (is.null(x) || is.na(x) || !is.numeric(x)) {
     return("N/A")
@@ -37,7 +41,10 @@ safe_coverage <- function(x) {
   }, error = function(e) "N/A")
 }
 
-# Create F1 contour data
+# =============================================================================
+# 2. PLOT FUNCTIONS
+# =============================================================================
+# 2.1 Create F1 contour data
 create_f1_contour <- function() {
   f1_contour_function <- function(p, r) {
     result <- 2 * (p * r) / (p + r)
@@ -52,14 +59,16 @@ create_f1_contour <- function() {
   return(contour_data)
 }
 
-# Calculate smart zoom limits based on data
+# -------------------------------------
+
+# 2.2
+# Calculate zoom limits based on data
 calculate_zoom_limits <- function(data) {
   if (nrow(data) == 0) {
     return(list(x_min = 0.98, x_max = 1.0, y_min = 0.98, y_max = 1.0))
   }
-  
-  # Add small padding around data range
-  padding <- 0.005
+
+  padding <- 0.002
   
   x_range <- range(data$precision, na.rm = TRUE)
   y_range <- range(data$recall, na.rm = TRUE)
@@ -71,10 +80,12 @@ calculate_zoom_limits <- function(data) {
     y_max = min(1, y_range[2] + padding)
   ))
 }
+# -------------------------------------
 
+# 2.3
 # Create single plot with zoom
 create_zoomed_performance_plot <- function(data, variant_type) {
-  if (nrow(data) == 0) {
+  if (nrow(data) == 0) { # No data
     return(ggplot() + 
              annotate("text", x = 0.5, y = 0.5, label = paste("No", variant_type, "data"), size = 6) +
              xlim(0, 1) + ylim(0, 1) +
@@ -82,7 +93,7 @@ create_zoomed_performance_plot <- function(data, variant_type) {
              theme_bw())
   }
   
-  # Color and shape mappings (from your app.R)
+  # Color and shape mappings
   technology_colors <- c(
     "ILLUMINA" = "#F8766D", "PACBIO" = "#C77CFF", 
     "ONT" = "#00BFC4", "MGI" = "#7CAE00", "Unknown" = "#E76BF3"
@@ -97,10 +108,9 @@ create_zoomed_performance_plot <- function(data, variant_type) {
   # Calculate zoom limits
   zoom_limits <- calculate_zoom_limits(data)
   
-  # Create the plot with facet_zoom (like your reference)
+  # Create plot
   p <- ggplot() +
-    # F1 contours with text labels
-    geom_textcontour(
+    geom_textcontour( # Contour 1
       data = contour, 
       aes(p, r, z = f1), 
       bins = 6, 
@@ -108,7 +118,7 @@ create_zoomed_performance_plot <- function(data, variant_type) {
       alpha = 0.5, 
       straight = TRUE
     ) +
-    geom_textcontour(
+    geom_textcontour( # Contour 2
       data = contour, 
       aes(p, r, z = f1), 
       bins = 12, 
@@ -117,8 +127,7 @@ create_zoomed_performance_plot <- function(data, variant_type) {
       alpha = 0.35, 
       straight = TRUE
     ) +
-    # F1 score labels for points in zoomed region
-    geom_text_repel(
+    geom_text_repel( # F1 score labels
       data = data,
       aes(x = precision, y = recall, 
           label = format(f1_score * 100, digits = 4)),
@@ -127,18 +136,16 @@ create_zoomed_performance_plot <- function(data, variant_type) {
       point.padding = 0.125, 
       segment.color = "grey50"
     ) +
-    # Data points with BOTH color (technology) AND shape (caller)
-    geom_point(
+    geom_point( # Data points
       data = data, 
       aes(x = precision, y = recall, 
           color = technology,        # Color by technology
           shape = caller_name),      # Shape by caller
-      size = 2.5, 
+      size = 3.5, 
       alpha = 0.8,
-      stroke = 0.5                   # Add outline for better visibility
+      stroke = 1            
     ) +
-    # Apply zoom (this creates the dual view like your reference)
-    facet_zoom(
+    facet_zoom( # Zoomed-in view
       xlim = c(zoom_limits$x_min, zoom_limits$x_max),
       ylim = c(zoom_limits$y_min, zoom_limits$y_max)
     ) +
@@ -155,49 +162,48 @@ create_zoomed_performance_plot <- function(data, variant_type) {
   
   return(p)
 }
+# -------------------------------------
 
+# 2.4
 # Generate both SNP and INDEL plots
 generate_zoomed_plot_images <- function(viz_data) {
   # Split data by variant type
   snp_data <- viz_data %>% filter(variant_type == "SNP")
   indel_data <- viz_data %>% filter(variant_type == "INDEL")
   
-  # Create plots
   snp_plot <- create_zoomed_performance_plot(snp_data, "SNP")
   indel_plot <- create_zoomed_performance_plot(indel_data, "INDEL")
   
-  # Save plots as temporary files with larger size for dual view
+  # Save plots as png
   temp_snp <- tempfile(fileext = ".png")
   temp_indel <- tempfile(fileext = ".png")
-  
-  # Wider plots to accommodate the dual view
   ggsave(temp_snp, snp_plot, width = 12, height = 6, dpi = 300)
   ggsave(temp_indel, indel_plot, width = 12, height = 6, dpi = 300)
-  
-  # Convert to base64
-  snp_base64 <- base64enc::base64encode(temp_snp)
+  # Convert to Base64 for HTML
+  snp_base64 <- base64enc::base64encode(temp_snp) 
   indel_base64 <- base64enc::base64encode(temp_indel)
   
-  # Clean up temp files
-  file.remove(c(temp_snp, temp_indel))
+  file.remove(c(temp_snp, temp_indel)) # Remove extra files
   
   return(list(snp = snp_base64, indel = indel_base64))
 }
 
-# Generate the plots section for HTML (simplified)
+# -------------------------------------
+
+# 2.5
+# Generate plot section in HTML
 generate_plots_section <- function(viz_data) {
   if (nrow(viz_data) == 0) {
     return('<h2>Performance Visualizations</h2><p>No data available for visualization</p>')
   }
-  
-  # Generate plot images
+
   plots <- generate_zoomed_plot_images(viz_data)
   
   html_plots <- paste0('
         <h2>Performance Visualizations</h2>
         <p style="color: #6c757d; margin-bottom: 30px;">
             Precision vs Recall scatter plots with F1-score contour lines. 
-            Each plot shows both full view (left) and zoomed high-performance region (right).
+            Each plot shows both full view (left) and zoomed region (right).
         </p>
         
         <div style="margin-bottom: 40px;">
@@ -214,8 +220,9 @@ generate_plots_section <- function(viz_data) {
   
   return(html_plots)
 }
-
-# Data processing functions
+# =============================================================================
+# 3. DATA PROCESSING FUNCTIONS
+# =============================================================================
 process_variant_data <- function(viz_data, variant_type) {
   viz_data %>% 
     filter(variant_type == !!variant_type) %>%
