@@ -9,7 +9,6 @@ library(ggplot2)
 library(plotly)
 library(dplyr)
 library(ggsci)
-library(ggrepel)
 library(patchwork)
 library(geomtextpath)
 library(htmltools)
@@ -139,9 +138,9 @@ create_caller_legend <- function() {
 
 ui <- fluidPage(
   
-  titlePanel(
+  div(
     h3("SNV Benchmarking Dashboard", 
-       style = "color: #007bff; font-weight: 600; margin-bottom: 20px; font-size: 1.4em;")
+       style = "color: #007bff; font-weight: 600; margin-bottom: 20px; font-size: 1.7em;")
   ),
   
   #CSS for row expansion
@@ -1229,7 +1228,7 @@ server <- function(input, output, session) {
   
   # 5.5 
   # Table outputs 
-  # Experiments table (including selection for experiment comparison)
+  # Experiments table
   output$experiments_table <- DT::renderDataTable({
     df <- experiments_data()
     
@@ -1237,7 +1236,6 @@ server <- function(input, output, session) {
       return(DT::datatable(data.frame(Message = "No experiments found")))
     }
     
-    # Make the expand button more compact
     df$expand_button <- paste0(
       '<button class="details-toggle" onclick="toggleDetails(', df$id, ')">',
       '▶',
@@ -1279,7 +1277,7 @@ server <- function(input, output, session) {
       rownames = FALSE,
       colnames = c("", "ID", "Name", "Technology", "Platform", "Caller", "Version", "Chemistry", "Truth Set", "Sample", "Created")
     ) %>%
-      # Add  technology-based row coloring 
+      # Technology-based row coloring --------------------------------------------------------------------------------------------------------------------
       formatStyle(
         "technology", 
         target = "row",
@@ -1424,17 +1422,6 @@ server <- function(input, output, session) {
           alpha = 0.6,
           linetype = "dotted",
           size = 0.3
-        ) +
-        geom_text_repel(
-          data = snp_data,
-          aes(x = precision, y = recall, 
-              label = paste0(round(f1_score * 100, 1), "%")),
-          size = 3, 
-          box.padding = 0.3, 
-          point.padding = 0.3, 
-          segment.color = "grey50", 
-          max.overlaps = 20,
-          force = 2
         ) +
         geom_point(
           data = snp_data, 
