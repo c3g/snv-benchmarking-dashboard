@@ -143,10 +143,10 @@ ui <- fluidPage(
        style = "color: #007bff; font-weight: 600; margin-bottom: 20px; font-size: 1.7em;")
   ),
   
-  #CSS for row expansion AND new metadata cards
+  #CSS for row expansion and full metadata info
   tags$head(
     tags$style(HTML("
-    /* Existing styles... */
+    /* Table expand buttons */
     .details-toggle {
       background: none;
       border: none;
@@ -157,11 +157,11 @@ ui <- fluidPage(
       font-size: 12px;
       margin: 0;
     }
-    
     .details-toggle:hover {
       background: #e9ecef;
     }
     
+    /* Row expansion container */
     .detail-content {
       background: #f8f9fa;
       padding: 15px;
@@ -169,7 +169,38 @@ ui <- fluidPage(
       font-size: 12px;
     }
     
-    /* NEW: 4-Column Metadata Cards */
+    /* Row expansion 3-column grid */
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+    }
+    
+    /* Row expansion section titles */
+    .detail-section h6 {
+      margin: 0 0 8px 0;
+      color: #007bff;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+      border-bottom: 1px solid #dee2e6;
+      padding-bottom: 4px;
+    }
+    
+    /* Row expansion metadata items */
+    .detail-item {
+      margin-bottom: 4px;
+      color: #6c757d;
+      font-size: 11px;
+      line-height: 1.3;
+    }
+    .detail-item strong {
+      color: #495057;
+      font-weight: 600;
+    }
+    
+    /* Visualization tab 4-column grid */
     .metadata-grid-4col {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -177,6 +208,7 @@ ui <- fluidPage(
       margin-top: 15px;
     }
     
+    /* Visualization tab cards */
     .metadata-card {
       background: #ffffff;
       border: 1px solid #dee2e6;
@@ -185,45 +217,48 @@ ui <- fluidPage(
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
       transition: box-shadow 0.3s ease;
     }
-    
     .metadata-card:hover {
       box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
     
+    /* Visualization tab card titles */
     .metadata-card h6 {
       color: #495057;
       margin: 0 0 15px 0;
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 600;
       border-bottom: 2px solid #007bff;
       padding-bottom: 8px;
     }
     
+    /* Visualization tab metadata items */
     .metadata-item {
       margin-bottom: 8px;
       color: #6c757d;
       font-size: 14px;
       line-height: 1.4;
     }
-    
     .metadata-item strong {
-      color: #495057;
+      color: #007bff;
       font-weight: 600;
       display: inline-block;
       min-width: 120px;
     }
     
-    /* Responsive adjustments */
+    /* Mobile responsive */
     @media (max-width: 768px) {
       .metadata-grid-4col {
+        grid-template-columns: 1fr;
+      }
+      .detail-grid {
         grid-template-columns: 1fr;
       }
     }
   "))
   ),
-   
-  #Javascript for row expansion
-  tags$script(HTML("
+  
+    tags$script(HTML("
+    /* Table row expansion toggle */
   var expandedRows = {};
   
   function toggleDetails(experimentId) {
@@ -231,9 +266,7 @@ ui <- fluidPage(
     var row = button.closest('tr');
     var nextRow = row.nextElementSibling;
     
-    // Check if details row already exists
     if (nextRow && nextRow.classList.contains('detail-row-' + experimentId)) {
-      // Toggle existing details
       if (nextRow.style.display === 'none') {
         nextRow.style.display = '';
         button.innerHTML = '▼';
@@ -244,7 +277,6 @@ ui <- fluidPage(
         expandedRows[experimentId] = false;
       }
     } else {
-      // Create new details row
       button.innerHTML = '▼';
       expandedRows[experimentId] = true;
       Shiny.setInputValue('expand_experiment_details', {
@@ -255,25 +287,25 @@ ui <- fluidPage(
   }
 ")),
   
-  tags$script(HTML("
+    tags$script(HTML("
+    /* Insert metadata rows from R server */
   Shiny.addCustomMessageHandler('insertDetailsRow', function(data) {
     var experimentId = data.experimentId;
     var html = data.html;
     
-    // Find the row with the experiment
     var table = document.querySelector('#experiments_table table tbody');
     var rows = table.querySelectorAll('tr');
     
     for (var i = 0; i < rows.length; i++) {
       var button = rows[i].querySelector('.details-toggle');
       if (button && button.getAttribute('onclick').includes(experimentId)) {
-        // Insert details row after this row
         rows[i].insertAdjacentHTML('afterend', html);
         break;
       }
     }
   });
 ")),
+  
   sidebarLayout(
     
     # -------------------------------------------------------------------------
@@ -1029,7 +1061,7 @@ server <- function(input, output, session) {
     if (nrow(metadata) > 0) {
       meta <- metadata[1, ]
       
-      # Create detailed HTML content
+      # Create simple, compact HTML content
       details_html <- paste0(
         '<tr class="detail-row-', exp_id, '">',
         '<td colspan="11">',
@@ -1066,17 +1098,20 @@ server <- function(input, output, session) {
         '<div class="detail-item"><strong>Sample:</strong> ', meta$truth_set_sample %||% "N/A", '</div>',
         '</div>',
         
-        '</div>',
-        '</div>',
+        '</div>', # Close detail-grid
+        '</div>', # Close detail-content
         '</td>',
         '</tr>'
       )
+      
+      # Send HTML to JavaScript to insert into table
       session$sendCustomMessage("insertDetailsRow", list(
         experimentId = exp_id,
         html = details_html
       ))
     }
   })
+  
   #-----------------------------------------------
   
   # 4.9
