@@ -32,16 +32,16 @@ theme_set(theme_bw())
 
 # Color and shape mappings for visualization
 technology_colors <- c(
-  "ILLUMINA" = "#F8766D",    # Red 
-  "PACBIO" = "#C77CFF",      # Purple 
-  "ONT" = "#00BFC4",         # Cyan 
-  "MGI" = "#7CAE00",         # Green 
-  "Unknown" = "#E76BF3"      # purple
+  "ILLUMINA" = "#F8766D",    
+  "PACBIO" = "#C77CFF",     
+  "ONT" = "#00BFC4",         
+  "MGI" = "#7CAE00",        
+  "Unknown" = "#E76BF3"   
 )
 caller_shapes <- c(
-  "DEEPVARIANT" = 16,        # Circle ●
-  "GATK" = 17,              # Triangle ▲
-  "CLAIR3" = 15,            # Square ■
+  "DEEPVARIANT" = 16,        # Circle 
+  "GATK" = 17,              # Triangle
+  "CLAIR3" = 15,            # Square 
   "Unknown" = 4             # X 
 )
 # shape conversion to HTML
@@ -1268,7 +1268,7 @@ server <- function(input, output, session) {
           list(targets = 4, width = "60px"),                                              # Platform
           list(targets = 5, width = "80px"),                                               # Caller
           list(targets = 6, width = "60px"),                                               # Version
-          list(targets = 7, width = "80px"),                                               # Chemistry
+          list(targets = 7, width = "60px"),                                               # Chemistry
           list(targets = 8, width = "40px"),                                               # Truth Set
           list(targets = 9, width = "40px"),                                               # Sample
           list(targets = 10, width = "65px")                                               # Created

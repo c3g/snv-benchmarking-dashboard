@@ -127,20 +127,26 @@ create_zoomed_performance_plot <- function(data, variant_type) {
       alpha = 0.35, 
       straight = TRUE
     ) +
-    geom_text_repel( # F1 score labels
+    geom_text_repel( # ID label
       data = data,
       aes(x = precision, y = recall, 
-          label = format(f1_score * 100, digits = 4)),
-      size = 1.6, 
-      box.padding = 0.1, 
-      point.padding = 0.125, 
-      segment.color = "grey50"
+          label =  paste0("ID: ", experiment_id)),                 
+      size = 3.5,                                 
+      box.padding = 0.3,                         
+      point.padding = 0.2,                       
+      segment.color = "grey80",               
+      color = "grey30",                         
+      fontface = "bold",
+      fill = alpha("white", 0.8),                 
+      label.padding = unit(0.3, "lines"),       
+      label.r = unit(0.25, "lines"),             
+      min.segment.length = 0.1                   
     ) +
     geom_point( # Data points
       data = data, 
       aes(x = precision, y = recall, 
-          color = technology,        # Color by technology
-          shape = caller_name),      # Shape by caller
+          color = Technology,        # Color by technology
+          shape = Caller),      # Shape by caller
       size = 3.5, 
       alpha = 0.8,
       stroke = 1            
@@ -209,7 +215,8 @@ generate_plots_section <- function(viz_data) {
         <div style="margin-bottom: 40px;">
             <h3>SNP Performance</h3>
             <img src="data:image/png;base64,', plots$snp, '" 
-                 style="width: 100%; max-width: 1000px; border: 1px solid #dee2e6; border-radius: 5px;" />
+                style="width: 100%; max-width: 1000px; border: 1px solid #dee2e6; border-radius: 5px;" />
+
         </div>
         
         <div style="margin-bottom: 40px;">
@@ -223,6 +230,8 @@ generate_plots_section <- function(viz_data) {
 # =============================================================================
 # 3. DATA PROCESSING FUNCTIONS
 # =============================================================================
+
+# Prepare all data
 process_variant_data <- function(viz_data, variant_type) {
   viz_data %>% 
     filter(variant_type == !!variant_type) %>%
@@ -231,39 +240,7 @@ process_variant_data <- function(viz_data, variant_type) {
     arrange(desc(f1_numeric))
 }
 
-# Main report generation function
-generate_benchmarking_report <- function(viz_data) {
-  
-  # Validate input
-  if (is.null(viz_data) || nrow(viz_data) == 0) {
-    return(generate_error_html("No data available for export"))
-  }
-  
-  tryCatch({
-    # Process data safely
-    snp_data <- process_variant_data(viz_data, "SNP")
-    indel_data <- process_variant_data(viz_data, "INDEL")
-    experiment_ids <- unique(viz_data$experiment_id[!is.na(viz_data$experiment_id)])
-    
-    # Generate HTML sections
-    html_header <- generate_html_header()
-    html_summary <- generate_summary_section(viz_data, experiment_ids)
-    html_plots <- generate_plots_section(viz_data)  # Plots section with facet_zoom
-    html_snp_table <- generate_performance_table(snp_data, "SNP")
-    html_indel_table <- generate_performance_table(indel_data, "INDEL")
-    html_metadata <- generate_metadata_section(viz_data, experiment_ids)
-    html_footer <- generate_html_footer()
-    
-    # Combine all sections (plots come after summary, before tables)
-    paste0(html_header, html_summary, html_plots, html_snp_table, 
-           html_indel_table, html_metadata, html_footer)
-    
-  }, error = function(e) {
-    generate_error_html(paste("Export error:", e$message))
-  })
-}
-
-# HTML section generators
+# HTML section generators - section styles
 generate_html_header <- function() {
   '<!DOCTYPE html>
 <html lang="en">
@@ -355,27 +332,27 @@ generate_html_header <- function() {
     <div class="container">
         <h1>SNV Benchmarking Report</h1>'
 }
-
+# Summary section
 generate_summary_section <- function(viz_data, experiment_ids) {
   technologies <- unique(viz_data$technology[!is.na(viz_data$technology)])
   callers <- unique(viz_data$caller_name[!is.na(viz_data$caller_name)])
-  
   paste0('
-        <p style="text-align: center; color: #6c757d; margin-bottom: 30px;">
-            Generated on ', format(Sys.time(), "%B %d, %Y at %H:%M"), '<br>
-            Total Experiments: ', length(experiment_ids), '
-        </p>
-        
-        <div class="summary">
-            <h3>Export Summary</h3>
-            <ul>
-                <li><strong>Total Experiments:</strong> ', length(experiment_ids), '</li>
-                <li><strong>Technologies:</strong> ', paste(technologies, collapse = ", "), '</li>
-                <li><strong>Variant Callers:</strong> ', paste(callers, collapse = ", "), '</li>
-            </ul>
-        </div>')
+      <p style="text-align: center; color: #6c757d; margin-bottom: 30px;">
+          Generated on ', format(Sys.time(), "%B %d, %Y at %H:%M"), '<br>
+          Total Experiments: ', length(experiment_ids), '
+      </p>
+      
+      <div class="summary">
+          <h3>Export Summary</h3>
+          <ul>
+              <li><strong>Total Experiments:</strong> ', length(experiment_ids), '</li>
+              <li><strong>Technologies:</strong> ', paste(technologies, collapse = ", "), '</li>
+              <li><strong>Variant Callers:</strong> ', paste(callers, collapse = ", "), '</li>
+          </ul>
+      </div>')
 }
 
+# Performance table section
 generate_performance_table <- function(data, variant_type) {
   if (nrow(data) == 0) {
     return(paste0('
@@ -426,6 +403,7 @@ generate_performance_table <- function(data, variant_type) {
         </table>')
 }
 
+# Metadata section
 generate_metadata_section <- function(viz_data, experiment_ids) {
   html_metadata <- '<h2>Experiment Metadata</h2>'
   
@@ -490,3 +468,35 @@ generate_error_html <- function(error_message) {
 </body>
 </html>')
 }
+# =============================================================================
+# 4. MAIN REPORT GENERATION FUNCTION
+# =============================================================================
+generate_benchmarking_report <- function(viz_data) {
+  
+  if (is.null(viz_data) || nrow(viz_data) == 0) {
+    return(generate_error_html("No data available for export"))
+  }
+  
+  tryCatch({
+    snp_data <- process_variant_data(viz_data, "SNP")
+    indel_data <- process_variant_data(viz_data, "INDEL")
+    experiment_ids <- unique(viz_data$experiment_id[!is.na(viz_data$experiment_id)])
+    
+    # Generate HTML sections
+    html_header <- generate_html_header()
+    html_summary <- generate_summary_section(viz_data, experiment_ids)
+    html_plots <- generate_plots_section(viz_data)  # Plots section with facet_zoom
+    html_snp_table <- generate_performance_table(snp_data, "SNP")
+    html_indel_table <- generate_performance_table(indel_data, "INDEL")
+    html_metadata <- generate_metadata_section(viz_data, experiment_ids)
+    html_footer <- generate_html_footer()
+    
+    # Combine all sections (plots come after summary, before tables)
+    paste0(html_header, html_summary, html_plots, html_snp_table, 
+           html_indel_table, html_metadata, html_footer)
+    
+  }, error = function(e) {
+    generate_error_html(paste("Export error:", e$message))
+  })
+}
+
