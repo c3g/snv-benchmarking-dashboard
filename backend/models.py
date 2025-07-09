@@ -329,12 +329,13 @@ class BenchmarkResult(Base):
     
     id = Column(Integer, primary_key=True)
     experiment_id = Column(Integer, ForeignKey('experiments.id'), nullable=False)
+
     
     # Core identifiers (filtering criteria)
     variant_type = Column(String(20), nullable=False)      # SNP, INDEL
-    subtype = Column(String(100), default='NULL')             # Always 'NULL' for now
-    subset = Column(String(100), default='ALL')              # Always 'ALL' for now  
-    filter_type = Column(String(20), default='ALL')       # Always 'ALL' for now
+    subtype = Column(String(100), default='NULL')             # Always 'NULL'
+    subset = Column(Enum(RegionType), nullable=False)       # Region types
+    filter_type = Column(String(20), default='ALL')       # Always 'ALL'
     
     # Performance metrics
     metric_recall = Column(Float)      # METRIC.Recall
