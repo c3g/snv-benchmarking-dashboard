@@ -24,6 +24,31 @@ def safe_int(value):
     except:
         return None
 
+# happy_parser.py
+# Parses hap.py CSV output files and stores performance metrics for each experiment record
+
+import pandas as pd
+from models import RegionType, BenchmarkResult, OverallResult
+from config import get_data_file_path
+
+def safe_float(value):
+    """Convert value to float, handle NaN"""
+    if pd.isna(value) or value is None:
+        return None
+    try:
+        return float(value)
+    except:
+        return None
+
+def safe_int(value):
+    """Convert value to int safely"""
+    if pd.isna(value) or value is None:
+        return None
+    try:
+        return int(float(value))
+    except:
+        return None
+
 def parse_happy_csv(happy_file_name, experiment_id, session):
     """
     Parse one hap.py CSV file and store results in database
@@ -48,6 +73,7 @@ def parse_happy_csv(happy_file_name, experiment_id, session):
         print(f"  Found {len(filtered_df)} filtered rows")
         
         results_added = 0
+        overall_results_added = 0
 
         # Store specific columns from the csv to the BenchmarkResult table
         for _, row in filtered_df.iterrows():
@@ -58,8 +84,9 @@ def parse_happy_csv(happy_file_name, experiment_id, session):
                 print(f"  Warning: Unknown region '{row['Subset']}' - skipping")
                 continue
             
+            # Create BenchmarkResult for all regions
             result = BenchmarkResult(
-                experiment_id=experiment_id, #links the result to the experiment ID. 
+                experiment_id=experiment_id, # links the result to the experiment ID. 
                 
                 # Main identifiers
                 variant_type=row['Type'],
@@ -115,9 +142,9 @@ def parse_happy_csv(happy_file_name, experiment_id, session):
             session.add(result)
             results_added += 1
 
-        # ALSO store in fast table (only for overall results)
+            # ALSO store in fast table (ONLY for overall results)
             if region_enum == RegionType.OVERALL:
-                    overall_result = OverallResult(
+                overall_result = OverallResult(
                     experiment_id=experiment_id,
                     variant_type=row['Type'],
                     metric_recall=safe_float(row.get('METRIC.Recall')),
@@ -130,9 +157,13 @@ def parse_happy_csv(happy_file_name, experiment_id, session):
                     query_tp=safe_int(row.get('QUERY.TP')),
                     query_fp=safe_int(row.get('QUERY.FP'))
                 )
-            session.add(overall_result)
-        return {"success": True, "message": f"Added {results_added} resutls for experiment {experiment_id}"}
+                session.add(overall_result)
+                overall_results_added += 1
+
+        return {"success": True, "message": f"Added {results_added} results and {overall_results_added} overall results for experiment {experiment_id}"}
         
     except Exception as e:
         print(f"Error parsing {happy_file_path}: {e}")
+        import traceback
+        traceback.print_exc()
         return {"success": False, "error": str(e)}
