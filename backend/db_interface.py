@@ -213,26 +213,18 @@ def get_experiment_metadata(experiment_ids_param):
 # ========================================================================
 # 3. DETAILED EXPERIMENT PERFORMANCE RESULTS
 # ======================================================================== 
-def get_performance_results(experiment_ids_param, variant_types=['SNP', 'INDEL']):
+def get_overall_performance_results(experiment_ids_param, variant_types=['SNP', 'INDEL']):
     """
-    Get benchmark performance results for specific experiments.
-    
-    Args:
-        experiment_ids (list): List of experiment IDs
-        variant_types (list): Variant types to include ['SNP', 'INDEL', 'SNP+INDEL']
-        
-    Returns:
-        pandas.DataFrame: Performance metrics and counts
+    FAST function for main dashboard - uses OverallResult table
     """
-
     # Parse JSON IDs   
     try:
         if isinstance(experiment_ids_param, str):
             experiment_ids = json.loads(experiment_ids_param)
             if not isinstance(experiment_ids, list):
-                experiment_ids = [experiment_ids]  # Convert single value to list
+                experiment_ids = [experiment_ids]
         else:
-            experiment_ids = experiment_ids_param  # Backward compatibility
+            experiment_ids = experiment_ids_param
     except json.JSONDecodeError as e:
         print(f"Error parsing experiment_ids JSON: {e}")
         return pd.DataFrame()
@@ -240,7 +232,73 @@ def get_performance_results(experiment_ids_param, variant_types=['SNP', 'INDEL']
     if not experiment_ids:
         return pd.DataFrame()
 
-    # get performance data    
+    try:
+        with get_db_session() as session:
+            query = session.query(OverallResult).options(
+                joinedload(OverallResult.experiment)
+            ).filter(
+                OverallResult.experiment_id.in_(experiment_ids),
+                OverallResult.variant_type.in_(variant_types)
+            )
+            
+            results = query.all()
+            
+            data = []
+            for result in results:
+                data.append({
+                    'experiment_id': result.experiment_id,
+                    'experiment_name': result.experiment.name if result.experiment else None,
+                    'variant_type': result.variant_type,
+                    'technology': result.experiment.sequencing_technology.technology.value if (result.experiment and result.experiment.sequencing_technology) else 'Unknown',
+                    'caller': result.experiment.variant_caller.name.value if (result.experiment and result.experiment.variant_caller) else 'Unknown',
+                    'subset': "*",  # Always overall for this table
+                    
+                    # Performance metrics
+                    'recall': result.metric_recall,
+                    'precision': result.metric_precision,
+                    'f1_score': result.metric_f1_score,
+                    
+                    # Essential counts
+                    'truth_total': result.truth_total,
+                    'truth_tp': result.truth_tp,
+                    'truth_fn': result.truth_fn,
+                    'query_total': result.query_total,
+                    'query_tp': result.query_tp,
+                    'query_fp': result.query_fp,
+                })
+            
+            return pd.DataFrame(data)
+            
+    except Exception as e:
+        print(f"Error in get_overall_performance_results: {e}")
+        return pd.DataFrame()
+    
+def get_performance_results(experiment_ids_param, variant_types=['SNP', 'INDEL'], regions=None):
+    """
+    COMPLETE function for stratified analysis - uses BenchmarkResult table
+    Only called when specific regions are needed
+    
+    Args:
+        experiment_ids (list): List of experiment IDs
+        variant_types (list): Variant types to include ['SNP', 'INDEL', 'SNP+INDEL']
+        regions (list): Region types to include (defaults to OVERALL only)
+    """
+    
+    # Parse JSON IDs   
+    try:
+        if isinstance(experiment_ids_param, str):
+            experiment_ids = json.loads(experiment_ids_param)
+            if not isinstance(experiment_ids, list):
+                experiment_ids = [experiment_ids]
+        else:
+            experiment_ids = experiment_ids_param
+    except json.JSONDecodeError as e:
+        print(f"Error parsing experiment_ids JSON: {e}")
+        return pd.DataFrame()
+    
+    if not experiment_ids:
+        return pd.DataFrame()
+
     try:
         with get_db_session() as session:
             query = session.query(BenchmarkResult).options(
@@ -248,6 +306,7 @@ def get_performance_results(experiment_ids_param, variant_types=['SNP', 'INDEL']
             ).filter(
                 BenchmarkResult.experiment_id.in_(experiment_ids),
                 BenchmarkResult.variant_type.in_(variant_types),
+                BenchmarkResult.subset.in_([RegionType[region] for region in regions]) 
             )
             
             results = query.all()
@@ -261,7 +320,7 @@ def get_performance_results(experiment_ids_param, variant_types=['SNP', 'INDEL']
                     'variant_type': result.variant_type,
                     'technology': result.experiment.sequencing_technology.technology.value if (result.experiment and result.experiment.sequencing_technology) else 'Unknown',
                     'caller': result.experiment.variant_caller.name.value if (result.experiment and result.experiment.variant_caller) else 'Unknown',
-                    'subset': result.subset,
+                    'subset': result.subset.value,
                     'filter_type': result.filter_type,
                     
                     # Core Performance Metrics
