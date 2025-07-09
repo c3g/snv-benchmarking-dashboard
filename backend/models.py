@@ -74,7 +74,7 @@ class VariantType(enum.Enum):
     INDEL = "INDEL" # Insertion/Deletion
     DEL = "DEL"  # Deletion
     INS = "INS"  # Insertion
-    SNPINDEL = "SNP+INDEL" #-----------------------------------------------------------------------------------------------------
+    SNPINDEL = "SNP+INDEL"
 
 class BenchmarkToolName(enum.Enum):
     """benchmarking tools"""
@@ -82,6 +82,53 @@ class BenchmarkToolName(enum.Enum):
     VCFDIST = "VCFDIST"
     TRUVARI = "TRUVARI" 
 
+class RegionType(enum.Enum):
+    """All genomic regions from hap.py stratified analysis"""
+    
+    # Overall
+    OVERALL = "*"
+    
+    # Difficulty
+    EASY = "easy"
+    DIFFICULT = "difficult"
+    
+    # GC Content
+    GC_VERY_LOW = "GC_<15"
+    GC_15_20 = "GC_15_20"
+    GC_20_25 = "GC_20_25"
+    GC_25_30 = "GC_25_30"
+    GC_30_55 = "GC_30_55"
+    GC_55_60 = "GC_55_60"
+    GC_60_65 = "GC_60_65"
+    GC_65_70 = "GC_65_70"
+    GC_70_75 = "GC_70_75"
+    GC_75_80 = "GC_75_80"
+    GC_80_85 = "GC_80_85"
+    GC_VERY_HIGH = "GC_>85"
+    
+    # Functional
+    REFSEQ_CDS = "refseq_cds"
+    NOT_IN_CDS = "not_in_cds"
+    
+    # Repetitive
+    SEGDUP = "segdup"
+    HOMOPOLYMER_4TO6 = "homopolymer_4to6"
+    HOMOPOLYMER_7TO11 = "homopolymer_7to11"
+    HOMOPOLYMER_GT11 = "homopolymer_gt11"
+    
+    # Other
+    LOW_MAPPABILITY = "low_mappability"
+    MHC = "MHC"
+    TS_BOUNDARY = "TS_boundary"
+    TS_CONTAINED = "TS_contained"
+    
+    @classmethod
+    def from_string(cls, region_str):
+        """Convert hap.py region string to enum"""
+        for region in cls:
+            if region.value == region_str:
+                return region
+        return None
     
 # ============================================================================
 # DATABASE TABLES
