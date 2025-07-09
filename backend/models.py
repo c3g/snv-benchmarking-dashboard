@@ -317,13 +317,44 @@ class Experiment(Base):
         return f"<Experiment(name={self.name})>"
 
 # ============================================================================
-# BENCHMARKING RESULTS TABLE
+# BENCHMARKING RESULTS TABLES
 # ============================================================================
-
+class OverallResult(Base):
+    """
+    Fast access table for overall (*) region results of the hap.py files only.
+    Used for main dashboard performance.
+    """
+    __tablename__ = 'overall_results'
+    
+    id = Column(Integer, primary_key=True)
+    experiment_id = Column(Integer, ForeignKey('experiments.id'), nullable=False)
+    
+    # Core identifiers
+    variant_type = Column(String(20), nullable=False)      # SNP, INDEL
+    
+    # Performance metrics (most important)
+    metric_recall = Column(Float)      
+    metric_precision = Column(Float)   
+    metric_f1_score = Column(Float)    
+    
+    # Essential counts
+    truth_total = Column(Integer)
+    truth_tp = Column(Integer)
+    truth_fn = Column(Integer)
+    query_total = Column(Integer)
+    query_tp = Column(Integer)
+    query_fp = Column(Integer)
+    
+    # Relationship
+    experiment = relationship("Experiment")
+    
+    def __repr__(self):
+        return f"<OverallResult(exp_id={self.experiment_id}, type={self.variant_type})>"
+    
 class BenchmarkResult(Base):
     """
-    Benchmarking experiment results from hap.py output.
-    Stores key metrics for SNP and INDEL variants.
+    Full Benchmarking experiment results (including all region types) from hap.py output.
+    Used for stratified analysis.
     """
     __tablename__ = 'benchmark_results'
     
