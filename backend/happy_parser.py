@@ -3,7 +3,7 @@
 # Parses hap.py CSV output files and stores performance metrics for each experiemtn recrod
 
 import pandas as pd
-from models import BenchmarkResult
+from models import RegionType, BenchmarkResult,OverallResult
 from config import get_data_file_path
 
 def safe_float(value):
@@ -37,7 +37,6 @@ def parse_happy_csv(happy_file_name, experiment_id, session):
 
         # Filter for specific rows
         filtered_df = df[
-            (df['Subset'] == ('*')) & 
             (df['Subtype'] == '*') &
             (df['Filter'] == 'ALL') 
         ]
@@ -52,13 +51,20 @@ def parse_happy_csv(happy_file_name, experiment_id, session):
 
         # Store specific columns from the csv to the BenchmarkResult table
         for _, row in filtered_df.iterrows():
+
+            # Convert hap.py region string to enum
+            region_enum = RegionType.from_string(row['Subset'])
+            if region_enum is None:
+                print(f"  Warning: Unknown region '{row['Subset']}' - skipping")
+                continue
+            
             result = BenchmarkResult(
                 experiment_id=experiment_id, #links the result to the experiment ID. 
                 
                 # Main identifiers
                 variant_type=row['Type'],
                 subtype=row['Subtype'].replace('*', 'ALL_SUBTYPES'),
-                subset=row['Subset'].replace('*', 'ALL_REGIONS'),
+                subset=region_enum,
                 filter_type=row['Filter'],
                 
                 # Performance metrics
@@ -109,6 +115,22 @@ def parse_happy_csv(happy_file_name, experiment_id, session):
             session.add(result)
             results_added += 1
 
+        # ALSO store in fast table (only for overall results)
+            if region_enum == RegionType.OVERALL:
+                    overall_result = OverallResult(
+                    experiment_id=experiment_id,
+                    variant_type=row['Type'],
+                    metric_recall=safe_float(row.get('METRIC.Recall')),
+                    metric_precision=safe_float(row.get('METRIC.Precision')),
+                    metric_f1_score=safe_float(row.get('METRIC.F1_Score')),
+                    truth_total=safe_int(row.get('TRUTH.TOTAL')),
+                    truth_tp=safe_int(row.get('TRUTH.TP')),
+                    truth_fn=safe_int(row.get('TRUTH.FN')),
+                    query_total=safe_int(row.get('QUERY.TOTAL')),
+                    query_tp=safe_int(row.get('QUERY.TP')),
+                    query_fp=safe_int(row.get('QUERY.FP'))
+                )
+            session.add(overall_result)
         return {"success": True, "message": f"Added {results_added} resutls for experiment {experiment_id}"}
         
     except Exception as e:
