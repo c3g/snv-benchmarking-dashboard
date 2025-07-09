@@ -776,12 +776,12 @@ server <- function(input, output, session) {
     
     tryCatch({ # input IDs in JSON format
       ids_json <- json_param(ids)
-      perf_data <- db$get_performance_results(ids_json, c('SNP', 'INDEL'))
+      perf_data <- db$get_overall_performance_results(ids_json, c('SNP', 'INDEL'))
       metadata <- db$get_experiment_metadata(ids_json)
       
       # Filter and join performance data with metadata
       enhanced_data <- perf_data %>%
-        filter(subset == "ALL_REGIONS" | subset == "*") %>%
+        filter(subset == "*" | subset == "OVERALL") %>%
         filter(!is.na(recall) & !is.na(precision) & !is.na(f1_score)) %>% #remove incomplete data
         left_join(metadata, by = c("experiment_id" = "id"), suffix = c("", "_meta")) # join all data
       
