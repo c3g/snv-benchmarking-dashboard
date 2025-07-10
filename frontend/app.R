@@ -981,6 +981,10 @@ server <- function(input, output, session) {
   
   # Track which rows are expanded
   expanded_rows <- reactiveVal(character(0))
+  
+  # Reactive value for storing stratified data
+  stratified_viz_data <- reactiveVal(data.frame())
+  stratified_triggered <- reactiveVal(FALSE)
   # ====================================================================
   # 2. DATA PROCESSING FUNCTIONS 
   # ====================================================================
