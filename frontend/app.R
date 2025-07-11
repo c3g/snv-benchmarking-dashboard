@@ -1174,9 +1174,7 @@ server <- function(input, output, session) {
         exp_label = paste0("ID:", experiment_id, " (", 
                            coalesce(technology, "Unknown"), "-", 
                            coalesce(caller, "Unknown"),")")
-      ) %>%
-      # Order by F1 score
-      arrange(subset, variant_type, desc(f1_score))
+      )
     
     return(filtered_data)
   }
@@ -2075,7 +2073,9 @@ server <- function(input, output, session) {
       return(ggplotly(p))
     })
   })
-  # 6.3 - Create stratified grouped bar plot
+  
+  
+  # 6.3 - Stratified Plots
   create_stratified_grouped_plot <- function(data, variant_type) {
     
     if (nrow(data) == 0) {
@@ -2102,7 +2102,7 @@ server <- function(input, output, session) {
     # Create horizontal grouped bar plot
     p <- ggplot(plot_data, aes(x = f1_score, y = reorder(exp_label, f1_score))) +
       geom_col(aes(fill = technology), alpha = 0.8, width = 0.7) +
-      geom_text(aes(label = paste0(round(f1_score * 100, 1), "%")), 
+      geom_text(aes(label = paste0(round(f1_score * 100, 2), "%")), 
                 hjust = -0.1, size = 3, color = "black") +
       scale_fill_manual(values = technology_colors, na.value = "gray70") +
       scale_x_continuous(limits = c(0, 1.05), labels = scales::percent_format()) +
@@ -2132,14 +2132,38 @@ server <- function(input, output, session) {
   output$stratified_snp_plot <- renderPlot({
     data <- stratified_filtered_data()
     create_stratified_grouped_plot(data, "SNP")
+  }, height = function() {
+    # Calculate height based on number of regions and experiments
+    n_regions <- length(unique(stratified_filtered_data()$subset))
+    n_experiments <- length(unique(stratified_filtered_data()$experiment_id))
+    
+    base_height <- 100
+    bar_height <- 15  # bar width
+    region_padding <- 40  
+    
+    total_height <- base_height + (n_regions * (n_experiments * bar_height + region_padding))
+    
+    return(max(300, min(total_height, 1000)))
   })
   
   # 6.5 - INDEL stratified plot output  
   output$stratified_indel_plot <- renderPlot({
     data <- stratified_filtered_data()
     create_stratified_grouped_plot(data, "INDEL")
+  }, height = function() {
+    n_regions <- length(unique(stratified_filtered_data()$subset))
+    n_experiments <- length(unique(stratified_filtered_data()$experiment_id))
+    
+    base_height <- 100
+    bar_height <- 15  # bar width
+    region_padding <- 40
+    
+    total_height <- base_height + (n_regions * (n_experiments * bar_height + region_padding))
+    
+    return(max(300, min(total_height, 1000)))
   })
 }
+# =============================================================================
 # APP LAUNCH
 # =============================================================================
 
