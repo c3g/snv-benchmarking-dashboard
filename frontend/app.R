@@ -884,9 +884,6 @@ ui <- fluidPage(
             fluidRow(
               column(12,
                      div(style = "text-align: center; margin: 15px 0;",
-                         actionButton("select_all_regions", "Select All", 
-                                      class = "btn-outline-primary btn-sm", 
-                                      style = "margin-right: 10px;"),
                          actionButton("clear_all_regions", "Clear All", 
                                       class = "btn-outline-danger btn-sm")
                      )
