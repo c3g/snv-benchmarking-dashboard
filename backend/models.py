@@ -123,9 +123,9 @@ class RegionType(enum.Enum):
     TS_CONTAINED = "TS_contained"
     
     @classmethod
-    def from_string(cls, region_str):
+    def from_string(regions, region_str):
         """Convert hap.py region string to enum"""
-        for region in cls:
+        for region in regions:
             if region.value == region_str:
                 return region
         return None
