@@ -686,7 +686,7 @@ ui <- fluidPage(
           # Region selection panel
           wellPanel(
             style = "background-color: #f8f9fa; margin-bottom: 20px;",
-            h5("📊 Select Regions to Analyze", style = "margin-top: 0;"),
+            h5("Select Regions to Analyze", style = "margin-top: 0;"),
             
             fluidRow(
               column(12,
@@ -887,9 +887,6 @@ ui <- fluidPage(
                          actionButton("select_all_regions", "Select All", 
                                       class = "btn-outline-primary btn-sm", 
                                       style = "margin-right: 10px;"),
-                         actionButton("select_core_only", "Core Only", 
-                                      class = "btn-outline-secondary btn-sm",
-                                      style = "margin-right: 10px;"),
                          actionButton("clear_all_regions", "Clear All", 
                                       class = "btn-outline-danger btn-sm")
                      )
@@ -966,11 +963,14 @@ server <- function(input, output, session) {
   
   current_mode <- reactiveVal("filter")  # App mode: "filter", "tech_comparison", "caller_comparison", "manual_selection"
   
-  display_experiment_ids <- reactiveVal(numeric(0))  # Experiemnt IDs to show in tables/plots
+  # Experiment IDs to show in tables/plots
+  display_experiment_ids <- reactiveVal(numeric(0))  
   
-  table_selected_ids <- reactiveVal(numeric(0))      # IDs selected by clicking table rows
+  # IDs selected by clicking table rows
+  table_selected_ids <- reactiveVal(numeric(0))      
   
-  plot_clicked_id <- reactiveVal(NULL)               # Single ID from clicking plot points
+  # Single ID from clicking plot points
+  plot_clicked_id <- reactiveVal(NULL)               
   
   # Comparison state
   comparison_submitted <- reactiveVal(FALSE)         # Whether any comparison has been submitted
@@ -981,7 +981,8 @@ server <- function(input, output, session) {
   expanded_rows <- reactiveVal(character(0))
   
   # Reactive value for storing stratified data
-  stratified_viz_data <- reactiveVal(data.frame())
+  stratified_raw_data <- reactiveVal(data.frame())      # ALL results from DB
+  stratified_filtered_data <- reactiveVal(data.frame()) # After region filtering
   stratified_triggered <- reactiveVal(FALSE)
   # ====================================================================
   # 2. DATA PROCESSING FUNCTIONS 
@@ -1135,7 +1136,51 @@ server <- function(input, output, session) {
     
     return(enhanced_data)
   })
+  # ------------------------------------------------------
   
+  # 2.6 
+  # Collect and Process all selected regions from UI checkboxes
+  get_selected_regions <- reactive({
+    all_selected_regions <- c(
+      input$core_regions,
+      input$functional_regions, 
+      input$homopolymer_regions,
+      input$gc_low,
+      input$gc_normal, 
+      input$gc_high,
+      input$complex_regions,
+      input$truth_set_regions
+    )
+    
+    all_selected_regions <- unique(all_selected_regions[all_selected_regions != ""])
+    if ("all" %in% all_selected_regions) {
+      all_selected_regions[all_selected_regions == "all"] <- "*"
+    }
+    
+    return(all_selected_regions)
+  })
+  
+  # Process stratified data for visualization 
+  process_stratified_data <- function(raw_data, selected_regions) {
+    if (nrow(raw_data) == 0 || length(selected_regions) == 0) {
+      return(data.frame())
+    }
+    
+    # Filter for selected regions only
+    filtered_data <- raw_data %>%
+      filter(subset %in% selected_regions) %>%
+      filter(!is.na(f1_score)) %>%
+      mutate(
+        exp_label = paste0("ID:", experiment_id, " (", 
+                           coalesce(technology, "Unknown"), "-", 
+                           coalesce(caller, "Unknown"),
+                           coalesce(chemistry, ""),")")
+      ) %>%
+      # Order by F1 score
+      arrange(subset, variant_type, desc(f1_score))
+    
+    return(filtered_data)
+  }
   # ====================================================================
   # 3. UI OUTPUTS FOR STATE MANAGEMENT
   # ====================================================================
@@ -1403,22 +1448,104 @@ server <- function(input, output, session) {
     }
   })
   
-  #-----------------------------------------------
+  #----------------------------------------------
   
   # 4.9
-  # Export html report (download)
-  output$export_html_report <- downloadHandler(
-    filename = function() {
-      paste0("benchmarking_report_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".html")
-    },
-    
-    content = function(file) {
-      viz_data <- viz_performance_data()
-      html_content <- generate_benchmarking_report(viz_data)
-      writeLines(html_content, file)
-    }
-  )
+  # Stratified analysis observers
   
+  # Clear All Regions Button  
+  observeEvent(input$clear_all_regions, {
+    # Clear all checkbox group selections
+    updateCheckboxGroupInput(session, "core_regions", selected = character(0))
+    updateCheckboxGroupInput(session, "functional_regions", selected = character(0))
+    updateCheckboxGroupInput(session, "homopolymer_regions", selected = character(0))
+    updateCheckboxGroupInput(session, "gc_low", selected = character(0))
+    updateCheckboxGroupInput(session, "gc_normal", selected = character(0))
+    updateCheckboxGroupInput(session, "gc_high", selected = character(0))
+    updateCheckboxGroupInput(session, "complex_regions", selected = character(0))
+    updateCheckboxGroupInput(session, "truth_set_regions", selected = character(0))
+    
+    showNotification("All selections cleared!", type = "message", duration = 2)
+  })
+  
+  # Main Update Analysis Botton
+  observeEvent(input$update_stratified, {
+    
+    # store all selected regions from checkbox groups
+    all_selected_regions <- c(
+      input$core_regions,
+      input$functional_regions, 
+      input$homopolymer_regions,
+      input$gc_low,
+      input$gc_normal, 
+      input$gc_high,
+      input$complex_regions,
+      input$truth_set_regions
+    )
+    
+    # valication
+    all_selected_regions <- unique(all_selected_regions[all_selected_regions != ""])
+    if (length(all_selected_regions) == 0) {
+      showNotification("Please select at least one region!", type = "warning", duration = 4)
+      return()
+    }
+    
+    # Get current experiment IDs from previous tabs
+    current_exp_ids <- performance_experiment_ids()
+    
+    if (length(current_exp_ids) == 0) {
+      showNotification("No experiments selected. Please select experiments from other tabs first.", 
+                       type = "warning", duration = 5)
+      return()
+    }
+    
+    # Query database for stratified results
+    tryCatch({
+      
+      showNotification("Loading stratified data...", type = "message", duration = 2)
+      
+      ids_json <- json_param(current_exp_ids) #Convert IDs to JSON
+      
+      stratified_data <- db$get_performance_results(ids_json, c('SNP', 'INDEL'),all_selected_regions)
+      metadata <- db$get_experiment_metadata(ids_json)
+      
+      # Process and filter the data
+      if (nrow(stratified_data) > 0 && nrow(metadata) > 0) {
+        
+        # Join performance data with metadata and filter
+        enhanced_data <- stratified_data %>%
+          filter(!is.na(f1_score)) %>%
+          filter(subset %in% all_selected_regions) %>%  # Filter for selected regions only
+          left_join(metadata, by = c("experiment_id" = "id"), suffix = c("", "_meta"))
+        
+        # Store results and display
+        stratified_viz_data(enhanced_data)
+        stratified_triggered(TRUE)
+        
+        # Success notification
+        n_experiments <- length(unique(enhanced_data$experiment_id))
+        n_regions <- length(unique(enhanced_data$subset))
+        n_results <- nrow(enhanced_data)
+        
+        showNotification(
+          paste("Loaded", n_results, "results for", n_experiments, "experiments across", n_regions, "regions"), 
+          type = "message", 
+          duration = 4
+        )
+        
+      } else { #No data
+        stratified_viz_data(data.frame())
+        stratified_triggered(FALSE)
+        showNotification("No data found for selected experiments and regions.", type = "warning", duration = 4)
+      }
+      
+    }, error = function(e) {
+      cat("Error in stratified analysis:", e$message, "\n")
+      stratified_viz_data(data.frame())
+      stratified_triggered(FALSE)
+      showNotification(paste("Error loading stratified data:", e$message), type = "error", duration = 6)
+    })
+  })
   # ====================================================================
   # 5. UI OUTPUTS FOR DISPALY
   # ====================================================================
@@ -1697,7 +1824,22 @@ server <- function(input, output, session) {
     return(compact_data)
   }, striped = TRUE, hover = TRUE, spacing = 'xs', width = "100%",
   class = "table-condensed",
+  
+  
   style = "font-size: 11px; margin-bottom: 5px;")
+  # +=================================================================================
+  # Export html report (download)
+  output$export_html_report <- downloadHandler(
+    filename = function() {
+      paste0("benchmarking_report_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".html")
+    },
+    
+    content = function(file) {
+      viz_data <- viz_performance_data()
+      html_content <- generate_benchmarking_report(viz_data)
+      writeLines(html_content, file)
+    }
+  )
   
   # ============================================================================
   # 6. PLOT OUTPUTS 
