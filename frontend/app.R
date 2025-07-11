@@ -1173,8 +1173,7 @@ server <- function(input, output, session) {
       mutate(
         exp_label = paste0("ID:", experiment_id, " (", 
                            coalesce(technology, "Unknown"), "-", 
-                           coalesce(caller, "Unknown"),
-                           coalesce(chemistry, ""),")")
+                           coalesce(caller, "Unknown"),")")
       ) %>%
       # Order by F1 score
       arrange(subset, variant_type, desc(f1_score))
@@ -1468,24 +1467,15 @@ server <- function(input, output, session) {
     showNotification("All selections cleared!", type = "message", duration = 2)
   })
   
+  # 4.10 
   # Main Update Analysis Botton
   observeEvent(input$update_stratified, {
     
-    # store all selected regions from checkbox groups
-    all_selected_regions <- c(
-      input$core_regions,
-      input$functional_regions, 
-      input$homopolymer_regions,
-      input$gc_low,
-      input$gc_normal, 
-      input$gc_high,
-      input$complex_regions,
-      input$truth_set_regions
-    )
+    # Get selected regions
+    selected_regions <- get_selected_regions()
     
-    # valication
-    all_selected_regions <- unique(all_selected_regions[all_selected_regions != ""])
-    if (length(all_selected_regions) == 0) {
+    # Validation
+    if (length(selected_regions) == 0) {
       showNotification("Please select at least one region!", type = "warning", duration = 4)
       return()
     }
@@ -1499,52 +1489,68 @@ server <- function(input, output, session) {
       return()
     }
     
-    # Query database for stratified results
+    # Query database for ALL stratified results (no region filtering in DB)
     tryCatch({
       
       showNotification("Loading stratified data...", type = "message", duration = 2)
       
-      ids_json <- json_param(current_exp_ids) #Convert IDs to JSON
+      ids_json <- json_param(current_exp_ids)
       
-      stratified_data <- db$get_performance_results(ids_json, c('SNP', 'INDEL'),all_selected_regions)
+      # Get ALL results (no region filtering here!)
+      all_stratified_data <- db$get_performance_results(ids_json, c('SNP', 'INDEL'))
       metadata <- db$get_experiment_metadata(ids_json)
       
-      # Process and filter the data
-      if (nrow(stratified_data) > 0 && nrow(metadata) > 0) {
+      # Process and join the data
+      if (nrow(all_stratified_data) > 0 && nrow(metadata) > 0) {
         
-        # Join performance data with metadata and filter
-        enhanced_data <- stratified_data %>%
+        # Join with metadata
+        enhanced_data <- all_stratified_data %>%
           filter(!is.na(f1_score)) %>%
-          filter(subset %in% all_selected_regions) %>%  # Filter for selected regions only
           left_join(metadata, by = c("experiment_id" = "id"), suffix = c("", "_meta"))
         
-        # Store results and display
-        stratified_viz_data(enhanced_data)
+        # Store ALL results
+        stratified_raw_data(enhanced_data)
         stratified_triggered(TRUE)
         
         # Success notification
         n_experiments <- length(unique(enhanced_data$experiment_id))
-        n_regions <- length(unique(enhanced_data$subset))
-        n_results <- nrow(enhanced_data)
+        n_total_results <- nrow(enhanced_data)
         
         showNotification(
-          paste("Loaded", n_results, "results for", n_experiments, "experiments across", n_regions, "regions"), 
+          paste("Loaded", n_total_results, "total results for", n_experiments, "experiments"), 
           type = "message", 
           duration = 4
         )
         
-      } else { #No data
-        stratified_viz_data(data.frame())
+      } else {
+        stratified_raw_data(data.frame())
         stratified_triggered(FALSE)
-        showNotification("No data found for selected experiments and regions.", type = "warning", duration = 4)
+        showNotification("No stratified data found for selected experiments.", type = "warning", duration = 4)
       }
       
     }, error = function(e) {
       cat("Error in stratified analysis:", e$message, "\n")
-      stratified_viz_data(data.frame())
+      stratified_raw_data(data.frame())
       stratified_triggered(FALSE)
       showNotification(paste("Error loading stratified data:", e$message), type = "error", duration = 6)
     })
+  })
+  
+  # 4.11 Reactive filtering
+  observe({
+    # Only process if we have raw data
+    if (stratified_triggered() && nrow(stratified_raw_data()) > 0) {
+      
+      selected_regions <- get_selected_regions()
+      raw_data <- stratified_raw_data()
+      
+      # Process and filter data
+      processed_data <- process_stratified_data(raw_data, selected_regions)
+      stratified_filtered_data(processed_data)
+      
+    } else {
+      stratified_filtered_data(data.frame())
+    }
   })
   # ====================================================================
   # 5. UI OUTPUTS FOR DISPALY
@@ -1827,6 +1833,31 @@ server <- function(input, output, session) {
   
   
   style = "font-size: 11px; margin-bottom: 5px;")
+  # --------------------------------------------------
+  
+  # 5.8 
+  # Stratified results outputs
+  output$has_stratified_data <- reactive({
+    stratified_triggered() && nrow(stratified_filtered_data()) > 0
+  })
+  outputOptions(output, "has_stratified_data", suspendWhenHidden = FALSE)
+  
+  # 
+  output$stratified_summary <- renderUI({
+    data <- stratified_filtered_data()
+    if (nrow(data) == 0) return(NULL)
+    
+    n_experiments <- length(unique(data$experiment_id))
+    n_regions <- length(unique(data$subset))
+    n_results <- nrow(data)
+    
+    HTML(paste0(
+      "<strong>Analysis Summary:</strong> ",
+      n_experiments, " experiments × ",
+      n_regions, " regions = ",
+      n_results, " total results"
+    ))
+  })
   # +=================================================================================
   # Export html report (download)
   output$export_html_report <- downloadHandler(
@@ -2043,6 +2074,70 @@ server <- function(input, output, session) {
         theme_bw()
       return(ggplotly(p))
     })
+  })
+  # 6.3 - Create stratified grouped bar plot
+  create_stratified_grouped_plot <- function(data, variant_type) {
+    
+    if (nrow(data) == 0) {
+      return(ggplot() + 
+               annotate("text", x = 0.5, y = 0.5, 
+                        label = paste("No", variant_type, "data"), size = 6) +
+               xlim(0, 1) + ylim(0, 1) +
+               theme_bw())
+    }
+    
+    # Filter for variant type
+    plot_data <- data %>%
+      filter(variant_type == !!variant_type)
+    
+    if (nrow(plot_data) == 0) {
+      return(ggplot() + 
+               annotate("text", x = 0.5, y = 0.5, 
+                        label = paste("No", variant_type, "data for selected regions"), 
+                        size = 6) +
+               xlim(0, 1) + ylim(0, 1) +
+               theme_bw())
+    }
+    
+    # Create horizontal grouped bar plot
+    p <- ggplot(plot_data, aes(x = f1_score, y = reorder(exp_label, f1_score))) +
+      geom_col(aes(fill = technology), alpha = 0.8, width = 0.7) +
+      geom_text(aes(label = paste0(round(f1_score * 100, 1), "%")), 
+                hjust = -0.1, size = 3, color = "black") +
+      scale_fill_manual(values = technology_colors, na.value = "gray70") +
+      scale_x_continuous(limits = c(0, 1.05), labels = scales::percent_format()) +
+      facet_wrap(~ subset, scales = "free_y", ncol = 1) +
+      labs(
+        title = paste(variant_type, "F1 Scores by Region"),
+        x = "F1 Score",
+        y = "Experiment",
+        fill = "Technology"
+      ) +
+      theme_bw() +
+      theme(
+        strip.background = element_rect(fill = "#f8f9fa", color = "#dee2e6"),
+        strip.text = element_text(face = "bold", size = 10),
+        axis.text.y = element_text(size = 8),
+        axis.text.x = element_text(size = 9),
+        legend.position = "bottom",
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_line(color = "gray90", size = 0.3)
+      )
+    
+    return(p)
+  }
+  
+  # 6.4 - SNP stratified plot output
+  output$stratified_snp_plot <- renderPlot({
+    data <- stratified_filtered_data()
+    create_stratified_grouped_plot(data, "SNP")
+  })
+  
+  # 6.5 - INDEL stratified plot output  
+  output$stratified_indel_plot <- renderPlot({
+    data <- stratified_filtered_data()
+    create_stratified_grouped_plot(data, "INDEL")
   })
 }
 # APP LAUNCH
