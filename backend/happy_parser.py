@@ -143,7 +143,7 @@ def parse_happy_csv(happy_file_name, experiment_id, session):
             results_added += 1
 
             # ALSO store in fast table (ONLY for overall results)
-            if region_enum == RegionType.OVERALL:
+            if region_enum == RegionType.ALL:
                 overall_result = OverallResult(
                     experiment_id=experiment_id,
                     variant_type=row['Type'],

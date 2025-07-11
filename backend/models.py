@@ -85,8 +85,8 @@ class BenchmarkToolName(enum.Enum):
 class RegionType(enum.Enum):
     """All genomic regions from hap.py stratified analysis"""
     
-    # Overall
-    OVERALL = "*"
+    # All
+    ALL = "*"
     
     # Difficulty
     EASY = "easy"
