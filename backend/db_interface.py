@@ -213,7 +213,7 @@ def get_experiment_metadata(experiment_ids_param):
 # ========================================================================
 # 3. DETAILED EXPERIMENT PERFORMANCE RESULTS
 # ======================================================================== 
-def get_overall_performance_results(experiment_ids_param, variant_types=['SNP', 'INDEL']):
+def get_overall_performance_results(experiment_ids_param, variant_types=['SNP', 'INDEL'],regions=None):
     """
     FAST function for main dashboard - uses OverallResult table
     """
@@ -273,7 +273,7 @@ def get_overall_performance_results(experiment_ids_param, variant_types=['SNP', 
         print(f"Error in get_overall_performance_results: {e}")
         return pd.DataFrame()
     
-def get_performance_results(experiment_ids_param, variant_types=['SNP', 'INDEL'], regions=None):
+def get_performance_results(experiment_ids_param, variant_types=['SNP', 'INDEL']):
     """
     COMPLETE function for stratified analysis - uses BenchmarkResult table
     Only called when specific regions are needed
@@ -281,7 +281,6 @@ def get_performance_results(experiment_ids_param, variant_types=['SNP', 'INDEL']
     Args:
         experiment_ids (list): List of experiment IDs
         variant_types (list): Variant types to include ['SNP', 'INDEL', 'SNP+INDEL']
-        regions (list): Region types to include (defaults to OVERALL only)
     """
     
     # Parse JSON IDs   
@@ -305,8 +304,7 @@ def get_performance_results(experiment_ids_param, variant_types=['SNP', 'INDEL']
                 joinedload(BenchmarkResult.experiment)
             ).filter(
                 BenchmarkResult.experiment_id.in_(experiment_ids),
-                BenchmarkResult.variant_type.in_(variant_types),
-                BenchmarkResult.subset.in_([RegionType[region] for region in regions]) 
+                BenchmarkResult.variant_type.in_(variant_types)
             )
             
             results = query.all()
