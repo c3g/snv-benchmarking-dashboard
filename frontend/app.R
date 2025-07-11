@@ -667,6 +667,7 @@ ui <- fluidPage(
         # ====================================================================
         # TAB 4: STRATIFIED ANALYSIS
         # ====================================================================
+        
         tabPanel(
           "Stratified Analysis",
           br(),
@@ -682,228 +683,227 @@ ui <- fluidPage(
               strong("Note: "), "Only experiments from your current selection (previous tabs) are shown.")
           ),
           
-          # Region selection filter
-          fluidRow(
-            column(12,
-                   wellPanel(
-                     style = "background-color: #f8f9fa; margin-bottom: 20px;",
-                     h5("Select Regions to Analyze", style = "margin-top: 0;"),
-                     
-                     fluidRow(
-                       column(12,
-                              div(style = "background: white; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px;",
-                                  
-                                  # Core Regions - Always visible (most commonly used)
-                                  div(
-                                    h6("Core Regions", style = "margin-bottom: 10px; color: #495057; font-weight: bold;"),
-                                    checkboxGroupInput(
-                                      "core_regions",
-                                      NULL,
-                                      choices = list(
-                                        "Overall" = "*",
-                                        "Easy Regions" = "easy", 
-                                        "Difficult Regions" = "difficult"
-                                      ),
-                                      selected = c("*", "easy", "difficult"),
-                                      inline = TRUE
-                                    )
-                                  ),
-                                  
-                                  hr(style = "margin: 15px 0;"),
-                                  
-                                  # Expandable sections
-                                  div(
-                                    # Functional Regions Toggle
-                                    div(
-                                      tags$a(
-                                        href = "#functional_collapse",
-                                        `data-toggle` = "collapse",
-                                        style = "text-decoration: none; color: #495057;",
-                                        onclick = "toggleChevron('functional')",
-                                        h6(
-                                          HTML('<i id="functional_chevron" class="fa fa-chevron-right" style="margin-right: 8px;"></i>'),
-                                          "Functional Regions",
-                                          style = "margin-bottom: 8px; font-weight: bold; cursor: pointer;"
-                                        )
-                                      )
-                                    ),
-                                    div(
-                                      id = "functional_collapse",
-                                      class = "collapse",
-                                      style = "margin-left: 20px; margin-bottom: 10px;",
+          # Region selection panel
+          wellPanel(
+            style = "background-color: #f8f9fa; margin-bottom: 20px;",
+            h5("📊 Select Regions to Analyze", style = "margin-top: 0;"),
+            
+            fluidRow(
+              column(12,
+                     div(style = "background: white; border: 1px solid #dee2e6; border-radius: 5px; padding: 20px;",
+                         
+                         # Main Regions
+                         div(
+                           h6("🎯 Main Regions", 
+                              style = "margin-bottom: 10px; color: #495057; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
+                           checkboxGroupInput(
+                             "core_regions",
+                             NULL,
+                             choices = list(
+                               "Overall" = "all",
+                               "Easy Regions" = "easy", 
+                               "Difficult Regions" = "difficult"
+                             ),
+                             selected = c("all"),
+                             inline = TRUE
+                           )
+                         ),
+                        
+                         
+                         # Functional Regions (Collapsible)
+                         div(
+                           style = "margin-top: 15px;",
+                           tags$a(
+                             href = "#functional_collapse",
+                             `data-toggle` = "collapse",
+                             style = "text-decoration: none; color: #495057;",
+                             h6("▶ 🧬 Functional Regions",
+                                style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
+                           ),
+                           div(
+                             id = "functional_collapse",
+                             class = "collapse",
+                             style = "margin-top: 6px;",
+                             checkboxGroupInput(
+                               "functional_regions",
+                               NULL,
+                               choices = list(
+                                 "RefSeq CDS" = "refseq_cds",
+                                 "Not in CDS" = "not_in_cds"
+                               ),
+                               selected = character(0),
+                               inline = TRUE
+                             )
+                           )
+                         ),
+                         
+                         
+                         # Homopolymer Regions
+                         div(
+                           style = "margin-top: 15px;",
+                           tags$a(
+                             href = "#homopolymer_collapse",
+                             `data-toggle` = "collapse",
+                             style = "text-decoration: none; color: #495057;",
+                             h6("▶ 🔗 Homopolymer Regions",
+                                style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
+                           ),
+                           div(
+                             id = "homopolymer_collapse",
+                             class = "collapse",
+                             style = "margin-top: 6px;",
+                             checkboxGroupInput(
+                               "homopolymer_regions",
+                               NULL,
+                               choices = list(
+                                 "Homopolymer 4-6bp" = "homopolymer_4to6",
+                                 "Homopolymer 7-11bp" = "homopolymer_7to11",
+                                 "Homopolymer >11bp" = "homopolymer_gt11"
+                               ),
+                               selected = character(0),
+                               inline = TRUE
+                             )
+                           )
+                         ),
+                         
+
+                         # GC Content Regions (Collapsible)
+                         div(
+                           style = "margin-top: 15px;",
+                           tags$a(
+                             href = "#gc_collapse",
+                             `data-toggle` = "collapse",
+                             style = "text-decoration: none; color: #495057;",
+                             h6("▶ 🧪 GC Content Regions",
+                                style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
+                           ),
+                           div(
+                             id = "gc_collapse",
+                             class = "collapse",
+                             style = "margin-top: 10px;",
+                             fluidRow(
+                               column(4,
+                                      h6("Low GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
                                       checkboxGroupInput(
-                                        "functional_regions",
+                                        "gc_low",
                                         NULL,
                                         choices = list(
-                                          "RefSeq CDS" = "refseq_cds",
-                                          "Not in CDS" = "not_in_cds"
+                                          "Very Low (<15%)" = "GC_<15",
+                                          "GC 15-20%" = "GC_15_20",
+                                          "GC 20-25%" = "GC_20_25",
+                                          "GC 25-30%" = "GC_25_30"
                                         ),
-                                        selected = character(0),
-                                        inline = TRUE
+                                        selected = character(0)
                                       )
-                                    )
-                                  ),
-                                  
-                                  div(
-                                    # Complex Regions Toggle
-                                    div(
-                                      tags$a(
-                                        href = "#complex_collapse",
-                                        `data-toggle` = "collapse",
-                                        style = "text-decoration: none; color: #495057;",
-                                        onclick = "toggleChevron('complex')",
-                                        h6(
-                                          HTML('<i id="complex_chevron" class="fa fa-chevron-right" style="margin-right: 8px;"></i>'),
-                                          "Repetitive/Complex Regions",
-                                          style = "margin-bottom: 8px; font-weight: bold; cursor: pointer;"
-                                        )
-                                      )
-                                    ),
-                                    div(
-                                      id = "complex_collapse",
-                                      class = "collapse",
-                                      style = "margin-left: 20px; margin-bottom: 10px;",
-                                      fluidRow(
-                                        column(6,
-                                               checkboxGroupInput(
-                                                 "complex_regions_1",
-                                                 NULL,
-                                                 choices = list(
-                                                   "MHC Complex" = "MHC",
-                                                   "Segmental Duplications" = "segdup",
-                                                   "Low Mappability" = "low_mappability"
-                                                 ),
-                                                 selected = c("MHC", "segdup")
-                                               )
-                                        ),
-                                        column(6,
-                                               checkboxGroupInput(
-                                                 "complex_regions_2", 
-                                                 NULL,
-                                                 choices = list(
-                                                   "Homopolymer 4-6bp" = "homopolymer_4to6",
-                                                   "Homopolymer 7-11bp" = "homopolymer_7to11", 
-                                                   "Homopolymer >11bp" = "homopolymer_gt11"
-                                                 ),
-                                                 selected = character(0)
-                                               )
-                                        )
-                                      )
-                                    )
-                                  ),
-                                  
-                                  div(
-                                    # GC Content Toggle
-                                    div(
-                                      tags$a(
-                                        href = "#gc_collapse",
-                                        `data-toggle` = "collapse",
-                                        style = "text-decoration: none; color: #495057;",
-                                        onclick = "toggleChevron('gc')",
-                                        h6(
-                                          HTML('<i id="gc_chevron" class="fa fa-chevron-right" style="margin-right: 8px;"></i>'),
-                                          "GC Content Regions",
-                                          style = "margin-bottom: 8px; font-weight: bold; cursor: pointer;"
-                                        )
-                                      )
-                                    ),
-                                    div(
-                                      id = "gc_collapse",
-                                      class = "collapse",
-                                      style = "margin-left: 20px; margin-bottom: 10px;",
-                                      fluidRow(
-                                        column(6,
-                                               checkboxGroupInput(
-                                                 "gc_regions_1",
-                                                 "Low GC:",
-                                                 choices = list(
-                                                   "Very Low GC (<15%)" = "GC_<15",
-                                                   "GC 15-20%" = "GC_15_20", 
-                                                   "GC 20-25%" = "GC_20_25",
-                                                   "GC 25-30%" = "GC_25_30",
-                                                   "GC 30-55%" = "GC_30_55",
-                                                   "GC 55-60%" = "GC_55_60"
-                                                 ),
-                                                 selected = character(0)
-                                               )
-                                        ),
-                                        column(6,
-                                               checkboxGroupInput(
-                                                 "gc_regions_2",
-                                                 "High GC:",
-                                                 choices = list(
-                                                   "GC 60-65%" = "GC_60_65",
-                                                   "GC 65-70%" = "GC_65_70",
-                                                   "GC 70-75%" = "GC_70_75",
-                                                   "GC 75-80%" = "GC_75_80",
-                                                   "GC 80-85%" = "GC_80_85",
-                                                   "Very High GC (>85%)" = "GC_>85"
-                                                 ),
-                                                 selected = character(0)
-                                               )
-                                        )
-                                      )
-                                    )
-                                  ),
-                                  
-                                  div(
-                                    # Other Regions Toggle
-                                    div(
-                                      tags$a(
-                                        href = "#other_collapse",
-                                        `data-toggle` = "collapse",
-                                        style = "text-decoration: none; color: #495057;",
-                                        onclick = "toggleChevron('other')",
-                                        h6(
-                                          HTML('<i id="other_chevron" class="fa fa-chevron-right" style="margin-right: 8px;"></i>'),
-                                          "Other Regions",
-                                          style = "margin-bottom: 8px; font-weight: bold; cursor: pointer;"
-                                        )
-                                      )
-                                    ),
-                                    div(
-                                      id = "other_collapse",
-                                      class = "collapse",
-                                      style = "margin-left: 20px; margin-bottom: 10px;",
+                               ),
+                               column(4,
+                                      h6("Normal GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
                                       checkboxGroupInput(
-                                        "other_regions",
+                                        "gc_normal",
                                         NULL,
                                         choices = list(
-                                          "Truth Set Boundary" = "TS_boundary",
-                                          "Truth Set Contained" = "TS_contained"
+                                          "GC 30-55%" = "GC_30_55",
+                                          "GC 55-60%" = "GC_55_60", 
+                                          "GC 60-65%" = "GC_60_65",
+                                          "GC 65-70%" = "GC_65_70"
                                         ),
                                         selected = character(0),
-                                        inline = TRUE
+                                      )
+                               ),
+                               column(4,
+                                      h6("High GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
+                                      checkboxGroupInput(
+                                        "gc_high",
+                                        NULL,
+                                        choices = list(
+                                          "GC 70-75%" = "GC_70_75",
+                                          "GC 75-80%" = "GC_75_80",
+                                          "GC 80-85%" = "GC_80_85",
+                                          "Very High (>85%)" = "GC_>85"
+                                        ),
+                                        selected = character(0)
                                       )
                                     )
-                                  )
-                              )
-                       )
-                     ),
-                     
-                     # Quick selection buttons
-                     fluidRow(
-                       column(12,
-                              div(style = "text-align: center; margin: 10px 0;",
-                                  actionButton("select_all_regions", "Select All", 
-                                               class = "btn-outline-primary btn-sm", 
-                                               style = "margin-right: 10px;"),
-                                  actionButton("clear_all_regions", "Clear All", 
-                                               class = "btn-outline-danger btn-sm")
-                              )
-                       )
-                     ),
-                     
-                     # Update button
-                     div(style = "text-align: center; margin-top: 15px;",
-                         actionButton(
-                           "update_stratified",
-                           "Update Analysis",
-                           class = "btn-primary",
-                           style = "padding: 8px 20px;"
+                             ),
+                           )
+                         ),
+
+                         
+                         # Other Regions (Collapsible)
+                         div(
+                           style = "margin-top: 15px;",
+                           tags$a(
+                             href = "#other_collapse",
+                             `data-toggle` = "collapse",
+                             style = "text-decoration: none; color: #495057;",
+                             h6("▶ 📋 Other Regions",
+                                style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
+                           ),
+                           div(
+                             id = "other_collapse",
+                             class = "collapse",
+                             style = "margin-top: 6px;",
+                             
+                             # Complex regions (moved here)
+                             div(
+                               h6("Complex Regions:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
+                               checkboxGroupInput(
+                                 "complex_regions",
+                                 NULL,
+                                 choices = list(
+                                   "MHC Complex" = "MHC",
+                                   "Segmental Duplications" = "segdup",
+                                   "Low Mappability" = "low_mappability"
+                                 ),
+                                 selected = character(0),
+                                 inline = TRUE
+                               )
+                             ),
+                             
+                             # Truth set regions
+                             div(
+                               h6("Truth Set Regions:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px; margin-top: 12px;"),
+                               checkboxGroupInput(
+                                 "truth_set_regions",
+                                 NULL,
+                                 choices = list(
+                                   "Truth Set Boundary" = "TS_boundary",
+                                   "Truth Set Contained" = "TS_contained"
+                                 ),
+                                 selected = character(0),
+                                 inline = TRUE
+                               )
+                             )
+                           )
                          )
                      )
-                   )
+              )
+            ),
+            
+            # Quick selection buttons
+            fluidRow(
+              column(12,
+                     div(style = "text-align: center; margin: 15px 0;",
+                         actionButton("select_all_regions", "Select All", 
+                                      class = "btn-outline-primary btn-sm", 
+                                      style = "margin-right: 10px;"),
+                         actionButton("select_core_only", "Core Only", 
+                                      class = "btn-outline-secondary btn-sm",
+                                      style = "margin-right: 10px;"),
+                         actionButton("clear_all_regions", "Clear All", 
+                                      class = "btn-outline-danger btn-sm")
+                     )
+              )
+            ),
+            
+            # Update button
+            div(style = "text-align: center; margin-top: 15px;",
+                actionButton(
+                  "update_stratified",
+                  "Update Analysis",
+                  class = "btn-primary",
+                  style = "padding: 10px 25px; font-size: 16px;"
+                )
             )
           ),
           
@@ -925,12 +925,12 @@ ui <- fluidPage(
             fluidRow(
               # SNP Results (Left)
               column(6,
-                     h4(" SNP Performance by Region"),
+                     h4("📈 SNP Performance by Region"),
                      plotOutput("stratified_snp_plot", height = "600px")
               ),
               # INDEL Results (Right)  
               column(6,
-                     h4(" INDEL Performance by Region"),
+                     h4("📈 INDEL Performance by Region"),
                      plotOutput("stratified_indel_plot", height = "600px")
               )
             )
@@ -942,15 +942,17 @@ ui <- fluidPage(
             div(
               class = "alert alert-warning",
               style = "margin-top: 30px; text-align: center;",
-              h5(" No Data to Display"),
+              h5("📋 No Data to Display"),
               p("Please select some regions and experiments from previous tabs, then click 'Update Analysis'.")
             )
           )
-        )
+         
+        
+        # End of tab 4
       )
     )
   )
-)
+))
 
 # =============================================================================
 # SERVER DEFINITION
@@ -1900,7 +1902,7 @@ server <- function(input, output, session) {
       return(ggplotly(p))
     })
   })
-  
+}
 # APP LAUNCH
 # =============================================================================
 
