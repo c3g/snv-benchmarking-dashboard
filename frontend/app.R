@@ -921,21 +921,17 @@ ui <- fluidPage(
               )
             ),
             
-            # SNP Results
+            # SNP and INDEL Results side by side
             fluidRow(
-              column(12,
-                     h4("SNP Performance by Region"),
-                     plotOutput("stratified_snp_plot", height = "500px")
-              )
-            ),
-            
-            br(),
-            
-            # INDEL Results  
-            fluidRow(
-              column(12,
-                     h4("INDEL Performance by Region"),
-                     plotOutput("stratified_indel_plot", height = "500px")
+              # SNP Results (Left)
+              column(6,
+                     h4(" SNP Performance by Region"),
+                     plotOutput("stratified_snp_plot", height = "600px")
+              ),
+              # INDEL Results (Right)  
+              column(6,
+                     h4(" INDEL Performance by Region"),
+                     plotOutput("stratified_indel_plot", height = "600px")
               )
             )
           ),
@@ -946,7 +942,7 @@ ui <- fluidPage(
             div(
               class = "alert alert-warning",
               style = "margin-top: 30px; text-align: center;",
-              h5("No Data to Display"),
+              h5(" No Data to Display"),
               p("Please select some regions and experiments from previous tabs, then click 'Update Analysis'.")
             )
           )
@@ -1904,8 +1900,7 @@ server <- function(input, output, session) {
       return(ggplotly(p))
     })
   })
-}
-# =============================================================================
+  
 # APP LAUNCH
 # =============================================================================
 
