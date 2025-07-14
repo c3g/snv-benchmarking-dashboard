@@ -4,7 +4,6 @@ on:
     branches: [main]
   release:
     types: [published]
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -29,5 +28,5 @@ jobs:
     
     - name: Build and push
       run: |
-        docker build -t ghcr.io/${{ github.repository_owner }}/snv-dashboard:${{ steps.tag.outputs.tag }} .
+        docker build -f Containerfile -t ghcr.io/${{ github.repository_owner }}/snv-dashboard:${{ steps.tag.outputs.tag }} .
         docker push ghcr.io/${{ github.repository_owner }}/snv-dashboard:${{ steps.tag.outputs.tag }}
