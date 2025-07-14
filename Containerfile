@@ -1,7 +1,7 @@
 # R Shiny base
 FROM rocker/shiny-verse:latest
 
-# Install Python and system tools
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
@@ -29,24 +29,27 @@ RUN install2.r --error \
     jsonlite \
     htmltools \
     htmlwidgets \
-    tidyr
+    tidyr \
+    base64enc \
+    ggforce \
+    dplyr
 
-# Copy app code
+# Install app in /app folder
 COPY backend/ /app/backend/
 COPY frontend/ /app/frontend/
 
-# Create data mount point
-RUN mkdir -p /app/data
-VOLUME ["/app/data"]
-
 # Environment variables
 ENV PYTHONPATH="/app/backend:/app"
-ENV BENCHMARKING_DATA_LOCATION="/app/data"
+ENV BENCHMARKING_DATA_LOCATION="/data"
 ENV RETICULATE_PYTHON="/opt/venv/bin/python"
 
-# Configure container
+# Expose port 3838
 EXPOSE 3838
+
+# Volume for persistent data
+VOLUME ["/data"]
+
 WORKDIR /app/frontend
 
-# Start Shiny directly
+# Start command
 CMD ["R", "-e", "library(reticulate); use_python('/opt/venv/bin/python'); options(shiny.host='0.0.0.0', shiny.port=3838); shiny::runApp('.', launch.browser=FALSE)"]
