@@ -855,7 +855,7 @@ ui <- fluidPage(
                              class = "collapse",
                              style = "margin-top: 6px;",
                              
-                             # Complex regions (moved here)
+                             # Complex regions
                              div(
                                h6("Complex Regions:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
                                checkboxGroupInput(
@@ -865,21 +865,6 @@ ui <- fluidPage(
                                    "MHC" = "MHC",
                                    "Segmental Duplications" = "segdup",
                                    "Low Mappability" = "low_mappability"
-                                 ),
-                                 selected = character(0),
-                                 inline = TRUE
-                               )
-                             ),
-                             
-                             # Truth set regions
-                             div(
-                               h6("Truth Set Regions:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px; margin-top: 12px;"),
-                               checkboxGroupInput(
-                                 "truth_set_regions",
-                                 NULL,
-                                 choices = list(
-                                   "Truth Set Boundary" = "TS_boundary",
-                                   "Truth Set Contained" = "TS_contained"
                                  ),
                                  selected = character(0),
                                  inline = TRUE
@@ -1156,8 +1141,7 @@ server <- function(input, output, session) {
       input$gc_low,
       input$gc_normal, 
       input$gc_high,
-      input$complex_regions,
-      input$truth_set_regions
+      input$complex_regions
     )
     
     all_selected_regions <- unique(all_selected_regions[all_selected_regions != ""])
@@ -1470,7 +1454,6 @@ server <- function(input, output, session) {
     updateCheckboxGroupInput(session, "gc_normal", selected = character(0))
     updateCheckboxGroupInput(session, "gc_high", selected = character(0))
     updateCheckboxGroupInput(session, "complex_regions", selected = character(0))
-    updateCheckboxGroupInput(session, "truth_set_regions", selected = character(0))
     
     showNotification("All selections cleared!", type = "message", duration = 2)
   })
