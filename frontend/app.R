@@ -306,6 +306,18 @@ ui <- fluidPage(
   });
 ")),
   
+  # CSS for expanding stratified regions
+  tags$script(HTML("
+  $(document).on('click', '[data-toggle=\"collapse\"]', function() {
+    var triangle = $(this).find('h6');
+    if (triangle.text().startsWith('▶')) {
+      triangle.text(triangle.text().replace('▶', '▼'));
+    } else {
+      triangle.text(triangle.text().replace('▼', '▶'));
+    }
+  });
+  ")),
+  
   sidebarLayout(
     
     # -------------------------------------------------------------------------
@@ -677,8 +689,7 @@ ui <- fluidPage(
             class = "alert alert-info",
             style = "margin-bottom: 20px;",
             h5("Stratified Performance Analysis"),
-            p("Analyze F1 scores across different genomic regions for your selected experiments. ",
-              "Choose the regions you're interested in, and view comparative performance across technologies/callers."),
+            p("Analyze F1 scores across different genomic regions for the selected experiments. "),
             p(style = "font-size: 0.9em; margin-bottom: 0;",
               strong("Note: "), "Only experiments from your current selection (previous tabs) are shown.")
           ),
@@ -694,7 +705,7 @@ ui <- fluidPage(
                          
                          # Main Regions
                          div(
-                           h6("🎯 Main Regions", 
+                           h6( "Main Regions", 
                               style = "margin-bottom: 10px; color: #495057; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
                            checkboxGroupInput(
                              "core_regions",
@@ -717,7 +728,7 @@ ui <- fluidPage(
                              href = "#functional_collapse",
                              `data-toggle` = "collapse",
                              style = "text-decoration: none; color: #495057;",
-                             h6("▶ 🧬 Functional Regions",
+                             h6("▶ Functional Regions",
                                 style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
                            ),
                            div(
@@ -745,7 +756,7 @@ ui <- fluidPage(
                              href = "#homopolymer_collapse",
                              `data-toggle` = "collapse",
                              style = "text-decoration: none; color: #495057;",
-                             h6("▶ 🔗 Homopolymer Regions",
+                             h6("▶ Homopolymer Regions",
                                 style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
                            ),
                            div(
@@ -774,7 +785,7 @@ ui <- fluidPage(
                              href = "#gc_collapse",
                              `data-toggle` = "collapse",
                              style = "text-decoration: none; color: #495057;",
-                             h6("▶ 🧪 GC Content Regions",
+                             h6("▶ GC Content Regions",
                                 style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
                            ),
                            div(
@@ -836,7 +847,7 @@ ui <- fluidPage(
                              href = "#other_collapse",
                              `data-toggle` = "collapse",
                              style = "text-decoration: none; color: #495057;",
-                             h6("▶ 📋 Other Regions",
+                             h6("▶ Other Regions",
                                 style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
                            ),
                            div(
@@ -851,7 +862,7 @@ ui <- fluidPage(
                                  "complex_regions",
                                  NULL,
                                  choices = list(
-                                   "MHC Complex" = "MHC",
+                                   "MHC" = "MHC",
                                    "Segmental Duplications" = "segdup",
                                    "Low Mappability" = "low_mappability"
                                  ),
@@ -919,12 +930,12 @@ ui <- fluidPage(
             fluidRow(
               # SNP Results (Left)
               column(6,
-                     h4("📈 SNP Performance by Region"),
+                     h4("SNP Performance by Region"),
                      plotOutput("stratified_snp_plot", height = "600px")
               ),
               # INDEL Results (Right)  
               column(6,
-                     h4("📈 INDEL Performance by Region"),
+                     h4("INDEL Performance by Region"),
                      plotOutput("stratified_indel_plot", height = "600px")
               )
             )
@@ -936,7 +947,7 @@ ui <- fluidPage(
             div(
               class = "alert alert-warning",
               style = "margin-top: 30px; text-align: center;",
-              h5("📋 No Data to Display"),
+              h5("No Data to Display"),
               p("Please select some regions and experiments from previous tabs, then click 'Update Analysis'.")
             )
           )
@@ -1114,7 +1125,7 @@ server <- function(input, output, session) {
         # Clean up platform name
         platform_name = ifelse(is.na(platform_name) | platform_name == "", "N/A", platform_name)
       ) %>%
-      # Order by experiment ID first, then variant type (SNP first, then INDEL for visual grouping)
+      # Order by experiment ID first, then variant type
       arrange(experiment_id, variant_type) %>%
       # Rename columns for better display
       rename(
@@ -1171,7 +1182,9 @@ server <- function(input, output, session) {
         exp_label = paste0("ID:", experiment_id, " (", 
                            coalesce(technology, "Unknown"), "-", 
                            coalesce(caller, "Unknown"),")")
-      )
+      ) %>%
+    arrange(subset, variant_type, desc(experiment_id)) #_______________________________________________FIX ORDER___+___FIX to only show barplots of selected speimentent 
+    #___________________________________________________________________________________________________________________also to only work when the update bottun os hit___________________
     
     return(filtered_data)
   }
@@ -1179,19 +1192,19 @@ server <- function(input, output, session) {
   # 3. UI OUTPUTS FOR STATE MANAGEMENT
   # ====================================================================
   
-  # Make current_mode available to UI
+  # Comparion mode
   output$comparison_mode <- reactive({
     current_mode()
   })
   outputOptions(output, "comparison_mode", suspendWhenHidden = FALSE)
   
-  # Check if experiments are selected
+  # Selected experiments check
   output$has_selected_experiments <- reactive({
     current_mode() == "manual_selection" && length(table_selected_ids()) > 0
   })
   outputOptions(output, "has_selected_experiments", suspendWhenHidden = FALSE)
   
-  # Check if we have a selected point
+  # selected point
   output$has_selected_point <- reactive({
     !is.null(plot_clicked_id())
   })
@@ -1996,10 +2009,10 @@ server <- function(input, output, session) {
         return(ggplotly(p))
       }
       
-      # Create contour data
+      # contour data
       contour <- create_f1_contour()
       
-      # Safe tooltip creation with proper null checking
+      # tooltip 
       indel_data$tooltip_text <- paste(
         "<b>ID:", indel_data$experiment_id," - ",
         "<b>", ifelse(is.na(indel_data$experiment_name) | is.null(indel_data$experiment_name), "Unknown", indel_data$experiment_name), "</b>",
