@@ -84,7 +84,7 @@ def parse_happy_csv(happy_file_name, experiment_id, session):
                 print(f"  Warning: Unknown region '{row['Subset']}' - skipping")
                 continue
             
-            # Create BenchmarkResult for all regions
+            # 1. Create BenchmarkResult for all regions
             result = BenchmarkResult(
                 experiment_id=experiment_id, # links the result to the experiment ID. 
                 
@@ -142,7 +142,7 @@ def parse_happy_csv(happy_file_name, experiment_id, session):
             session.add(result)
             results_added += 1
 
-            # ALSO store in fast table (ONLY for overall results)
+            # 2. Store in overall table (ALL subset only)
             if region_enum == RegionType.ALL:
                 overall_result = OverallResult(
                     experiment_id=experiment_id,

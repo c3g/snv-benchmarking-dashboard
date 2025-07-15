@@ -1926,7 +1926,7 @@ server <- function(input, output, session) {
               customdata = experiment_id), 
           color = "black",                 # black outline
           stroke = 0.15,
-          size = 2.2
+          size = 2.5                       # point size
         ) +
         scale_fill_manual(values = technology_colors) + 
         scale_shape_manual(values = caller_shapes) +       
@@ -2025,7 +2025,7 @@ server <- function(input, output, session) {
               text = tooltip_text,         # tooltip text
               customdata = experiment_id), 
           color = "black",                 # black outline
-          size = 2.2,
+          size = 2.5,                       # point size
           stroke = 0.15
         ) +
         scale_fill_manual(values = technology_colors) +   
