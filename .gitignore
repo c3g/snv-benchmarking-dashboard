@@ -1,7 +1,9 @@
 .DS_Store
 
-# Data files (local only)
-data/
+# Data files 
+data/happy_files/*.csv
+data/*.csv
+data/*.db
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
