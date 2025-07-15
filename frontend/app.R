@@ -14,6 +14,7 @@ library(geomtextpath)
 library(htmltools)
 library(htmlwidgets)
 library(jsonlite)
+library(tidyr)
 
 # Import database interface
 py_run_string("import sys")
@@ -916,14 +917,29 @@ ui <- fluidPage(
               # SNP Results (Left)
               column(6,
                      h4("SNP Performance by Region"),
+                     br(),
                      plotOutput("stratified_snp_plot", height = "600px")
               ),
               # INDEL Results (Right)  
               column(6,
                      h4("INDEL Performance by Region"),
+                     br(),
                      plotOutput("stratified_indel_plot", height = "600px")
               )
-            )
+            ),
+            
+            # Stratified Table --==================================================================================================================================================================
+           ' fluidRow(
+              column(12,
+                     conditionalPanel(
+                       condition = "output.has_stratified_data",
+                       
+                       hr(),
+                       h4("F1 Scores by Region"),
+                       DT::dataTableOutput("f1_scores_table")
+                     )
+              )
+            )'
           ),
           
           # No data message
@@ -936,7 +952,6 @@ ui <- fluidPage(
               p("Please select some regions and experiments from previous tabs, then click 'Update Analysis'.")
             )
           )
-         
         
         # End of tab 4
       )
@@ -1166,16 +1181,49 @@ server <- function(input, output, session) {
                            coalesce(technology, "Unknown"), "-", 
                            coalesce(caller, "Unknown"),")")
       ) %>%
-    arrange(subset, variant_type, desc(experiment_id)) #_______________________________________________FIX ORDER___+___FIX to only show barplots of selected speimentent 
-    #___________________________________________________________________________________________________________________also to only work when the update bottun os hit___________________
+    arrange(subset, variant_type, desc(experiment_id)) 
+    #___________________________________________________________________________________________________________________also to only work when the update bottun ___________________
     
     return(filtered_data)
   }
+  
+  #------------------------------
+  # 2.7 Stratified table
+  create_f1_table <- function(data) {
+    if (nrow(data) == 0) {
+      return(data.frame(Message = "No data available"))
+    }
+    
+    # Create pivot table: experiments as rows, regions as columns
+    table_data <- data %>%
+      select(experiment_id, experiment_name, variant_type, subset, f1_score) %>%
+      # Create experiment labels
+      mutate(exp_label = paste0("ID:", experiment_id, " (", variant_type, ")")) %>%
+      select(-experiment_id, -experiment_name, -variant_type) %>%
+      # Pivot
+      pivot_wider(
+        names_from = subset,
+        values_from = f1_score,
+        names_sort = TRUE
+      ) %>%
+      # Convert to percentages
+      mutate(across(where(is.numeric), ~ round(.x * 100, 2)))
+    
+    # Rename first column
+    colnames(table_data)[1] <- "Experiment"
+    
+    return(table_data)
+  }
+  f1_table_data <- reactive({
+    data <- stratified_filtered_data()
+    create_f1_table(data)
+  })
+  
   # ====================================================================
   # 3. UI OUTPUTS FOR STATE MANAGEMENT
   # ====================================================================
   
-  # Comparion mode
+  # Comparison mode
   output$comparison_mode <- reactive({
     current_mode()
   })
@@ -2077,7 +2125,7 @@ server <- function(input, output, session) {
     }
     
     # Horizontal grouped bar plot
-    p <- ggplot(plot_data, aes(x = f1_score, y = exp_label)) +
+    plot <- ggplot(plot_data, aes(x = f1_score, y = exp_label)) +
       geom_col(aes(fill = technology), alpha = 0.8, width = 0.7) +
       geom_text(aes(label = paste0(round(f1_score * 100, 2), "%")), 
                 hjust = -0.1, size = 3, color = "black") +
@@ -2094,15 +2142,16 @@ server <- function(input, output, session) {
       theme(
         strip.background = element_rect(fill = "#f8f9fa", color = "#dee2e6"),
         strip.text = element_text(face = "bold", size = 10),
-        axis.text.y = element_text(size = 8),
-        axis.text.x = element_text(size = 9),
+        axis.text.y = element_text(size = 8), # F1 values
+        axis.text.x = element_text(size = 9), # Experiment IDs
         legend.position = "bottom",
-        panel.grid.major.y = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.grid.major.x = element_line(color = "gray90", size = 0.3)
+        panel.grid.major.y = element_blank(), # no grid
+        panel.grid.minor = element_blank(),  # no grid
+        panel.grid.major.x = element_blank()
+        # panel.grid.major.x = element_line(color = "gray90", size = 0.3) 
       )
     
-    return(p)
+    return(plot)
   }
   
   # 6.4 - SNP stratified plot output
@@ -2139,7 +2188,34 @@ server <- function(input, output, session) {
     
     return(max(300, min(total_height, 1000)))
   })
+  
+  # 6.6 - Stratified table outputs
+  
+  # F1 Score table
+  output$f1_scores_table <- DT::renderDataTable({
+    table_data <- f1_table_data()
+    
+    if ("Message" %in% names(table_data)) {
+      return(DT::datatable(table_data, options = list(dom = 't')))
+    }
+    
+    DT::datatable(
+      table_data,
+      caption = "F1 Scores (%) by Genomic Region",
+      options = list(
+        pageLength = 15,
+        scrollX = TRUE,
+        scrollY = "400px",
+        columnDefs = list(
+          list(targets = 0, width = "250px", className = "dt-left"),  # Experiment column
+          list(targets = "_all", className = "dt-center")             # All F1 columns
+        )
+      ),
+      rownames = FALSE
+    )
+  })
 }
+
 # =============================================================================
 # APP LAUNCH
 # =============================================================================
