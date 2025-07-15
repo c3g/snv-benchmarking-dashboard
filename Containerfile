@@ -46,7 +46,7 @@ ENV RETICULATE_PYTHON="/opt/venv/bin/python"
 # Expose port 3838
 EXPOSE 3838
 
-# Volume for persistent data
+# Volume
 VOLUME ["/data"]
 
 WORKDIR /app/frontend
