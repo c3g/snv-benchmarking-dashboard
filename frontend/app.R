@@ -1105,9 +1105,8 @@ server <- function(input, output, session) {
           is.na(mean_coverage) ~ "N/A",
           TRUE ~ paste0(round(mean_coverage, 1), "x")
         ),
-        # Clean up chemistry name
+        # Clean up
         chemistry_name = ifelse(is.na(chemistry_name) | chemistry_name == "", "N/A", chemistry_name),
-        # Clean up platform name
         platform_name = ifelse(is.na(platform_name) | platform_name == "", "N/A", platform_name)
       ) %>%
       # Order by experiment ID first, then variant type
@@ -1377,7 +1376,7 @@ server <- function(input, output, session) {
   # -----------------------------------------------------------
   
   # 4.8
-  # Handle experiment details expansion
+  # Experiment details expansion - Tab 1
   observeEvent(input$expand_experiment_details, {
     exp_id <- input$expand_experiment_details$id
     
@@ -1440,13 +1439,11 @@ server <- function(input, output, session) {
   })
   
   #----------------------------------------------
+  #### Stratified analysis observers ####
   
   # 4.9
-  # Stratified analysis observers
-  
-  # Clear All Regions Button  
+  # Clear checkbox selections Button  
   observeEvent(input$clear_all_regions, {
-    # Clear all checkbox group selections
     updateCheckboxGroupInput(session, "core_regions", selected = character(0))
     updateCheckboxGroupInput(session, "functional_regions", selected = character(0))
     updateCheckboxGroupInput(session, "homopolymer_regions", selected = character(0))
@@ -1459,10 +1456,9 @@ server <- function(input, output, session) {
   })
   
   # 4.10 
-  # Main Update Analysis Botton
+  # Update Stratified Analysis Button
   observeEvent(input$update_stratified, {
-    
-    # Get selected regions
+
     selected_regions <- get_selected_regions()
     
     # Validation
@@ -1471,11 +1467,11 @@ server <- function(input, output, session) {
       return()
     }
     
-    # Get current experiment IDs from previous tabs
+    # Current experiment IDs (from previous tabs)
     current_exp_ids <- performance_experiment_ids()
     
     if (length(current_exp_ids) == 0) {
-      showNotification("No experiments selected. Please select experiments from other tabs first.", 
+      showNotification("No experiments selected.", 
                        type = "warning", duration = 5)
       return()
     }
@@ -1487,7 +1483,7 @@ server <- function(input, output, session) {
       
       ids_json <- json_param(current_exp_ids)
       
-      # Get ALL results (no region filtering here!)
+      # Get all results
       all_stratified_data <- db$get_performance_results(ids_json, c('SNP', 'INDEL'))
       metadata <- db$get_experiment_metadata(ids_json)
       
@@ -1503,7 +1499,7 @@ server <- function(input, output, session) {
         stratified_raw_data(enhanced_data)
         stratified_triggered(TRUE)
         
-        # Success notification
+        # Count notification 
         n_experiments <- length(unique(enhanced_data$experiment_id))
         n_total_results <- nrow(enhanced_data)
         
@@ -1520,7 +1516,6 @@ server <- function(input, output, session) {
       }
       
     }, error = function(e) {
-      cat("Error in stratified analysis:", e$message, "\n")
       stratified_raw_data(data.frame())
       stratified_triggered(FALSE)
       showNotification(paste("Error loading stratified data:", e$message), type = "error", duration = 6)
@@ -1529,7 +1524,6 @@ server <- function(input, output, session) {
   
   # 4.11 Reactive filtering
   observe({
-    # Only process if we have raw data
     if (stratified_triggered() && nrow(stratified_raw_data()) > 0) {
       
       selected_regions <- get_selected_regions()
@@ -1607,7 +1601,7 @@ server <- function(input, output, session) {
   # -----------------------------------------------------------
   
   # 5.3
-  # Full experiment metadata (shown when expanded)
+  # Full experiment metadata (shown when expanded) - Tab 3
   output$full_experiment_metadata <- renderUI({
     exp_id <- plot_clicked_id()
     if (is.null(exp_id)) return(NULL)
@@ -1622,8 +1616,6 @@ server <- function(input, output, session) {
     
     div(
       h5("Complete Experiment Details"),
-      
-      # Use the new 4-column card layout
       div(
         class = "metadata-grid-4col",
         
@@ -1740,13 +1732,13 @@ server <- function(input, output, session) {
       rownames = FALSE,
       colnames = c("", "ID", "Name", "Technology", "Platform", "Caller", "Version", "Chemistry", "Truth Set", "Sample", "Created")
     ) %>%
-      # Technology-based row coloring --------------------------------------------------------------------------------------------------------------------
+      # Technology-based row coloring
       formatStyle(
         "technology", 
         target = "row",
         backgroundColor = styleEqual(
           c("ILLUMINA", "PACBIO", "ONT", "MGI"),  
-          c("#fef6f6", "#faf8ff", "#f0fcfd", "#f7fbf5")  # Light colors
+          c("#fef6f6", "#faf8ff", "#f0fcfd", "#f7fbf5") 
         )
       )
     
@@ -1833,7 +1825,6 @@ server <- function(input, output, session) {
   })
   outputOptions(output, "has_stratified_data", suspendWhenHidden = FALSE)
   
-  # 
   output$stratified_summary <- renderUI({
     data <- stratified_filtered_data()
     if (nrow(data) == 0) return(NULL)
@@ -1849,7 +1840,7 @@ server <- function(input, output, session) {
       n_results, " total results"
     ))
   })
-  # +=================================================================================
+  # ============================================================================
   # Export html report (download)
   output$export_html_report <- downloadHandler(
     filename = function() {
@@ -2067,17 +2058,10 @@ server <- function(input, output, session) {
     })
   })
   
+  # ---------------------------------------------
   
   # 6.3 - Stratified Plots
   create_stratified_grouped_plot <- function(data, variant_type) {
-    
-    if (nrow(data) == 0) {
-      return(ggplot() + 
-               annotate("text", x = 0.5, y = 0.5, 
-                        label = paste("No", variant_type, "data"), size = 6) +
-               xlim(0, 1) + ylim(0, 1) +
-               theme_bw())
-    }
     
     # Filter for variant type
     plot_data <- data %>%
@@ -2092,8 +2076,8 @@ server <- function(input, output, session) {
                theme_bw())
     }
     
-    # Create horizontal grouped bar plot
-    p <- ggplot(plot_data, aes(x = f1_score, y = reorder(exp_label, f1_score))) +
+    # Horizontal grouped bar plot
+    p <- ggplot(plot_data, aes(x = f1_score, y = exp_label)) +
       geom_col(aes(fill = technology), alpha = 0.8, width = 0.7) +
       geom_text(aes(label = paste0(round(f1_score * 100, 2), "%")), 
                 hjust = -0.1, size = 3, color = "black") +
