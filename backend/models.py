@@ -86,11 +86,11 @@ class RegionType(enum.Enum):
     """All genomic regions from hap.py stratified analysis"""
     
     # All
-    ALL = "*"
+    ALL = "All Regions"
     
     # Difficulty
-    EASY = "easy"
-    DIFFICULT = "difficult"
+    EASY = "Easy Regions"
+    DIFFICULT = "Difficult Regions"
     
     # GC Content
     GC_VERY_LOW = "GC_<15"
@@ -107,28 +107,53 @@ class RegionType(enum.Enum):
     GC_VERY_HIGH = "GC_>85"
     
     # Functional
-    REFSEQ_CDS = "refseq_cds"
-    NOT_IN_CDS = "not_in_cds"
+    REFSEQ_CDS = "RefSeq CDS"
+    NOT_IN_CDS = "Non-CDS Regions"
     
     # Repetitive
-    SEGDUP = "segdup"
-    HOMOPOLYMER_4TO6 = "homopolymer_4to6"
-    HOMOPOLYMER_7TO11 = "homopolymer_7to11"
-    HOMOPOLYMER_GT11 = "homopolymer_gt11"
+    SEGDUP = "Segmental Duplications"
+    HOMOPOLYMER_4TO6 = "Homopolymer 4-6bp"
+    HOMOPOLYMER_7TO11 = "Homopolymer 7-11bp"
+    HOMOPOLYMER_GT11 = "Homopolymer >11bp"
     
     # Other
-    LOW_MAPPABILITY = "low_mappability"
-    MHC = "MHC"
-    TS_BOUNDARY = "TS_boundary"
-    TS_CONTAINED = "TS_contained"
+    LOW_MAPPABILITY = "Low Mappability"
+    MHC = "MHC Region"
+    TS_BOUNDARY = "Truth Set Boundary"
+    TS_CONTAINED = "Truth Set Contained"
     
     @classmethod
-    def from_string(regions, region_str):
-        """Convert hap.py region string to enum"""
-        for region in regions:
-            if region.value == region_str:
-                return region
-        return None
+    def from_string(cls, region_str):
+        """Convert and map hap.py region string to enum"""
+        mapping = {
+            "*": cls.ALL,
+            "easy": cls.EASY,
+            "difficult": cls.DIFFICULT,
+            "GC_<15": cls.GC_VERY_LOW,
+            "GC_15_20": cls.GC_15_20,
+            "GC_20_25": cls.GC_20_25,
+            "GC_25_30": cls.GC_25_30,
+            "GC_30_55": cls.GC_30_55,
+            "GC_55_60": cls.GC_55_60,
+            "GC_60_65": cls.GC_60_65,
+            "GC_65_70": cls.GC_65_70,
+            "GC_70_75": cls.GC_70_75,
+            "GC_75_80": cls.GC_75_80,
+            "GC_80_85": cls.GC_80_85,
+            "GC_>85": cls.GC_VERY_HIGH,
+            "refseq_cds": cls.REFSEQ_CDS,
+            "not_in_cds": cls.NOT_IN_CDS,
+            "segdup": cls.SEGDUP,
+            "homopolymer_4to6": cls.HOMOPOLYMER_4TO6,
+            "homopolymer_7to11": cls.HOMOPOLYMER_7TO11,
+            "homopolymer_gt11": cls.HOMOPOLYMER_GT11,
+            "low_mappability": cls.LOW_MAPPABILITY,
+            "MHC": cls.MHC,
+            "TS_boundary": cls.TS_BOUNDARY,
+            "TS_contained": cls.TS_CONTAINED
+        }
+        
+        return mapping.get(region_str)
     
 # ============================================================================
 # DATABASE TABLES
