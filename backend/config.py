@@ -16,10 +16,10 @@ import os
 # temp 
 # Detect if running in container vs local environment
 if os.path.exists("/app") and os.path.exists("/app/backend"):
-    # Container environment
+    # Container
     PROJECT_ROOT = "/app"
 else:
-    # Local development environment
+    # Local
     PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Folder containing all data files
@@ -34,7 +34,7 @@ os.makedirs(DATA_FOLDER, exist_ok=True) # ensure data directory exists
 # Metadata CSV filename
 METADATA_CSV_FILENAME = '000_benchmark_dashboard_default_metadata.csv'
 
-# Full path to metadata CSV file (in data folder, not happy_files)
+# Full path to metadata CSV file (in data folder)
 METADATA_CSV_PATH = os.path.join(PROJECT_ROOT,'data', 'happy_files', METADATA_CSV_FILENAME)
 
 # Database filename

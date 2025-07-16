@@ -929,17 +929,6 @@ ui <- fluidPage(
             ),
             
             # Stratified Table --==================================================================================================================================================================
-           ' fluidRow(
-              column(12,
-                     conditionalPanel(
-                       condition = "output.has_stratified_data",
-                       
-                       hr(),
-                       h4("F1 Scores by Region"),
-                       DT::dataTableOutput("f1_scores_table")
-                     )
-              )
-            )'
           ),
           
           # No data message
@@ -992,6 +981,7 @@ server <- function(input, output, session) {
   stratified_raw_data <- reactiveVal(data.frame())      # ALL results from DB
   stratified_filtered_data <- reactiveVal(data.frame()) # After region filtering
   stratified_triggered <- reactiveVal(FALSE)
+  
   # ====================================================================
   # 2. DATA PROCESSING FUNCTIONS 
   # ====================================================================
@@ -1182,7 +1172,7 @@ server <- function(input, output, session) {
                            coalesce(caller, "Unknown"),")")
       ) %>%
     arrange(subset, variant_type, desc(experiment_id)) 
-    #___________________________________________________________________________________________________________________also to only work when the update bottun ___________________
+    #___________________________________________________________________________________________________________________also to only work when the update button ___________________
     
     return(filtered_data)
   }
@@ -2147,7 +2137,7 @@ server <- function(input, output, session) {
         legend.position = "bottom",
         panel.grid.major.y = element_blank(), # no grid
         panel.grid.minor = element_blank(),  # no grid
-        panel.grid.major.x = element_blank()
+        panel.grid.major.x = element_blank() # no grid
         # panel.grid.major.x = element_line(color = "gray90", size = 0.3) 
       )
     
