@@ -712,11 +712,11 @@ ui <- fluidPage(
                              "core_regions",
                              NULL,
                              choices = list(
-                               "Overall" = "all",
-                               "Easy Regions" = "easy", 
-                               "Difficult Regions" = "difficult"
+                               "Overall" = "All Regions",
+                               "Easy Regions" = "Easy Regions", 
+                               "Difficult Regions" = "Difficult Regions"
                              ),
-                             selected = c("all"),
+                             selected = c("All Regions"),
                              inline = TRUE
                            )
                          ),
@@ -740,8 +740,8 @@ ui <- fluidPage(
                                "functional_regions",
                                NULL,
                                choices = list(
-                                 "RefSeq CDS" = "refseq_cds",
-                                 "Not in CDS" = "not_in_cds"
+                                 "RefSeq CDS" = "RefSeq CDS",
+                                 "Not in CDS" = "Non-CDS Regions"
                                ),
                                selected = character(0),
                                inline = TRUE
@@ -768,9 +768,9 @@ ui <- fluidPage(
                                "homopolymer_regions",
                                NULL,
                                choices = list(
-                                 "Homopolymer 4-6bp" = "homopolymer_4to6",
-                                 "Homopolymer 7-11bp" = "homopolymer_7to11",
-                                 "Homopolymer >11bp" = "homopolymer_gt11"
+                                 "Homopolymer 4-6bp" = "Homopolymer 4-6bp",
+                                 "Homopolymer 7-11bp" = "Homopolymer 7-11bp",
+                                 "Homopolymer >11bp" = "Homopolymer >11bp"
                                ),
                                selected = character(0),
                                inline = TRUE
@@ -863,9 +863,9 @@ ui <- fluidPage(
                                  "complex_regions",
                                  NULL,
                                  choices = list(
-                                   "MHC" = "MHC",
-                                   "Segmental Duplications" = "segdup",
-                                   "Low Mappability" = "low_mappability"
+                                   "MHC" = "MHC Region",
+                                   "Segmental Duplications" = "Segmental Duplications",
+                                   "Low Mappability" = "Low Mappability"
                                  ),
                                  selected = character(0),
                                  inline = TRUE
@@ -1149,10 +1149,7 @@ server <- function(input, output, session) {
     )
     
     all_selected_regions <- unique(all_selected_regions[all_selected_regions != ""])
-    if ("all" %in% all_selected_regions) {
-      all_selected_regions[all_selected_regions == "all"] <- "*"
-    }
-    
+
     return(all_selected_regions)
   })
   
