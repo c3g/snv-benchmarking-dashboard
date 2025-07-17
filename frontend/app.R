@@ -46,7 +46,7 @@ caller_shapes <- c(
   "Unknown" = 4             # X 
 )
 # shape conversion to HTML
-shape_symbols = c("16" = "●", "17" = "▲", "15" = "■", "4" = "✕")
+ shape_symbols = c("16" = "●", "17" = "▲", "15" = "■", "4" = "✕")
 
 # =============================================================================
 # HELPER FUNCTIONS
@@ -1877,6 +1877,7 @@ server <- function(input, output, session) {
   })
   # ============================================================================
   # Export html report (download)
+  # ============================================================================
   output$export_html_report <- downloadHandler(
     filename = function() {
       paste0("benchmarking_report_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".html")
