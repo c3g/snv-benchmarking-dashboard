@@ -24,31 +24,6 @@ def safe_int(value):
     except:
         return None
 
-# happy_parser.py
-# Parses hap.py CSV output files and stores performance metrics for each experiment record
-
-import pandas as pd
-from models import RegionType, BenchmarkResult, OverallResult
-from config import get_data_file_path
-
-def safe_float(value):
-    """Convert value to float, handle NaN"""
-    if pd.isna(value) or value is None:
-        return None
-    try:
-        return float(value)
-    except:
-        return None
-
-def safe_int(value):
-    """Convert value to int safely"""
-    if pd.isna(value) or value is None:
-        return None
-    try:
-        return int(float(value))
-    except:
-        return None
-
 def parse_happy_csv(happy_file_name, experiment_id, session):
     """
     Parse one hap.py CSV file and store results in database
