@@ -319,6 +319,58 @@ ui <- fluidPage(
   });
   ")),
   
+  # CSS for metric selection buttons
+  tags$script(HTML("
+  $(document).ready(function() {
+    // Handle metric pill clicks
+    $('.metric-pill').click(function() {
+      var value = $(this).data('value');
+      
+      // Remove active styling from all pills
+      $('.metric-pill').each(function() {
+        $(this).css({
+          'background': 'white',
+          'color': '#495057',
+          'border': '1px solid #dee2e6',
+          'box-shadow': '0 3px 8px rgba(0,0,0,0.15)',
+          'transform': 'translateY(0px)'
+        });
+      });
+      
+      // Add active styling to clicked pill
+      $(this).css({
+        'background': '#007bff',
+        'color': 'white',
+        'border': 'none',
+        'box-shadow': '0 4px 12px rgba(0,123,255,0.4)',
+        'transform': 'translateY(-1px)'
+      });
+      
+      // Update the hidden radio button
+      $('input[name=\"selected_metric\"][value=\"' + value + '\"]').prop('checked', true).trigger('change');
+    });
+    
+    // Enhanced hover effects
+    $('.metric-pill').hover(
+      function() {
+        if ($(this).css('background-color') !== 'rgb(0, 123, 255)') {
+          $(this).css({
+            'transform': 'translateY(-2px)',
+            'box-shadow': '0 6px 16px rgba(0,123,255,0.25)'
+          });
+        }
+      },
+      function() {
+        if ($(this).css('background-color') !== 'rgb(0, 123, 255)') {
+          $(this).css({
+            'transform': 'translateY(0px)',
+            'box-shadow': '0 3px 8px rgba(0,0,0,0.15)'
+          });
+        }
+      }
+    );
+  });
+")),
   sidebarLayout(
     
     # -------------------------------------------------------------------------
@@ -874,8 +926,10 @@ ui <- fluidPage(
                            )
                          )
                      )
+
               )
             ),
+
             
             # Quick selection buttons
             fluidRow(
@@ -897,7 +951,65 @@ ui <- fluidPage(
                 )
             )
           ),
-          
+
+          # Metric secetion 
+          wellPanel(
+            style = "background-color: #f8f9fa; margin-bottom: 20px;",
+            h5("Select Performance Metric", style = "margin-top: 0;"),
+            
+            div(
+              style = "background: white; border: 1px solid #dee2e6; border-radius: 5px; padding: 12px;",
+              
+              div(
+                style = "display: flex; justify-content: center; gap: 15px;",
+                
+                # Custom radio button structure
+                div(
+                  id = "metric-selection-container",
+                  style = "display: flex; gap: 15px;",
+                  
+                  # F1 Score (selected)
+                  div(
+                    class = "metric-pill",
+                    `data-value` = "f1_score",
+                    style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #007bff; background: #007bff; color: white; transition: all 0.2s ease; text-align: center;",
+                    "F1 Score"
+                  ),
+                  
+                  # Precision (unselected)
+                  div(
+                    class = "metric-pill",
+                    `data-value` = "precision",
+                    style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #dee2e6; background: white; color: #6c757d; transition: all 0.2s ease; text-align: center;",
+                    "Precision"
+                  ),
+                  
+                  # Recall (unselected)
+                  div(
+                    class = "metric-pill",
+                    `data-value` = "recall",
+                    style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #dee2e6; background: white; color: #6c757d; transition: all 0.2s ease; text-align: center;",
+                    "Recall"
+                  )
+                ),
+                
+                # Hidden actual radio button for Shiny
+                div(
+                  style = "display: none;",
+                  radioButtons(
+                    "selected_metric",
+                    NULL,
+                    choices = list(
+                      "F1" = "f1_score",
+                      "Precision" = "precision", 
+                      "Recall" = "recall"
+                    ),
+                    selected = "f1_score"
+                  )
+                )
+              )
+            )
+          ),
           # Results display
           conditionalPanel(
             condition = "output.has_stratified_data",
@@ -1153,23 +1265,29 @@ server <- function(input, output, session) {
     return(all_selected_regions)
   })
   
-  # Process stratified data for visualization 
-  process_stratified_data <- function(raw_data, selected_regions) {
+  # Process stratified data for visualization with metric selection
+  process_stratified_data <- function(raw_data, selected_regions, selected_metric = "f1_score") {
     if (nrow(raw_data) == 0 || length(selected_regions) == 0) {
+      return(data.frame())
+    }
+    
+    # Validate metric column exists
+    if (!selected_metric %in% names(raw_data)) {
+      warning(paste("Metric", selected_metric, "not found in data"))
       return(data.frame())
     }
     
     # Filter for selected regions only
     filtered_data <- raw_data %>%
       filter(subset %in% selected_regions) %>%
-      filter(!is.na(f1_score)) %>%
+      filter(!is.na(!!sym(selected_metric))) %>% 
       mutate(
         exp_label = paste0("ID:", experiment_id, " (", 
                            coalesce(technology, "Unknown"), "-", 
-                           coalesce(caller, "Unknown"),")")
+                           coalesce(caller, "Unknown"), ")"),
+        metric_value = !!sym(selected_metric)  # Create generic metric column
       ) %>%
-    arrange(subset, variant_type, desc(experiment_id)) 
-    #___________________________________________________________________________________________________________________also to only work when the update button ___________________
+      arrange(subset, variant_type, desc(experiment_id))
     
     return(filtered_data)
   }
@@ -1562,10 +1680,11 @@ server <- function(input, output, session) {
     if (stratified_triggered() && nrow(stratified_raw_data()) > 0) {
       
       selected_regions <- get_selected_regions()
+      selected_metric <- input$selected_metric
       raw_data <- stratified_raw_data()
       
-      # Process and filter data
-      processed_data <- process_stratified_data(raw_data, selected_regions)
+      # Process and filter data with metric selection
+      processed_data <- process_stratified_data(raw_data, selected_regions, selected_metric)
       stratified_filtered_data(processed_data)
       
     } else {
@@ -2097,7 +2216,7 @@ server <- function(input, output, session) {
   # ---------------------------------------------
   
   # 6.3 - Stratified Plots
-  create_stratified_grouped_plot <- function(data, variant_type) {
+  create_stratified_grouped_plot <- function(data, variant_type, metric_name = "f1_score") {
     
     # Filter for variant type
     plot_data <- data %>%
@@ -2112,17 +2231,26 @@ server <- function(input, output, session) {
                theme_bw())
     }
     
+    # Dynamic metric label and formatting
+    metric_labels <- list(
+      "f1_score" = "F1 Score",
+      "precision" = "Precision", 
+      "recall" = "Recall"
+    )
+    
+    metric_label <- metric_labels[[metric_name]] %||% "Metric"
+    
     # Horizontal grouped bar plot
-    plot <- ggplot(plot_data, aes(x = f1_score, y = exp_label)) +
+    plot <- ggplot(plot_data, aes(x = metric_value, y = exp_label)) +
       geom_col(aes(fill = technology), alpha = 0.8, width = 0.7) +
-      geom_text(aes(label = paste0(round(f1_score * 100, 2), "%")), 
+      geom_text(aes(label = paste0(round(metric_value * 100, 2), "%")), 
                 hjust = -0.1, size = 3, color = "black") +
       scale_fill_manual(values = technology_colors, na.value = "gray70") +
       scale_x_continuous(limits = c(0, 1.05), labels = scales::percent_format()) +
       facet_wrap(~ subset, scales = "free_y", ncol = 1) +
       labs(
-        title = paste(variant_type, "F1 Scores by Region"),
-        x = "F1 Score",
+        title = paste(variant_type, metric_label, "by Region"),
+        x = metric_label,
         y = "Experiment",
         fill = "Technology"
       ) +
@@ -2130,22 +2258,20 @@ server <- function(input, output, session) {
       theme(
         strip.background = element_rect(fill = "#f8f9fa", color = "#dee2e6"),
         strip.text = element_text(face = "bold", size = 10),
-        axis.text.y = element_text(size = 8), # F1 values
-        axis.text.x = element_text(size = 9), # Experiment IDs
+        axis.text.y = element_text(size = 8),
+        axis.text.x = element_text(size = 9),
         legend.position = "bottom",
-        panel.grid.major.y = element_blank(), # no grid
-        panel.grid.minor = element_blank(),  # no grid
-        panel.grid.major.x = element_blank() # no grid
-        # panel.grid.major.x = element_line(color = "gray90", size = 0.3) 
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank()
       )
     
     return(plot)
   }
-  
   # 6.4 - SNP stratified plot output
   output$stratified_snp_plot <- renderPlot({
     data <- stratified_filtered_data()
-    create_stratified_grouped_plot(data, "SNP")
+    create_stratified_grouped_plot(data, "SNP", input$selected_metric)
   }, height = function() {
     # Calculate height based on number of regions and experiments
     n_regions <- length(unique(stratified_filtered_data()$subset))
@@ -2163,7 +2289,7 @@ server <- function(input, output, session) {
   # 6.5 - INDEL stratified plot output  
   output$stratified_indel_plot <- renderPlot({
     data <- stratified_filtered_data()
-    create_stratified_grouped_plot(data, "INDEL")
+    create_stratified_grouped_plot(data, "INDEL", input$selected_metric)
   }, height = function() {
     n_regions <- length(unique(stratified_filtered_data()$subset))
     n_experiments <- length(unique(stratified_filtered_data()$experiment_id))
