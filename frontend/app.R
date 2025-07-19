@@ -1165,23 +1165,14 @@ server <- function(input, output, session) {
   # Complete metadata and performance results for visualization
   viz_performance_data <- reactive({
     ids <- performance_experiment_ids()
+    if (length(ids) == 0) return(data.frame())
     
-    if (length(ids) == 0) {
-      return(data.frame())
-    }
-    
-    tryCatch({ # input IDs in JSON format
+    tryCatch({
       ids_json <- json_param(ids)
-      perf_data <- db$get_overall_performance_results(ids_json, c('SNP', 'INDEL'))
-      metadata <- db$get_experiment_metadata(ids_json)
+      enhanced_data <- db$get_experiments_with_performance(ids_json, c('SNP', 'INDEL'))
       
-      # Filter and join performance data with metadata
-      enhanced_data <- perf_data %>%
-        filter(!is.na(recall) & !is.na(precision) & !is.na(f1_score)) %>% #remove incomplete data
-        left_join(metadata, by = c("experiment_id" = "id"), suffix = c("", "_meta")) # join all data
-      
-      return(enhanced_data)
-      
+      # filtering
+      return(enhanced_data %>% filter(!is.na(recall) & !is.na(precision) & !is.na(f1_score)))
     }, error = function(e) {
       cat("Error in viz_performance_data:", e$message, "\n")
       return(data.frame())
@@ -1201,7 +1192,7 @@ server <- function(input, output, session) {
     enhanced_data <- viz_data %>%
       select(
         experiment_id, experiment_name, 
-        technology, caller_name,
+        technology, caller,
         platform_name, chemistry_name, mean_coverage,
         variant_type, recall, precision, f1_score
       ) %>%
@@ -1226,7 +1217,7 @@ server <- function(input, output, session) {
         "ID" = experiment_id,
         "Experiment" = experiment_name,
         "Technology" = technology,
-        "Caller" = caller_name,
+        "Caller" = caller,
         "Platform" = platform_name,
         "Chemistry" = chemistry_name,
         "Coverage" = mean_coverage,
@@ -1666,6 +1657,7 @@ server <- function(input, output, session) {
   })
   
   # 4.11 Calculate all metrics once when data loads
+  # 4.11 Calculate all metrics once when data loads
   stratified_processed_data <- reactive({
     if (!stratified_triggered() || nrow(stratified_raw_data()) == 0) {
       return(data.frame())
@@ -1753,7 +1745,7 @@ server <- function(input, output, session) {
             p(strong("Platform: "), meta$platform_name %||% "N/A", style = "margin-bottom: 5px;")
         ),
         div(class = "col-md-3",
-            p(strong("Caller: "), paste(meta$caller_name %||% "N/A", meta$caller_version %||% ""), style = "margin-bottom: 5px;")
+            p(strong("Caller: "), paste(meta$caller %||% "N/A", meta$caller_version %||% ""), style = "margin-bottom: 5px;")
         ),
         div(class = "col-md-3",
             p(strong("Coverage: "), 
@@ -1798,7 +1790,7 @@ server <- function(input, output, session) {
         # ANALYSIS PIPELINE CARD
         div(class = "metadata-card",
             h6("Analysis Pipeline"),
-            p(strong("Variant Caller: "), meta$caller_name %||% "N/A"),
+            p(strong("Variant Caller: "), meta$caller %||% "N/A"),
             p(strong("Caller Version: "), meta$caller_version %||% "N/A"),
             p(strong("Caller Type: "), meta$caller_type %||% "N/A"),
             p(strong("Caller Model: "), meta$caller_model %||% "N/A"),
@@ -2058,7 +2050,7 @@ server <- function(input, output, session) {
         "<b>", ifelse(is.na(snp_data$experiment_name) | is.null(snp_data$experiment_name), "Unknown", snp_data$experiment_name), "</b>",
         "<br><b>Technology:</b>", ifelse(is.na(snp_data$technology) | is.null(snp_data$technology), "N/A", snp_data$technology),
         "<br><b>Platform:</b>", ifelse(is.na(snp_data$platform_name) | is.null(snp_data$platform_name), "N/A", snp_data$platform_name),
-        "<br><b>Caller:</b>", ifelse(is.na(snp_data$caller_name) | is.null(snp_data$caller_name), "N/A", snp_data$caller_name),
+        "<br><b>Caller:</b>", ifelse(is.na(snp_data$caller) | is.null(snp_data$caller), "N/A", snp_data$caller),
         "<br><br><b>Performance:</b>",
         "<br>• Precision:", paste0(round(as.numeric(snp_data$precision)*100, 2), "%"),
         "<br>• Recall:", paste0(round(as.numeric(snp_data$recall)*100, 2), "%"),
@@ -2158,7 +2150,7 @@ server <- function(input, output, session) {
         "<b>", ifelse(is.na(indel_data$experiment_name) | is.null(indel_data$experiment_name), "Unknown", indel_data$experiment_name), "</b>",
         "<br><b>Technology:</b>", ifelse(is.na(indel_data$technology) | is.null(indel_data$technology), "N/A", indel_data$technology),
         "<br><b>Platform:</b>", ifelse(is.na(indel_data$platform_name) | is.null(indel_data$platform_name), "N/A", indel_data$platform_name),
-        "<br><b>Caller:</b>", ifelse(is.na(indel_data$caller_name) | is.null(indel_data$caller_name), "N/A", indel_data$caller_name),
+        "<br><b>Caller:</b>", ifelse(is.na(indel_data$caller) | is.null(indel_data$caller), "N/A", indel_data$caller),
         "<br><br><b>Performance:</b>",
         "<br>• Precision:", paste0(round(as.numeric(indel_data$precision)*100, 2), "%"),
         "<br>• Recall:", paste0(round(as.numeric(indel_data$recall)*100, 2), "%"),
