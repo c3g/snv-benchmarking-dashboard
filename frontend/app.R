@@ -1665,28 +1665,42 @@ server <- function(input, output, session) {
     })
   })
   
-  # 4.11 Reactive filtering
-  observe({
-    if (stratified_triggered() && nrow(stratified_raw_data()) > 0) {
-      
-      selected_metric <- input$selected_metric
-      raw_data <- stratified_raw_data()
-      
-      processed_data <- raw_data %>%
-        filter(!is.na(!!sym(selected_metric))) %>% 
-        mutate(
-          exp_label = paste0("ID:", experiment_id, " (", 
-                             coalesce(technology, "Unknown"), "-", 
-                             coalesce(caller, "Unknown"), ")"),
-          metric_value = !!sym(selected_metric)  # Create generic metric column
-        ) %>%
-        arrange(subset, variant_type, desc(experiment_id))
-      
-      stratified_filtered_data(processed_data)
-      
-    } else {
-      stratified_filtered_data(data.frame())
+  # 4.11 Calculate all metrics once when data loads
+  stratified_processed_data <- reactive({
+    if (!stratified_triggered() || nrow(stratified_raw_data()) == 0) {
+      return(data.frame())
     }
+    
+    raw_data <- stratified_raw_data()
+    
+    # Process data once - keep original column names
+    processed_data <- raw_data %>%
+      filter(!is.na(f1_score) & !is.na(precision) & !is.na(recall)) %>% 
+      mutate(
+        exp_label = paste0("ID:", experiment_id, " (", 
+                           coalesce(technology, "Unknown"), "-", 
+                           coalesce(caller, "Unknown"), ")")
+      ) %>%
+      arrange(subset, variant_type, desc(experiment_id))
+    
+    return(processed_data)
+  })
+  
+  # Switch metric display without recalculating
+  stratified_display_data <- reactive({
+    processed_data <- stratified_processed_data()
+    selected_metric <- input$selected_metric
+    
+    if (nrow(processed_data) == 0) {
+      return(data.frame())
+    }
+    
+    processed_data %>%
+      mutate(metric_value = !!sym(selected_metric))
+  })
+  
+  observe({
+    stratified_filtered_data(stratified_display_data())
   })
   # ====================================================================
   # 5. UI OUTPUTS FOR DISPALY
@@ -2228,7 +2242,7 @@ server <- function(input, output, session) {
                theme_bw())
     }
     
-    # Dynamic metric label and formatting
+    # Dynamic metric label
     metric_labels <- list(
       "f1_score" = "F1 Score",
       "precision" = "Precision", 
@@ -2237,7 +2251,7 @@ server <- function(input, output, session) {
     
     metric_label <- metric_labels[[metric_name]] %||% "Metric"
     
-    # Horizontal grouped bar plot
+    # Use metric_value column (already calculated)
     plot <- ggplot(plot_data, aes(x = metric_value, y = exp_label)) +
       geom_col(aes(fill = technology), alpha = 0.8, width = 0.7) +
       geom_text(aes(label = paste0(round(metric_value * 100, 2), "%")), 
