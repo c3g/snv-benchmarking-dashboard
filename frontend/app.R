@@ -1260,7 +1260,7 @@ server <- function(input, output, session) {
   
   # Process stratified data for visualization with metric selection
   process_stratified_data <- function(raw_data, selected_regions, selected_metric = "f1_score") {
-    if (nrow(raw_data) == 0 || length(selected_regions) == 0) {
+    if (nrow(raw_data) == 0) {
       return(data.frame())
     }
     
@@ -1270,9 +1270,7 @@ server <- function(input, output, session) {
       return(data.frame())
     }
     
-    # Filter for selected regions only
     filtered_data <- raw_data %>%
-      filter(subset %in% selected_regions) %>%
       filter(!is.na(!!sym(selected_metric))) %>% 
       mutate(
         exp_label = paste0("ID:", experiment_id, " (", 
@@ -1604,12 +1602,12 @@ server <- function(input, output, session) {
   # 4.10 
   # Update Stratified Analysis Button
   observeEvent(input$update_stratified, {
-
+    
     selected_regions <- get_selected_regions()
     
     # Validation
     if (length(selected_regions) == 0) {
-      showNotification("Please select at least one region!", type = "warning", duration = 4)
+      showNotification("Please select at least one region!", type = "message", duration = 4)
       return()
     }
     
@@ -1622,35 +1620,34 @@ server <- function(input, output, session) {
       return()
     }
     
-    # Query database for ALL stratified results (no region filtering in DB)
+    # Query database with region filtering
     tryCatch({
       
       showNotification("Loading stratified data...", type = "message", duration = 2)
       
       ids_json <- json_param(current_exp_ids)
       
-      # Get all results
-      all_stratified_data <- db$get_performance_results(ids_json, c('SNP', 'INDEL'))
-      metadata <- db$get_experiment_metadata(ids_json)
+      # NEW: Pass regions to database query - filter in SQL!
+      enhanced_data <- db$get_stratified_performance_by_regions(
+        ids_json, 
+        c('SNP', 'INDEL'),
+        selected_regions
+      )
       
-      # Process and join the data
-      if (nrow(all_stratified_data) > 0 && nrow(metadata) > 0) {
+      # Get metadata if we have results
+      if (nrow(enhanced_data) > 0) {
         
-        # Join with metadata
-        enhanced_data <- all_stratified_data %>%
-          filter(!is.na(f1_score)) %>%
-          left_join(metadata, by = c("experiment_id" = "id"), suffix = c("", "_meta"))
-        
-        # Store ALL results
+        # Store results
         stratified_raw_data(enhanced_data)
         stratified_triggered(TRUE)
         
         # Count notification 
         n_experiments <- length(unique(enhanced_data$experiment_id))
-        n_total_results <- nrow(enhanced_data)
+        n_results <- nrow(enhanced_data)
+        n_regions <- length(unique(enhanced_data$subset))
         
         showNotification(
-          paste("Loaded", n_total_results, "total results for", n_experiments, "experiments"), 
+          paste("Loaded", n_results, "results for", n_experiments, "experiments across", n_regions, "regions"), 
           type = "message", 
           duration = 4
         )
@@ -1658,7 +1655,7 @@ server <- function(input, output, session) {
       } else {
         stratified_raw_data(data.frame())
         stratified_triggered(FALSE)
-        showNotification("No stratified data found for selected experiments.", type = "warning", duration = 4)
+        showNotification("No data found for selected regions and experiments.", type = "warning", duration = 4)
       }
       
     }, error = function(e) {
@@ -1672,12 +1669,19 @@ server <- function(input, output, session) {
   observe({
     if (stratified_triggered() && nrow(stratified_raw_data()) > 0) {
       
-      selected_regions <- get_selected_regions()
       selected_metric <- input$selected_metric
       raw_data <- stratified_raw_data()
       
-      # Process and filter data with metric selection
-      processed_data <- process_stratified_data(raw_data, selected_regions, selected_metric)
+      processed_data <- raw_data %>%
+        filter(!is.na(!!sym(selected_metric))) %>% 
+        mutate(
+          exp_label = paste0("ID:", experiment_id, " (", 
+                             coalesce(technology, "Unknown"), "-", 
+                             coalesce(caller, "Unknown"), ")"),
+          metric_value = !!sym(selected_metric)  # Create generic metric column
+        ) %>%
+        arrange(subset, variant_type, desc(experiment_id))
+      
       stratified_filtered_data(processed_data)
       
     } else {
