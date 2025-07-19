@@ -152,9 +152,47 @@ class RegionType(enum.Enum):
             "TS_boundary": cls.TS_BOUNDARY,
             "TS_contained": cls.TS_CONTAINED
         }
-        
         return mapping.get(region_str)
     
+    @classmethod
+    def from_display_name(cls, display_name):
+        """Convert UI display names to enum values"""
+        mapping = {
+            # Main regions
+            "All Regions": cls.ALL,
+            "Easy Regions": cls.EASY,
+            "Difficult Regions": cls.DIFFICULT,
+            
+            # Functional
+            "RefSeq CDS": cls.REFSEQ_CDS,
+            "Non-CDS Regions": cls.NOT_IN_CDS,
+            
+            # Homopolymer
+            "Homopolymer 4-6bp": cls.HOMOPOLYMER_4TO6,
+            "Homopolymer 7-11bp": cls.HOMOPOLYMER_7TO11,
+            "Homopolymer >11bp": cls.HOMOPOLYMER_GT11,
+            
+            # GC Content (map UI names to enum values)
+            "GC_<15": cls.GC_VERY_LOW,
+            "GC_15_20": cls.GC_15_20,
+            "GC_20_25": cls.GC_20_25,
+            "GC_25_30": cls.GC_25_30,
+            "GC_30_55": cls.GC_30_55,
+            "GC_55_60": cls.GC_55_60,
+            "GC_60_65": cls.GC_60_65,
+            "GC_65_70": cls.GC_65_70,
+            "GC_70_75": cls.GC_70_75,
+            "GC_75_80": cls.GC_75_80,
+            "GC_80_85": cls.GC_80_85,
+            "GC_>85": cls.GC_VERY_HIGH,
+            
+            # Complex regions  
+            "MHC Region": cls.MHC,
+            "Segmental Duplications": cls.SEGDUP,
+            "Low Mappability": cls.LOW_MAPPABILITY,
+        }
+        
+        return mapping.get(display_name)
 # ============================================================================
 # DATABASE TABLES
 # ============================================================================
