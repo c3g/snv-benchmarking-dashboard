@@ -951,65 +951,6 @@ ui <- fluidPage(
                 )
             )
           ),
-
-          # Metric secetion 
-          wellPanel(
-            style = "background-color: #f8f9fa; margin-bottom: 20px;",
-            h5("Select Performance Metric", style = "margin-top: 0;"),
-            
-            div(
-              style = "background: white; border: 1px solid #dee2e6; border-radius: 5px; padding: 12px;",
-              
-              div(
-                style = "display: flex; justify-content: center; gap: 15px;",
-                
-                # Custom radio button structure
-                div(
-                  id = "metric-selection-container",
-                  style = "display: flex; gap: 15px;",
-                  
-                  # F1 Score (selected)
-                  div(
-                    class = "metric-pill",
-                    `data-value` = "f1_score",
-                    style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #007bff; background: #007bff; color: white; transition: all 0.2s ease; text-align: center;",
-                    "F1 Score"
-                  ),
-                  
-                  # Precision (unselected)
-                  div(
-                    class = "metric-pill",
-                    `data-value` = "precision",
-                    style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #dee2e6; background: white; color: #6c757d; transition: all 0.2s ease; text-align: center;",
-                    "Precision"
-                  ),
-                  
-                  # Recall (unselected)
-                  div(
-                    class = "metric-pill",
-                    `data-value` = "recall",
-                    style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #dee2e6; background: white; color: #6c757d; transition: all 0.2s ease; text-align: center;",
-                    "Recall"
-                  )
-                ),
-                
-                # Hidden actual radio button for Shiny
-                div(
-                  style = "display: none;",
-                  radioButtons(
-                    "selected_metric",
-                    NULL,
-                    choices = list(
-                      "F1" = "f1_score",
-                      "Precision" = "precision", 
-                      "Recall" = "recall"
-                    ),
-                    selected = "f1_score"
-                  )
-                )
-              )
-            )
-          ),
           # Results display
           conditionalPanel(
             condition = "output.has_stratified_data",
@@ -1022,6 +963,58 @@ ui <- fluidPage(
                        htmlOutput("stratified_summary")
                      )
               )
+            ),
+            # Metric secetion 
+            wellPanel(
+              style = "background-color: #f8f9fa; margin-bottom: 20px;",
+                div(
+                  style = "display: flex; justify-content: center; gap: 15px;",
+                  
+                  # Custom radio button structure
+                  div(
+                    id = "metric-selection-container",
+                    style = "display: flex; gap: 15px;",
+                    
+                    # F1 Score (selected)
+                    div(
+                      class = "metric-pill",
+                      `data-value` = "f1_score",
+                      style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #007bff; background: #007bff; color: white; transition: all 0.2s ease; text-align: center;",
+                      "F1 Score"
+                    ),
+                    
+                    # Precision (unselected)
+                    div(
+                      class = "metric-pill",
+                      `data-value` = "precision",
+                      style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #dee2e6; background: white; color: #6c757d; transition: all 0.2s ease; text-align: center;",
+                      "Precision"
+                    ),
+                    
+                    # Recall (unselected)
+                    div(
+                      class = "metric-pill",
+                      `data-value` = "recall",
+                      style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #dee2e6; background: white; color: #6c757d; transition: all 0.2s ease; text-align: center;",
+                      "Recall"
+                    )
+                  ),
+                  
+                  # Hidden actual radio button for Shiny
+                  div(
+                    style = "display: none;",
+                    radioButtons(
+                      "selected_metric",
+                      NULL,
+                      choices = list(
+                        "F1" = "f1_score",
+                        "Precision" = "precision", 
+                        "Recall" = "recall"
+                      ),
+                      selected = "f1_score"
+                    )
+                  )
+                )
             ),
             
             # SNP and INDEL Results side by side
