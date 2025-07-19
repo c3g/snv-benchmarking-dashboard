@@ -168,7 +168,7 @@ def get_experiment_metadata(experiment_ids_param):
                     'platform_version': exp.sequencing_technology.platform_version if exp.sequencing_technology else None,
                     
                     # Variant Caller
-                    'caller_name': exp.variant_caller.name.value if exp.variant_caller else None,
+                    'caller': exp.variant_caller.name.value if exp.variant_caller else None,
                     'caller_type': exp.variant_caller.type.value if exp.variant_caller else None,
                     'caller_version': exp.variant_caller.version if exp.variant_caller else None,
                     'caller_model': exp.variant_caller.model if exp.variant_caller else None,
@@ -213,11 +213,12 @@ def get_experiment_metadata(experiment_ids_param):
 # ========================================================================
 # 3. DETAILED EXPERIMENT PERFORMANCE RESULTS
 # ======================================================================== 
-def get_overall_performance_results(experiment_ids_param, variant_types=['SNP', 'INDEL'],regions=None):
+def get_experiments_with_performance(experiment_ids_param, variant_types=['SNP', 'INDEL']):
     """
-    FAST function for main dashboard - uses OverallResult table
+    Single comprehensive query combining performance data with metadata.
+    Returns all data needed for Tabs 2 & 3 (Performance Results + Visualizations)
     """
-    # Parse JSON IDs   
+    # Parse JSON IDs
     try:
         if isinstance(experiment_ids_param, str):
             experiment_ids = json.loads(experiment_ids_param)
@@ -234,8 +235,88 @@ def get_overall_performance_results(experiment_ids_param, variant_types=['SNP', 
 
     try:
         with get_db_session() as session:
-            query = session.query(OverallResult).options(
-                joinedload(OverallResult.experiment)
+            query = session.query(
+                # Performance metrics 
+                OverallResult.experiment_id,
+                OverallResult.variant_type,
+                OverallResult.metric_recall.label('recall'),
+                OverallResult.metric_precision.label('precision'),
+                OverallResult.metric_f1_score.label('f1_score'),
+                OverallResult.truth_total,
+                OverallResult.truth_tp,
+                OverallResult.truth_fn,
+                OverallResult.query_total,
+                OverallResult.query_tp,
+                OverallResult.query_fp,
+                
+                # Basic experiment info
+                Experiment.name.label('experiment_name'),
+                Experiment.description,
+                Experiment.created_at,
+                
+                # Sequencing Technology info
+                SequencingTechnology.technology.label('technology'),
+                SequencingTechnology.target,
+                SequencingTechnology.platform_name,
+                SequencingTechnology.platform_type,
+                SequencingTechnology.platform_version,
+                
+                # Variant Caller info
+                VariantCaller.name.label('caller'),
+                VariantCaller.type.label('caller_type'),
+                VariantCaller.version.label('caller_version'),
+                VariantCaller.model.label('caller_model'),
+                
+                # Aligner info
+                Aligner.name.label('aligner_name'),
+                Aligner.version.label('aligner_version'),
+                
+                # Truth Set info
+                TruthSet.name.label('truth_set_name'),
+                TruthSet.sample.label('truth_set_sample'),
+                TruthSet.version.label('truth_set_version'),
+                TruthSet.reference.label('truth_set_reference'),
+                
+                # Benchmark Tool info
+                BenchmarkTool.name.label('benchmark_tool_name'),
+                BenchmarkTool.version.label('benchmark_tool_version'),
+                
+                # Variant info
+                Variant.type.label('variant_type_detail'),
+                Variant.origin.label('variant_origin'),
+                Variant.size.label('variant_size'),
+                Variant.is_phased,
+                
+                # Quality Control metrics
+                QualityControl.mean_coverage,
+                QualityControl.read_length,
+                QualityControl.mean_read_length,
+                QualityControl.mean_insert_size,
+                
+                # Chemistry info
+                Chemistry.name.label('chemistry_name'),
+                Chemistry.version.label('chemistry_version')
+                
+            ).select_from(OverallResult).join(
+                # Required joins
+                Experiment, OverallResult.experiment_id == Experiment.id
+            ).join(
+                SequencingTechnology, Experiment.sequencing_technology_id == SequencingTechnology.id
+            ).join(
+                VariantCaller, Experiment.variant_caller_id == VariantCaller.id
+            ).outerjoin(
+                # Optional joins (using outerjoin to avoid missing data)
+                Aligner, Experiment.aligner_id == Aligner.id
+            ).outerjoin(
+                TruthSet, Experiment.truth_set_id == TruthSet.id
+            ).outerjoin(
+                BenchmarkTool, Experiment.benchmark_tool_id == BenchmarkTool.id
+            ).outerjoin(
+                Variant, Experiment.variant_id == Variant.id
+            ).outerjoin(
+                QualityControl, Experiment.quality_control_metrics_id == QualityControl.id
+            ).outerjoin(
+                Chemistry, Experiment.chemistry_id == Chemistry.id
             ).filter(
                 OverallResult.experiment_id.in_(experiment_ids),
                 OverallResult.variant_type.in_(variant_types)
@@ -243,127 +324,80 @@ def get_overall_performance_results(experiment_ids_param, variant_types=['SNP', 
             
             results = query.all()
             
+            # Convert to DataFrame with proper column handling
             data = []
             for result in results:
                 data.append({
-                    'experiment_id': result.experiment_id,
-                    'experiment_name': result.experiment.name if result.experiment else None,
-                    'variant_type': result.variant_type,
-                    'technology': result.experiment.sequencing_technology.technology.value if (result.experiment and result.experiment.sequencing_technology) else 'Unknown',
-                    'caller': result.experiment.variant_caller.name.value if (result.experiment and result.experiment.variant_caller) else 'Unknown',
-                    'subset': "*",  # Always overall for this table
-                    
                     # Performance metrics
-                    'recall': result.metric_recall,
-                    'precision': result.metric_precision,
-                    'f1_score': result.metric_f1_score,
-                    
-                    # Essential counts
-                    'truth_total': result.truth_total,
-                    'truth_tp': result.truth_tp,
-                    'truth_fn': result.truth_fn,
-                    'query_total': result.query_total,
-                    'query_tp': result.query_tp,
-                    'query_fp': result.query_fp,
-                })
-            
-            return pd.DataFrame(data)
-            
-    except Exception as e:
-        print(f"Error in get_overall_performance_results: {e}")
-        return pd.DataFrame()
-#----------------------------------------------------------------------------------------------------------------------Might remove
-
-
-def get_performance_results(experiment_ids_param, variant_types=['SNP', 'INDEL']):
-    """
-    COMPLETE function for stratified analysis - uses BenchmarkResult table
-    Only called when specific regions are needed
-    
-    Args:
-        experiment_ids (list): List of experiment IDs
-        variant_types (list): Variant types to include ['SNP', 'INDEL', 'SNP+INDEL']
-    """
-    
-    # Parse JSON IDs   
-    try:
-        if isinstance(experiment_ids_param, str):
-            experiment_ids = json.loads(experiment_ids_param)
-            if not isinstance(experiment_ids, list):
-                experiment_ids = [experiment_ids]
-        else:
-            experiment_ids = experiment_ids_param
-    except json.JSONDecodeError as e:
-        print(f"Error parsing experiment_ids JSON: {e}")
-        return pd.DataFrame()
-    
-    if not experiment_ids:
-        return pd.DataFrame()
-
-    try:
-        with get_db_session() as session:
-            query = session.query(BenchmarkResult).options(
-                joinedload(BenchmarkResult.experiment)
-            ).filter(
-                BenchmarkResult.experiment_id.in_(experiment_ids),
-                BenchmarkResult.variant_type.in_(variant_types)
-            )
-            
-            results = query.all()
-            
-            data = []
-            for result in results:
-                data.append({
-                    # Identifiers
                     'experiment_id': result.experiment_id,
-                    'experiment_name': result.experiment.name if result.experiment else None,
+                    'experiment_name': result.experiment_name,
                     'variant_type': result.variant_type,
-                    'technology': result.experiment.sequencing_technology.technology.value if (result.experiment and result.experiment.sequencing_technology) else 'Unknown',
-                    'caller': result.experiment.variant_caller.name.value if (result.experiment and result.experiment.variant_caller) else 'Unknown',
-                    'subset': result.subset.value,
-                    'filter_type': result.filter_type,
-                    
-                    # Core Performance Metrics
-                    'recall': result.metric_recall,
-                    'precision': result.metric_precision,
-                    'f1_score': result.metric_f1_score,
-                    
-                    # Subset Information  
-                    'subset_size': result.subset_size,
-                    'subset_is_conf_size': result.subset_is_conf_size,
-                    
-                    # Truth Set Counts
+                    'recall': result.recall,
+                    'precision': result.precision,
+                    'f1_score': result.f1_score,
                     'truth_total': result.truth_total,
-                    'truth_total_het': result.truth_total_het,
-                    'truth_total_homalt': result.truth_total_homalt,
                     'truth_tp': result.truth_tp,
-                    'truth_tp_het': result.truth_tp_het,
-                    'truth_tp_homalt': result.truth_tp_homalt,
                     'truth_fn': result.truth_fn,
-                    'truth_fn_het': result.truth_fn_het,
-                    'truth_fn_homalt': result.truth_fn_homalt,
-                    
-                    # Query Counts
                     'query_total': result.query_total,
-                    'query_total_het': result.query_total_het,
-                    'query_total_homalt': result.query_total_homalt,
                     'query_tp': result.query_tp,
-                    'query_tp_het': result.query_tp_het,
-                    'query_tp_homalt': result.query_tp_homalt,
                     'query_fp': result.query_fp,
-                    'query_fp_het': result.query_fp_het,
-                    'query_fp_homalt': result.query_fp_homalt,
-                    'query_unk': result.query_unk,
-                    'query_unk_het': result.query_unk_het,
-                    'query_unk_homalt': result.query_unk_homalt
+                    
+                    # Basic info
+                    'description': result.description,
+                    'created_at': result.created_at.isoformat() if result.created_at else None,
+                    
+                    # Technology info
+                    'technology': result.technology.value if result.technology else 'Unknown',
+                    'target': result.target.value if result.target else None,
+                    'platform_name': result.platform_name,
+                    'platform_type': result.platform_type.value if result.platform_type else None,
+                    'platform_version': result.platform_version,
+                    
+                    # Caller info
+                    'caller': result.caller.value if result.caller else 'Unknown',
+                    'caller_type': result.caller_type.value if result.caller_type else None,
+                    'caller_version': result.caller_version,
+                    'caller_model': result.caller_model,
+                    
+                    # Aligner info
+                    'aligner_name': result.aligner_name,
+                    'aligner_version': result.aligner_version,
+                    
+                    # Truth Set info
+                    'truth_set_name': result.truth_set_name.value if result.truth_set_name else None,
+                    'truth_set_sample': result.truth_set_sample.value if result.truth_set_sample else None,
+                    'truth_set_version': result.truth_set_version,
+                    'truth_set_reference': result.truth_set_reference.value if result.truth_set_reference else None,
+                    
+                    # Benchmark Tool info
+                    'benchmark_tool_name': result.benchmark_tool_name.value if result.benchmark_tool_name else None,
+                    'benchmark_tool_version': result.benchmark_tool_version,
+                    
+                    # Variant info
+                    'variant_type_detail': result.variant_type_detail.value if result.variant_type_detail else None,
+                    'variant_origin': result.variant_origin.value if result.variant_origin else None,
+                    'variant_size': result.variant_size.value if result.variant_size else None,
+                    'is_phased': result.is_phased,
+                    
+                    # Quality Control metrics
+                    'mean_coverage': float(result.mean_coverage) if result.mean_coverage is not None else None,
+                    'read_length': float(result.read_length) if result.read_length is not None else None,
+                    'mean_read_length': float(result.mean_read_length) if result.mean_read_length is not None else None,
+                    'mean_insert_size': float(result.mean_insert_size) if result.mean_insert_size is not None else None,
+                    
+                    # Chemistry info
+                    'chemistry_name': result.chemistry_name,
+                    'chemistry_version': result.chemistry_version
                 })
             
             return pd.DataFrame(data)
             
     except Exception as e:
-        print(f"Error in get_performance_results: {e}")
+        print(f"Error in get_experiments_with_performance: {e}")
+        import traceback
+        traceback.print_exc()
         return pd.DataFrame()
-# -------------------
+
 def get_stratified_performance_by_regions(experiment_ids_param, variant_types=['SNP', 'INDEL'], regions=None):
     """
     Get stratified results filtered by regions
