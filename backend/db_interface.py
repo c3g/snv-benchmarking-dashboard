@@ -272,7 +272,9 @@ def get_overall_performance_results(experiment_ids_param, variant_types=['SNP', 
     except Exception as e:
         print(f"Error in get_overall_performance_results: {e}")
         return pd.DataFrame()
-    
+#----------------------------------------------------------------------------------------------------------------------Might remove
+
+
 def get_performance_results(experiment_ids_param, variant_types=['SNP', 'INDEL']):
     """
     COMPLETE function for stratified analysis - uses BenchmarkResult table
@@ -361,7 +363,89 @@ def get_performance_results(experiment_ids_param, variant_types=['SNP', 'INDEL']
     except Exception as e:
         print(f"Error in get_performance_results: {e}")
         return pd.DataFrame()
+# -------------------
+def get_stratified_performance_by_regions(experiment_ids_param, variant_types=['SNP', 'INDEL'], regions=None):
+    """
+    Get stratified results filtered by regions
+    Only loads data for selected regions
+    """
+    
+    # Parse JSON IDs (same as before)
+    try:
+        if isinstance(experiment_ids_param, str):
+            experiment_ids = json.loads(experiment_ids_param)
+            if not isinstance(experiment_ids, list):
+                experiment_ids = [experiment_ids]
+        else:
+            experiment_ids = experiment_ids_param
+    except json.JSONDecodeError as e:
+        print(f"Error parsing experiment_ids JSON: {e}")
+        return pd.DataFrame()
+    
+    if not experiment_ids:
+        return pd.DataFrame()
 
+    try:
+        with get_db_session() as session:
+            query = session.query(BenchmarkResult).options(
+                joinedload(BenchmarkResult.experiment).joinedload(Experiment.sequencing_technology),
+                joinedload(BenchmarkResult.experiment).joinedload(Experiment.variant_caller)
+            ).filter(
+                BenchmarkResult.experiment_id.in_(experiment_ids),
+                BenchmarkResult.variant_type.in_(variant_types)
+            )
+
+            # FIXED: Use the correct method for UI region names
+            if regions and len(regions) > 0:
+                region_enums = []
+                for region_name in regions:
+                    # Try display name first, then fall back to original string
+                    region_enum = RegionType.from_display_name(region_name) or RegionType.from_string(region_name)
+                    if region_enum:
+                        region_enums.append(region_enum)
+                
+                if region_enums:
+                    query = query.filter(BenchmarkResult.subset.in_(region_enums))
+                else:
+                    print(f"No valid regions found for: {regions}")
+                    return pd.DataFrame()
+            
+            results = query.all()
+            print(f"Found {len(results)} results for regions: {regions}")
+            
+            # Convert to dataframe with metadata included
+            data = []
+            for result in results:
+                data.append({
+                    'experiment_id': result.experiment_id,
+                    'experiment_name': result.experiment.name if result.experiment else None,
+                    'variant_type': result.variant_type,
+                    'technology': result.experiment.sequencing_technology.technology.value if (result.experiment and result.experiment.sequencing_technology) else 'Unknown',
+                    'caller': result.experiment.variant_caller.name.value if (result.experiment and result.experiment.variant_caller) else 'Unknown',
+                    'subset': result.subset.value,
+                    'filter_type': result.filter_type,
+                    
+                    # Performance metrics
+                    'recall': result.metric_recall,
+                    'precision': result.metric_precision,
+                    'f1_score': result.metric_f1_score,
+                    
+                    # Essential counts
+                    'truth_total': result.truth_total,
+                    'truth_tp': result.truth_tp,
+                    'truth_fn': result.truth_fn,
+                    'query_total': result.query_total,
+                    'query_tp': result.query_tp,
+                    'query_fp': result.query_fp,
+                })
+            
+            return pd.DataFrame(data)
+            
+    except Exception as e:
+        print(f"Error in get_stratified_performance_by_regions: {e}")
+        import traceback
+        traceback.print_exc()
+        return pd.DataFrame()
 # ========================================================================
 # 4. FILTER EXPERIMENTS BY SEQUNCING TECHNOLGY
 # ========================================================================
