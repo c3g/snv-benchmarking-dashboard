@@ -145,9 +145,11 @@ ui <- fluidPage(
        style = "color: #007bff; font-weight: 600; margin-bottom: 20px; font-size: 1.7em;")
   ),
   
-  #CSS for row expansion and full metadata info
+  
+  #CSS for  fixing first tab widtand row expansion and full metadata info 
   tags$head(
     tags$style(HTML("
+
     /* Table expand buttons */
     .details-toggle {
       background: none;
@@ -622,21 +624,29 @@ ui <- fluidPage(
         # ====================================================================
         tabPanel(
           "Experiments",
-          br(),
-          div(
-            class = "alert alert-info",
-            style = "margin-bottom: 20px;",
-            h5("Experiment Overview"),
-            p("This table displays all available benchmarking experiments with their key metadata. ", 
-              "Use the sidebar to ", strong("filter by technology or variant caller"), 
-              ", or choose from the comparison options to ", 
-              strong("analyze multiple technologies"), ", ", 
-              strong("compare variant callers"), ", or ", 
-              strong("select specific experiments"), " for detailed analysis."),
-            p(style = "font-size: 0.9em; margin-bottom: 0;"
-              , strong("Navigation:"), " Click the ▶ button in any row to expand detailed metadata, or switch to other tabs to view performance results and visualizations.")
-          ),
-          DT::dataTableOutput("experiments_table")
+          
+          # CHANGE: Add explicit container with full width
+          div(class = "container-fluid", style = "width: 100%; padding: 0;",
+              br(),
+              div(
+                class = "alert alert-info",
+                style = "margin-bottom: 20px;",
+                h5("Experiment Overview"),
+                p("This table displays all available benchmarking experiments with their key metadata. ", 
+                  "Use the sidebar to ", strong("filter by technology or variant caller"), 
+                  ", or choose from the comparison options to ", 
+                  strong("analyze multiple technologies"), ", ", 
+                  strong("compare variant callers"), ", or ", 
+                  strong("select specific experiments"), " for detailed analysis."),
+                p(style = "font-size: 0.9em; margin-bottom: 0;"
+                  , strong("Navigation:"), " Click the ▶ button in any row to expand detailed metadata, or switch to other tabs to view performance results and visualizations.")
+              ),
+              
+              # CHANGE: Full width table container
+              div(style = "width: 100%; overflow-x: auto;",
+                  DT::dataTableOutput("experiments_table")
+              )
+          )
         ),
         
         # ====================================================================
@@ -1894,24 +1904,26 @@ server <- function(input, output, session) {
       df,
       selection = selection_config,
       escape = FALSE,
+      extensions = c('Responsive'),
       options = list(
-        pageLength = 15,
+        responsive = TRUE,
         scrollX = TRUE,
-        autoWidth = TRUE,
+        autoWidth = FALSE,
+        initComplete = JS(
+          "function(settings, json) {",
+          "  $(this.api().table().container()).css('width', '100%');",
+          "  $(this.api().table().node()).css('width', '100%');",
+          "  $('.dataTables_wrapper').css('width', '100%');",
+          "}"
+        ),
         columnDefs = list(
-          list(targets = 0, orderable = FALSE, width = "15px", className = "dt-center"),   # Expand button
-          list(targets = 1, width = "15px", className = "dt-center"),                      # ID
-          list(targets = 2, width = "80px"),                                              # Name
-          list(targets = 3, width = "80px"),                                               # Technology  
-          list(targets = 4, width = "60px"),                                              # Platform
-          list(targets = 5, width = "80px"),                                               # Caller
-          list(targets = 6, width = "60px"),                                               # Version
-          list(targets = 7, width = "60px"),                                               # Chemistry
-          list(targets = 8, width = "40px"),                                               # Truth Set
-          list(targets = 9, width = "40px"),                                               # Sample
-          list(targets = 10, width = "65px")                                               # Created
+          list(targets = 0, orderable = FALSE, width = "30px", className = "dt-center"),
+          list(targets = 1, width = "30px", className = "dt-left"),
+          list(targets = 2, width =150, className = "dt-left"),
+          list(targets = c(3:10), className = "dt-center")
         )
       ),
+      
       rownames = FALSE,
       colnames = c("", "ID", "Name", "Technology", "Platform", "Caller", "Version", "Chemistry", "Truth Set", "Sample", "Created")
     ) %>%
