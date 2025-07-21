@@ -16,6 +16,7 @@ library(htmlwidgets)
 library(jsonlite)
 library(tidyr)
 
+
 # Import database interface
 py_run_string("import sys")
 py_run_string("sys.path.append('../backend')")
@@ -964,77 +965,101 @@ ui <- fluidPage(
                      )
               )
             ),
-            # Metric secetion 
+            
+            # Metric section
             wellPanel(
               style = "background-color: #f8f9fa; margin-bottom: 20px;",
+              div(
+                style = "display: flex; justify-content: center; gap: 15px;",
+                
+                # radio button
                 div(
-                  style = "display: flex; justify-content: center; gap: 15px;",
+                  id = "metric-selection-container",
+                  style = "display: flex; gap: 15px;",
                   
-                  # Custom radio button structure
+                  # F1 Score (selected)
                   div(
-                    id = "metric-selection-container",
-                    style = "display: flex; gap: 15px;",
-                    
-                    # F1 Score (selected)
-                    div(
-                      class = "metric-pill",
-                      `data-value` = "f1_score",
-                      style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #007bff; background: #007bff; color: white; transition: all 0.2s ease; text-align: center;",
-                      "F1 Score"
-                    ),
-                    
-                    # Precision (unselected)
-                    div(
-                      class = "metric-pill",
-                      `data-value` = "precision",
-                      style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #dee2e6; background: white; color: #6c757d; transition: all 0.2s ease; text-align: center;",
-                      "Precision"
-                    ),
-                    
-                    # Recall (unselected)
-                    div(
-                      class = "metric-pill",
-                      `data-value` = "recall",
-                      style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #dee2e6; background: white; color: #6c757d; transition: all 0.2s ease; text-align: center;",
-                      "Recall"
-                    )
+                    class = "metric-pill",
+                    `data-value` = "f1_score",
+                    style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #007bff; background: #007bff; color: white; transition: all 0.2s ease; text-align: center;",
+                    "F1 Score"
                   ),
                   
-                  # Hidden actual radio button for Shiny
+                  # Precision 
                   div(
-                    style = "display: none;",
-                    radioButtons(
-                      "selected_metric",
-                      NULL,
-                      choices = list(
-                        "F1" = "f1_score",
-                        "Precision" = "precision", 
-                        "Recall" = "recall"
-                      ),
-                      selected = "f1_score"
-                    )
+                    class = "metric-pill",
+                    `data-value` = "precision",
+                    style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #dee2e6; background: white; color: #6c757d; transition: all 0.2s ease; text-align: center;",
+                    "Precision"
+                  ),
+                  
+                  # Recall 
+                  div(
+                    class = "metric-pill",
+                    `data-value` = "recall",
+                    style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #dee2e6; background: white; color: #6c757d; transition: all 0.2s ease; text-align: center;",
+                    "Recall"
+                  )
+                ),
+                
+                # Hidden radio button for Shiny
+                div(
+                  style = "display: none;",
+                  radioButtons(
+                    "selected_metric",
+                    NULL,
+                    choices = list(
+                      "F1" = "f1_score",
+                      "Precision" = "precision", 
+                      "Recall" = "recall"
+                    ),
+                    selected = "f1_score"
                   )
                 )
-            ),
-            
-            # SNP and INDEL Results side by side
-            fluidRow(
-              # SNP Results (Left)
-              column(6,
-                     h4("SNP Performance by Region"),
-                     br(),
-                     plotOutput("stratified_snp_plot", height = "600px")
-              ),
-              # INDEL Results (Right)  
-              column(6,
-                     h4("INDEL Performance by Region"),
-                     br(),
-                     plotOutput("stratified_indel_plot", height = "600px")
               )
             ),
             
-            # Stratified Table --==================================================================================================================================================================
-          ),
+            tabsetPanel(
+              # Tab 1: Stratified plots
+              tabPanel("📊 Performance Plots",
+                       br(),
+                       fluidRow(
+                         # SNP Results (Left)
+                         column(6,
+                                h4("SNP Performance by Region"),
+                                br(),
+                                plotOutput("stratified_snp_plot", height = "600px")
+                         ),
+                         # INDEL Results (Right)  
+                         column(6,
+                                h4("INDEL Performance by Region"),
+                                br(),
+                                plotOutput("stratified_indel_plot", height = "600px")
+                         )
+                       )
+              ),
+              
+              # Tab 2: Stratified table
+              tabPanel("📋 Data Tables",
+                       br(),
+                       
+                       # SNP Table Section
+                       div(
+                         h4("SNP Performance by Region", style = "color: #d73027; font-weight: bold; margin-bottom: 15px;"),
+                         DT::dataTableOutput("snp_metrics_table"),
+                         style = "margin-bottom: 40px;"
+                       ),
+                       
+                       hr(style = "border-top: 2px solid #dee2e6; margin: 30px 0;"),
+                       
+                       # INDEL Table Section  
+                       div(
+                         h4("INDEL Performance by Region", style = "color: #4575b4; font-weight: bold; margin-bottom: 15px;"),
+                         DT::dataTableOutput("indel_metrics_table")
+                       )
+              ) 
+            ) 
+          ), 
           
           # No data message
           conditionalPanel(
@@ -1046,12 +1071,13 @@ ui <- fluidPage(
               p("Please select some regions and experiments from previous tabs, then click 'Update Analysis'.")
             )
           )
-        
-        # End of tab 4
+          # End of tab 4
+        )
       )
     )
   )
-))
+)  
+
 
 # =============================================================================
 # SERVER DEFINITION
@@ -2218,7 +2244,7 @@ server <- function(input, output, session) {
   
   # ---------------------------------------------
   
-  # 6.3 - Stratified Plots
+ # 6.3
   create_stratified_grouped_plot <- function(data, variant_type, metric_name = "f1_score") {
     
     # Filter for variant type
@@ -2243,94 +2269,257 @@ server <- function(input, output, session) {
     
     metric_label <- metric_labels[[metric_name]] %||% "Metric"
     
-    # Use metric_value column (already calculated)
-    plot <- ggplot(plot_data, aes(x = metric_value, y = exp_label)) +
-      geom_col(aes(fill = technology), alpha = 0.8, width = 0.7) +
-      geom_text(aes(label = paste0(round(metric_value * 100, 2), "%")), 
-                hjust = -0.1, size = 3, color = "black") +
-      scale_fill_manual(values = technology_colors, na.value = "gray70") +
-      scale_x_continuous(limits = c(0, 1.05), labels = scales::percent_format()) +
+    # ENHANCEMENT: Create technology-caller gradient combinations
+    plot_data <- plot_data %>%
+      mutate(
+        # Create tech-caller combination key
+        tech_caller = paste(technology, caller, sep = "-")
+      )
+    
+    # technology-caller gradients
+    tech_caller_colors <- c(
+      # ILLUMINA family (Red variations)
+      "ILLUMINA-DEEPVARIANT" = "#F8766D",    # Original bright red
+      "ILLUMINA-GATK" = "#E55A5A",           # Darker red
+      "ILLUMINA-CLAIR3" = "#FF9999",         # Lighter red
+      
+      # PACBIO family (Purple variations)
+      "PACBIO-DEEPVARIANT" = "#C77CFF",      # Original bright purple  
+      "PACBIO-GATK" = "#B366FF",             # Darker purple
+      "PACBIO-CLAIR3" = "#D999FF",           # Lighter purple
+      
+      # ONT family (Cyan variations)
+      "ONT-DEEPVARIANT" = "#00BFC4",         # Original bright cyan
+      "ONT-GATK" = "#00A5A8",                # Darker cyan
+      "ONT-CLAIR3" = "#33CCCC",              # Lighter cyan
+      
+      # MGI family (Green variations)
+      "MGI-DEEPVARIANT" = "#7CAE00",         # Original bright green
+      "MGI-GATK" = "#6B9500",                # Darker green  
+      "MGI-CLAIR3" = "#99CC33",              # Lighter green
+      
+      # Handle any unknown combinations
+      "Unknown-DEEPVARIANT" = "#E76BF3",
+      "Unknown-GATK" = "#D655E8", 
+      "Unknown-CLAIR3" = "#F281FF"
+    )
+    
+    # Create the gradient plot
+    plot <- ggplot(plot_data, aes(x = metric_value, y = exp_label)) + 
+      
+      # Main bars with technology-caller gradient colors
+      geom_col(aes(fill = tech_caller), 
+               alpha = 0.85,         
+               width = 0.7) + 
+      
+      # Performance percentage labels
+      geom_text(
+        aes(label = paste0(round(metric_value * 100, 2), "%")), 
+        hjust = -0.1, 
+        size = 3.5, 
+        color = "black"
+      ) +
+      
+      # Apply the gradient color mapping
+      scale_fill_manual(
+        values = tech_caller_colors, 
+        na.value = "gray70",
+        name = "Technology-Caller"
+      ) +
+      
+      scale_x_continuous(limits = c(0, 1.1), labels = scales::percent_format()) +
+      
+      # Faceting and labels
       facet_wrap(~ subset, scales = "free_y", ncol = 1) +
       labs(
-        title = paste(variant_type, metric_label, "by Region"),
         x = metric_label,
-        y = "Experiment",
-        fill = "Technology"
+        y = "Experiment",  # Simplified y-label since exp_label already contains the info
+        fill = "Technology + Caller"
       ) +
+      
+      # Theme styling with enhanced legend
       theme_bw() +
       theme(
         strip.background = element_rect(fill = "#f8f9fa", color = "#dee2e6"),
-        strip.text = element_text(face = "bold", size = 10),
-        axis.text.y = element_text(size = 8),
-        axis.text.x = element_text(size = 9),
+        strip.text = element_text(face = "bold", size = 12),
+        axis.text.y = element_text(face = "bold", size = 9),
+        axis.text.x = element_text(face = "bold" ,size = 9),
         legend.position = "bottom",
+        legend.text = element_text(size = 8),
+        legend.title = element_text(size = 9, face = "bold"),
+        legend.box = "horizontal",
         panel.grid.major.y = element_blank(),
         panel.grid.minor = element_blank(),
-        panel.grid.major.x = element_blank()
+        panel.grid.major.x = element_blank(),
+        panel.spacing.y = unit(0.8, "lines")
+      ) +
+      
+      
+      # Make legend more compact and organized
+      guides(
+        fill = guide_legend(
+          ncol = 4,  # 4 columns (one per technology)
+          byrow = TRUE,
+          title.position = "top",
+          title.hjust = 0.5
+        )
       )
     
     return(plot)
   }
+  
+  
   # 6.4 - SNP stratified plot output
   output$stratified_snp_plot <- renderPlot({
     data <- stratified_filtered_data()
     create_stratified_grouped_plot(data, "SNP", input$selected_metric)
   }, height = function() {
-    # Calculate height based on number of regions and experiments
-    n_regions <- length(unique(stratified_filtered_data()$subset))
-    n_experiments <- length(unique(stratified_filtered_data()$experiment_id))
+    data <- stratified_filtered_data()
+    if (nrow(data) == 0) return(400)
     
-    base_height <- 100
-    bar_height <- 15  # bar width
-    region_padding <- 40  
+    n_regions <- length(unique(data$subset))
+    n_experiments <- length(unique(data$experiment_id))
     
-    total_height <- base_height + (n_regions * (n_experiments * bar_height + region_padding))
+    # Simple calculation - no maximum limit!
+    base_height <- 75  # For title, legend, margins
+    height_per_region <- 40 + (n_experiments * 16)  # Region header + bars
     
-    return(max(300, min(total_height, 1000)))
+    return(base_height + (n_regions * height_per_region))
   })
-  
-  # 6.5 - INDEL stratified plot output  
+
+  # 6.5 - INDEL stratified plot output
   output$stratified_indel_plot <- renderPlot({
     data <- stratified_filtered_data()
     create_stratified_grouped_plot(data, "INDEL", input$selected_metric)
   }, height = function() {
-    n_regions <- length(unique(stratified_filtered_data()$subset))
-    n_experiments <- length(unique(stratified_filtered_data()$experiment_id))
+    data <- stratified_filtered_data()
+    if (nrow(data) == 0) return(400)
     
-    base_height <- 100
-    bar_height <- 15  # bar width
-    region_padding <- 40
+    n_regions <- length(unique(data$subset))
+    n_experiments <- length(unique(data$experiment_id))
     
-    total_height <- base_height + (n_regions * (n_experiments * bar_height + region_padding))
+    # Same calculation - let it grow as much as needed
+    base_height <- 75
+    height_per_region <- 40 + (n_experiments * 16)
     
-    return(max(300, min(total_height, 1000)))
+    return(base_height + (n_regions * height_per_region))
   })
   
   # 6.6 - Stratified table outputs
-  
-  # F1 Score table
-  output$f1_scores_table <- DT::renderDataTable({
-    table_data <- f1_table_data()
+  create_metric_table <- function(stratified_data, variant_filter, selected_metric) {
     
-    if ("Message" %in% names(table_data)) {
-      return(DT::datatable(table_data, options = list(dom = 't')))
+    # Filter for specific variant type
+    filtered_data <- stratified_data %>%
+      filter(variant_type == variant_filter)
+    
+    if(nrow(filtered_data) == 0) {
+      return(data.frame(Message = paste("No", variant_filter, "data available for selected regions")))
     }
     
-    DT::datatable(
-      table_data,
-      caption = "F1 Scores (%) by Genomic Region",
-      options = list(
-        pageLength = 15,
-        scrollX = TRUE,
-        scrollY = "400px",
-        columnDefs = list(
-          list(targets = 0, width = "250px", className = "dt-left"),  # Experiment column
-          list(targets = "_all", className = "dt-center")             # All F1 columns
-        )
-      ),
-      rownames = FALSE
+    # Format the data showing all metrics
+    display_data <- filtered_data %>%
+      select(experiment_id, experiment_name, technology, caller, subset, 
+             recall, precision, f1_score) %>%
+      mutate(
+        across(c(recall, precision, f1_score), ~ round(.x * 100, 2))
+      ) %>%
+      rename(
+        "ID" = experiment_id,
+        "Experiment" = experiment_name,
+        "Technology" = technology,
+        "Caller" = caller,
+        "Region" = subset,
+        "Recall %" = recall,
+        "Precision %" = precision,
+        "F1 Score %" = f1_score
+      )
+    
+    # Get column index of selected metric for highlighting
+    metric_col_idx <- switch(selected_metric,
+                             "recall" = which(names(display_data) == "Recall %"),
+                             "precision" = which(names(display_data) == "Precision %"),
+                             "f1_score" = which(names(display_data) == "F1 Score %"),
+                             which(names(display_data) == "F1 Score %")  # Default fallback
     )
-  })
+    
+    # Create the data table with highlighting
+    dt <- DT::datatable(display_data,
+                        options = list(
+                          pageLength = 10,  # Smaller page size since we have two tables
+                          scrollX = TRUE,
+                          dom = 'frtip',
+                          columnDefs = list(
+                            list(targets = 0, className = "dt-center", width = "50px"),        # ID column
+                            list(targets = c(5, 6, 7), className = "dt-right"),               # Metric columns
+                            list(targets = "_all", className = "dt-body-nowrap")               # No wrapping
+                          )
+                        ),
+                        rownames = FALSE,
+                        class = 'cell-border stripe hover compact'
+    )
+    
+    # Apply highlighting to selected metric
+    if(length(metric_col_idx) > 0) {
+      dt <- dt %>%
+        DT::formatStyle(
+          columns = metric_col_idx,
+          backgroundColor = "#e3f2fd",  # Light blue highlight for selected metric
+          fontWeight = "bold"
+        )
+    }
+    
+    return(dt)
+  }
+  
+  # SNP Table Output
+  output$snp_metrics_table <- DT::renderDataTable({
+    req(input$update_stratified)
+    req(input$selected_metric)  
+    
+    # Get stratified data
+    all_selected_regions <- c(input$core_regions, input$functional_regions, 
+                              input$homopolymer_regions, input$gc_low, 
+                              input$gc_normal, input$gc_high, input$complex_regions)
+    
+    if(length(all_selected_regions) == 0) {
+      return(data.frame(Message = "Please select at least one region"))
+    }
+    
+    stratified_data <- db$get_stratified_performance_by_regions(
+      experiment_ids_param = toJSON(performance_experiment_ids()),
+      variant_types = list("SNP", "INDEL"),
+      regions = all_selected_regions
+    )
+    
+    # Create SNP table
+    create_metric_table(stratified_data, "SNP", input$selected_metric)
+    
+  }, server = FALSE)
+  
+  # INDEL Table Output  
+  output$indel_metrics_table <- DT::renderDataTable({
+    req(input$update_stratified)
+    req(input$selected_metric)  
+    
+    # Get stratified data
+    all_selected_regions <- c(input$core_regions, input$functional_regions, 
+                              input$homopolymer_regions, input$gc_low, 
+                              input$gc_normal, input$gc_high, input$complex_regions)
+    
+    if(length(all_selected_regions) == 0) {
+      return(data.frame(Message = "Please select at least one region"))
+    }
+    
+    stratified_data <- db$get_stratified_performance_by_regions(
+      experiment_ids_param = toJSON(performance_experiment_ids()),
+      variant_types = list("SNP", "INDEL"),
+      regions = all_selected_regions
+    )
+    
+    # Create INDEL table
+    create_metric_table(stratified_data, "INDEL", input$selected_metric)
+    
+  }, server = FALSE)
 }
 
 # =============================================================================
