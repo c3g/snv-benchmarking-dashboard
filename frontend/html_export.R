@@ -146,7 +146,7 @@ create_zoomed_performance_plot <- function(data, variant_type) {
       data = data, 
       aes(x = precision, y = recall, 
           color = technology,        # Color by technology
-          shape = caller_name),      # Shape by caller
+          shape = caller),      # Shape by caller
       size = 3.5, 
       alpha = 0.8,
       stroke = 1            
@@ -355,7 +355,7 @@ generate_html_header <- function() {
 # Summary section
 generate_summary_section <- function(viz_data, experiment_ids) {
   technologies <- unique(viz_data$technology[!is.na(viz_data$technology)])
-  callers <- unique(viz_data$caller_name[!is.na(viz_data$caller_name)])
+  callers <- unique(viz_data$caller[!is.na(viz_data$caller)])
   paste0('
       <p style="text-align: center; color: #6c757d; margin-bottom: 30px;">
           Generated on ', format(Sys.time(), "%B %d, %Y at %H:%M"), '<br>
@@ -411,7 +411,7 @@ generate_performance_table <- function(data, variant_type) {
                     <td>', safe_value(row$technology), '</td>
                     <td>', safe_value(row$platform_name), '</td>
                     <td>', safe_value(row$chemistry_name), '</td>
-                    <td>', safe_value(row$caller_name), '</td>
+                    <td>', safe_value(row$caller), '</td>
                     <td>', safe_percent(row$precision), '</td>
                     <td>', safe_percent(row$recall), '</td>
                     <td><strong>', safe_percent(row$f1_score), '</strong></td>
@@ -452,7 +452,7 @@ generate_metadata_section <- function(viz_data, experiment_ids) {
                 <!-- ANALYSIS PIPELINE -->
                 <div class="metadata-card">
                     <h4><i class="icon-pipeline"></i> Analysis Pipeline</h4>
-                    <div class="metadata-item"><strong>Variant Caller:</strong> ', safe_value(exp_data$caller_name), '</div>
+                    <div class="metadata-item"><strong>Variant Caller:</strong> ', safe_value(exp_data$caller), '</div>
                     <div class="metadata-item"><strong>Caller Version:</strong> ', safe_value(exp_data$caller_version), '</div>
                     <div class="metadata-item"><strong>Caller Type:</strong> ', safe_value(exp_data$caller_type), '</div>
                     <div class="metadata-item"><strong>Caller Model:</strong> ', safe_value(exp_data$caller_model), '</div>
