@@ -1036,13 +1036,13 @@ ui <- fluidPage(
                        fluidRow(
                          # SNP Results (Left)
                          column(6,
-                                h4("SNP Performance by Region"),
+                                h4("SNP Performance by Region" , style = "color: #d73027; font-weight: bold;text-align: center;"),
                                 br(),
                                 plotOutput("stratified_snp_plot", height = "600px")
                          ),
                          # INDEL Results (Right)  
                          column(6,
-                                h4("INDEL Performance by Region"),
+                                h4("INDEL Performance by Region", style = "color: #4575b4; font-weight: bold;text-align: center;"),
                                 br(),
                                 plotOutput("stratified_indel_plot", height = "600px")
                          )
