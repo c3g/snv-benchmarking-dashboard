@@ -149,7 +149,6 @@ ui <- fluidPage(
   #CSS for  fixing first tab widtand row expansion and full metadata info 
   tags$head(
     tags$style(HTML("
-
     /* Table expand buttons */
     .details-toggle {
       background: none;
@@ -692,12 +691,14 @@ ui <- fluidPage(
           fluidRow(
             # SNP Plot Column 
             column(4,
-                   h4("SNP Performance"),
+                   h4("SNP Performance", style = "color: #d73027; font-weight: bold;text-align: center;"),
+                   br(),
                    plotlyOutput("snp_plot", height = "500px")
             ),
             # INDEL Plot Column 
             column(4,
-                   h4("INDEL Performance"), 
+                   h4("INDEL Performance" , style = "color: #4575b4; font-weight: bold;text-align: center;"),
+                   br(),
                    plotlyOutput("indel_plot", height = "500px")
             ),
             # LEGENDS Column 
