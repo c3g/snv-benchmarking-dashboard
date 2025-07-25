@@ -52,4 +52,4 @@ VOLUME ["/data"]
 WORKDIR /app/frontend
 
 # Start command
-CMD ["R", "-e", "library(reticulate); use_python('/opt/venv/bin/python'); options(shiny.host='0.0.0.0', shiny.port=3838); shiny::runApp('.', launch.browser=FALSE)"]
+CMD ["sh", "-c", "cd /app/backend && python3 create_database.py && cd /app/frontend && R -e \"library(reticulate); use_python('/opt/venv/bin/python'); options(shiny.host='0.0.0.0', shiny.port=3838); shiny::runApp('.', launch.browser=FALSE)\""]
