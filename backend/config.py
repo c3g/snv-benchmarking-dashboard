@@ -15,7 +15,8 @@ import os
 #------------------------------------
 import os
 
-# Simple container detection
+
+# container detection
 IS_CONTAINER = os.path.exists("/app") and os.path.exists("/app/backend")
 
 if IS_CONTAINER:
@@ -23,9 +24,12 @@ if IS_CONTAINER:
     PROJECT_ROOT = "/app"
     DATA_FOLDER = "/data"
     
-    # MINIMAL FIX: Check if files are in happy_files subdirectory
-    if os.path.exists("/data/happy_files"):
-        DATA_FOLDER = "/data/happy_files"
+    # Check if files are in happy_files subdirectory
+    happy_files_path = "/data/happy_files"
+    metadata_in_happy_files = os.path.join(happy_files_path, "000_benchmark_dashboard_default_metadata.csv")
+    
+    if os.path.exists(metadata_in_happy_files):
+        DATA_FOLDER = happy_files_path
     
     METADATA_CSV_PATH = os.path.join(DATA_FOLDER, "000_benchmark_dashboard_default_metadata.csv")
     DATABASE_PATH = os.path.join(DATA_FOLDER, "benchmarking.db")
@@ -49,5 +53,4 @@ print(f"Container mode: {IS_CONTAINER}")
 print(f"DATA_FOLDER: {DATA_FOLDER}")
 print(f"METADATA_CSV exists: {os.path.exists(METADATA_CSV_PATH)}")
 
-# The key fix: METADATA_CSV_FILENAME
 METADATA_CSV_FILENAME = '000_benchmark_dashboard_default_metadata.csv'
