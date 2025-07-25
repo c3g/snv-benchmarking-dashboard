@@ -13,34 +13,41 @@ import os
 # DATA_FOLDER = os.getenv('BENCHMARKING_DATA_LOCATION', '/data') -------------------- Container path
 
 #------------------------------------
-# temp 
-# Detect if running in container vs local environment
-if os.path.exists("/app") and os.path.exists("/app/backend"):
-    # Container
+import os
+
+# Simple container detection
+IS_CONTAINER = os.path.exists("/app") and os.path.exists("/app/backend")
+
+if IS_CONTAINER:
+    # Container: everything in mounted /data volume
     PROJECT_ROOT = "/app"
+    DATA_FOLDER = "/data"
+    
+    # MINIMAL FIX: Check if files are in happy_files subdirectory
+    if os.path.exists("/data/happy_files"):
+        DATA_FOLDER = "/data/happy_files"
+    
+    METADATA_CSV_PATH = os.path.join(DATA_FOLDER, "000_benchmark_dashboard_default_metadata.csv")
+    DATABASE_PATH = os.path.join(DATA_FOLDER, "benchmarking.db")
 else:
-    # Local
+    # Local development
     PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    DATA_FOLDER = os.path.join(PROJECT_ROOT, 'data', 'happy_files')
+    METADATA_CSV_PATH = os.path.join(DATA_FOLDER, '000_benchmark_dashboard_default_metadata.csv')
+    DATABASE_PATH = os.path.join(PROJECT_ROOT, 'data', 'benchmarking.db')
 
-# Folder containing all data files
-DATA_FOLDER = os.getenv('BENCHMARKING_DATA_LOCATION', 
-                       os.path.join(PROJECT_ROOT, 'data', 'happy_files') if PROJECT_ROOT != "/app" 
-                       else '/data')
+# Ensure directories exist locally
+if not IS_CONTAINER:
+    os.makedirs(DATA_FOLDER, exist_ok=True)
+    os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
 
-#-----------------------------------
-
-os.makedirs(DATA_FOLDER, exist_ok=True) # ensure data directory exists 
-
-# Metadata CSV filename
-METADATA_CSV_FILENAME = '000_benchmark_dashboard_default_metadata.csv'
-
-# Full path to metadata CSV file (in data folder)
-METADATA_CSV_PATH = os.path.join(PROJECT_ROOT,'data', 'happy_files', METADATA_CSV_FILENAME)
-
-# Database filename
-DATABASE_PATH = os.path.join(PROJECT_ROOT, 'data', 'benchmarking.db')
-
-# Function to get path to any file in data folder
 def get_data_file_path(filename):
-    """Get full path to a file in the data folder"""
-    return os.path.join(PROJECT_ROOT, 'data','happy_files', filename)
+    return os.path.join(DATA_FOLDER, filename)
+
+# Debug info
+print(f"Container mode: {IS_CONTAINER}")
+print(f"DATA_FOLDER: {DATA_FOLDER}")
+print(f"METADATA_CSV exists: {os.path.exists(METADATA_CSV_PATH)}")
+
+# The key fix: METADATA_CSV_FILENAME
+METADATA_CSV_FILENAME = '000_benchmark_dashboard_default_metadata.csv'
