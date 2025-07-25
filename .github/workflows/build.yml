@@ -24,7 +24,14 @@ jobs:
           echo "tag=latest" >> $GITHUB_OUTPUT
         fi
     
-    - name: Build and push
+    - name: Build and push image
       run: |
+        # Build with version tag
         docker build -f Containerfile -t ghcr.io/${{ github.repository_owner }}/snv-dashboard:${{ steps.tag.outputs.tag }} .
+    
+        # Push version tag
         docker push ghcr.io/${{ github.repository_owner }}/snv-dashboard:${{ steps.tag.outputs.tag }}
+    
+        # also tag as latest and push
+        docker tag ghcr.io/${{ github.repository_owner }}/snv-dashboard:${{ steps.tag.outputs.tag }} ghcr.io/${{ github.repository_owner }}/snv-dashboard:latest
+        docker push ghcr.io/${{ github.repository_owner }}/snv-dashboard:latest
