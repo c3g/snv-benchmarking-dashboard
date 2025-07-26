@@ -147,31 +147,48 @@ ui <- fluidPage(
   ),
   
   # sidebar and main panel layout
+  # Put title in the sidebar but make it stick to top
   tags$head(
     tags$style(HTML("
-      .sidebar {
-        position: fixed !important;
-        top: 0;
-        left: 0;
-        height: 100vh;
-        width: 330px;
-        background-color: #f8f9fa;
-        border-right: 1px solid #dee2e6;
-        overflow-y: auto;
-        z-index: 1000;
-        padding: 20px;
-        box-sizing: border-box;
-      }
-      
-      .main-content {
-        margin-left: 345px;
-        padding: 20px;
-        min-height: 100vh;
-      }
-    "))
+    .sidebar {
+      position: fixed !important;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      width: 330px;
+      background-color: #f8f9fa;
+      border-right: 1px solid #dee2e6;
+      overflow-y: auto;
+      z-index: 1000;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    .sidebar-header {
+      position: sticky;
+      top: 0;
+      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+      color: white;
+      padding: 15px 20px;
+      border-bottom: 1px solid #dee2e6;
+      z-index: 1002;
+    }
+    
+    .sidebar-content {
+      padding: 20px;
+      height: calc(100vh - 80px);
+      overflow-y: auto;
+    }
+    
+    .main-content {
+      margin-left: 350px;
+      padding: 20px;
+      min-height: 100vh;
+    }
+  "))
   ),
   
-  #CSS for  fixing first tab widtand row expansion and full metadata info 
+  #CSS for row expansion and full metadata info 
   tags$head(
     tags$style(HTML("
     /* Table expand buttons */
@@ -404,8 +421,11 @@ ui <- fluidPage(
     # SIDEBAR PANEL
     # -------------------------------------------------------------------------
     div(class = "sidebar",
-      width = 3,
-      
+        div(class = "sidebar-header",
+            h4("SNV Benchmarking Dashboard", 
+               style = "margin: 0; font-size: 1.3em; font-weight: 600;")
+        ),
+        div(class = "sidebar-content",
       h4("Filter Options:"),
       
       # Choose filter type
@@ -613,7 +633,7 @@ ui <- fluidPage(
           )
         )
       ),
-    ),
+    )),
     
     # -------------------------------------------------------------------------
     # MAIN PANEL
