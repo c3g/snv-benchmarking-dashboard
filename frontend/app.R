@@ -141,10 +141,35 @@ create_caller_legend <- function() {
 ui <- fluidPage(
   
   div(
+    br(),
     h3("SNV Benchmarking Dashboard", 
-       style = "color: #007bff; font-weight: 600; margin-bottom: 20px; font-size: 1.7em;")
+       style = "color: #007bff; font-weight: 600; margin-bottom: 20px; font-size: 1.7em;text-align: center;")
   ),
   
+  # sidebar and main panel layout
+  tags$head(
+    tags$style(HTML("
+      .sidebar {
+        position: fixed !important;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 330px;
+        background-color: #f8f9fa;
+        border-right: 1px solid #dee2e6;
+        overflow-y: auto;
+        z-index: 1000;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+      
+      .main-content {
+        margin-left: 345px;
+        padding: 20px;
+        min-height: 100vh;
+      }
+    "))
+  ),
   
   #CSS for  fixing first tab widtand row expansion and full metadata info 
   tags$head(
@@ -378,7 +403,7 @@ ui <- fluidPage(
     # -------------------------------------------------------------------------
     # SIDEBAR PANEL
     # -------------------------------------------------------------------------
-    sidebarPanel(
+    div(class = "sidebar",
       width = 3,
       
       h4("Filter Options:"),
@@ -593,7 +618,7 @@ ui <- fluidPage(
     # -------------------------------------------------------------------------
     # MAIN PANEL
     # -------------------------------------------------------------------------
-    mainPanel(
+    div(class = "main-content",
       width = 9,
       
       # Export button (top right)
