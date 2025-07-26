@@ -1262,6 +1262,26 @@ server <- function(input, output, session) {
   })
   
   # 2.5
+  # SNP and INDEL plot specific data
+  snp_plot_data <- reactive({
+    viz_data <- viz_performance_data()
+    if (nrow(viz_data) == 0) return(data.frame())
+    
+    viz_data %>% 
+      filter(variant_type == "SNP") %>%
+      mutate(plot_id = paste0("snp_", experiment_id))
+  })
+  
+  indel_plot_data <- reactive({
+    viz_data <- viz_performance_data()
+    if (nrow(viz_data) == 0) return(data.frame())
+    
+    viz_data %>% 
+      filter(variant_type == "INDEL") %>%
+      mutate(plot_id = paste0("indel_", experiment_id))
+  })
+  
+  # 2.6
   #  performance data for table with metadata and formatting
   performance_data <- reactive({
     viz_data <- viz_performance_data()
@@ -1313,7 +1333,7 @@ server <- function(input, output, session) {
   })
   # ------------------------------------------------------
   
-  # 2.6 
+  # 2.7
   # Collect and Process all selected regions from UI checkboxes
   get_selected_regions <- reactive({
     all_selected_regions <- c(
@@ -1357,7 +1377,7 @@ server <- function(input, output, session) {
   }
   
   #------------------------------
-  # 2.7 Stratified table
+  # 2.8 Stratified table
   create_f1_table <- function(data) {
     if (nrow(data) == 0) {
       return(data.frame(Message = "No data available"))
@@ -1513,19 +1533,23 @@ server <- function(input, output, session) {
   
   # 4.6
   # Plot interaction observers - Handle clicks from both plots
-  observeEvent(event_data("plotly_click", source = "snp_plot"), {
-    click_data <- event_data("plotly_click", source = "snp_plot")
+  observeEvent(event_data("plotly_click", source = "snp_plot_isolated"), {
+    click_data <- event_data("plotly_click", source = "snp_plot_isolated")
     if (!is.null(click_data)) {
-      plot_clicked_id(click_data$customdata)
+      plot_id <- click_data$customdata
+      exp_id <- gsub("snp_", "", plot_id)
+      plot_clicked_id(as.numeric(exp_id))
       showNotification("Scroll down to view experiment details.",
                        type = "message", duration = 3)
     }
   })
   
-  observeEvent(event_data("plotly_click", source = "indel_plot"), {
-    click_data <- event_data("plotly_click", source = "indel_plot")
+  observeEvent(event_data("plotly_click", source = "indel_plot_isolated"), {
+    click_data <- event_data("plotly_click", source = "indel_plot_isolated")
     if (!is.null(click_data)) {
-      plot_clicked_id(click_data$customdata)
+      plot_id <- click_data$customdata
+      exp_id <- gsub("indel_", "", plot_id)
+      plot_clicked_id(as.numeric(exp_id))
       showNotification("Scroll down to view experiment details.",
                        type = "message", duration = 3)
     }
@@ -2103,32 +2127,19 @@ server <- function(input, output, session) {
   # 6.1 - SNP Plot
   output$snp_plot <- renderPlotly({
     tryCatch({
-      viz_data <- viz_performance_data()
+      snp_data <- snp_plot_data()
       
-      if (nrow(viz_data) == 0) { # No performance data
+      if (nrow(snp_data) == 0) {
         p <- ggplot() + 
-          annotate("text", x = 0.5, y = 0.5, label = "No data available", size = 6) +
+          annotate("text", x = 0.5, y = 0.5, label = "No SNP data available", size = 6) +
           xlim(0, 1) + ylim(0, 1) +
           labs(title = "SNP", x = "Precision", y = "Recall") +
           theme_bw()
         return(ggplotly(p))
       }
       
-      snp_data <- viz_data %>% filter(variant_type == "SNP") # Filter SNP data only
-      
-      if (nrow(snp_data) == 0) { # No SNP data
-        p <- ggplot() + 
-          annotate("text", x = 0.5, y = 0.5, label = "No SNP data", size = 6) +
-          xlim(0, 1) + ylim(0, 1) +
-          labs(title = "SNP", x = "Precision", y = "Recall") +
-          theme_bw()
-        return(ggplotly(p))
-      }
-      
-      # Create contour data
       contour <- create_f1_contour()
       
-      # Tooltip 
       snp_data$tooltip_text <- paste(
         "<b>ID:", snp_data$experiment_id," - ",
         "<b>", ifelse(is.na(snp_data$experiment_name) | is.null(snp_data$experiment_name), "Unknown", snp_data$experiment_name), "</b>",
@@ -2162,13 +2173,13 @@ server <- function(input, output, session) {
         geom_point(
           data = snp_data, 
           aes(x = precision, y = recall, 
-              fill = technology,           # fill by technology
-              shape = caller,              # shape by caller
-              text = tooltip_text,         # tooltip text
-              customdata = experiment_id), 
-          color = "black",                 # black outline
+              fill = technology,
+              shape = caller,
+              text = tooltip_text,
+              customdata = plot_id),
+          color = "black",
           stroke = 0.15,
-          size = 2.5                       # point size
+          size = 2.5
         ) +
         scale_fill_manual(values = technology_colors) + 
         scale_shape_manual(values = caller_shapes) +       
@@ -2182,7 +2193,7 @@ server <- function(input, output, session) {
           legend.position = "none"        
         )
       
-      ggplotly(p, tooltip = "text", source = "snp_plot") %>%
+      ggplotly(p, tooltip = "text", source = "snp_plot_isolated") %>%
         layout(showlegend = FALSE,
                dragmode = "zoom",
                hoverlabel = list(align = "left")
@@ -2190,7 +2201,6 @@ server <- function(input, output, session) {
         event_register("plotly_click")
       
     }, error = function(e) {
-      cat("Error in SNP plot:", e$message, "\n")
       p <- ggplot() + 
         annotate("text", x = 0.5, y = 0.5, label = paste("Error loading SNP data:", e$message), size = 4) +
         xlim(0, 1) + ylim(0, 1) +
@@ -2200,35 +2210,23 @@ server <- function(input, output, session) {
     })
   })
   
+  
   # 6.2 - INDEL Plot
   output$indel_plot <- renderPlotly({
     tryCatch({
-      viz_data <- viz_performance_data()
-      
-      if (nrow(viz_data) == 0) {
-        p <- ggplot() + 
-          annotate("text", x = 0.5, y = 0.5, label = "No data available", size = 6) +
-          xlim(0, 1) + ylim(0, 1) +
-          labs(title = "INDEL", x = "Precision", y = "Recall") +
-          theme_bw()
-        return(ggplotly(p))
-      }
-      
-      indel_data <- viz_data %>% filter(variant_type == "INDEL")
+      indel_data <- indel_plot_data()
       
       if (nrow(indel_data) == 0) {
         p <- ggplot() + 
-          annotate("text", x = 0.5, y = 0.5, label = "No INDEL data", size = 6) +
+          annotate("text", x = 0.5, y = 0.5, label = "No INDEL data available", size = 6) +
           xlim(0, 1) + ylim(0, 1) +
           labs(title = "INDEL", x = "Precision", y = "Recall") +
           theme_bw()
         return(ggplotly(p))
       }
       
-      # contour data
       contour <- create_f1_contour()
       
-      # tooltip 
       indel_data$tooltip_text <- paste(
         "<b>ID:", indel_data$experiment_id," - ",
         "<b>", ifelse(is.na(indel_data$experiment_name) | is.null(indel_data$experiment_name), "Unknown", indel_data$experiment_name), "</b>",
@@ -2262,12 +2260,12 @@ server <- function(input, output, session) {
         geom_point(
           data = indel_data, 
           aes(x = precision, y = recall, 
-              fill = technology,           # fill by technology
-              shape = caller,              # shape by caller
-              text = tooltip_text,         # tooltip text
-              customdata = experiment_id), 
-          color = "black",                 # black outline
-          size = 2.5,                       # point size
+              fill = technology,
+              shape = caller,
+              text = tooltip_text,
+              customdata = plot_id),
+          color = "black",
+          size = 2.5,
           stroke = 0.15
         ) +
         scale_fill_manual(values = technology_colors) +   
@@ -2282,7 +2280,7 @@ server <- function(input, output, session) {
           legend.position = "none"        
         )
       
-      ggplotly(p, tooltip = "text", source = "indel_plot") %>%
+      ggplotly(p, tooltip = "text", source = "indel_plot_isolated") %>%
         layout(showlegend = FALSE,
                dragmode = "zoom",
                hoverlabel = list(align = "left")
@@ -2290,7 +2288,6 @@ server <- function(input, output, session) {
         event_register("plotly_click")
       
     }, error = function(e) {
-      cat("Error in INDEL plot:", e$message, "\n")
       p <- ggplot() + 
         annotate("text", x = 0.5, y = 0.5, label = paste("Error loading INDEL data:", e$message), size = 4) +
         xlim(0, 1) + ylim(0, 1) +
@@ -2299,7 +2296,6 @@ server <- function(input, output, session) {
       return(ggplotly(p))
     })
   })
-  
   # ---------------------------------------------
   
  # 6.3
