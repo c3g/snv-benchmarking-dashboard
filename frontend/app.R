@@ -47,7 +47,7 @@ caller_shapes <- c(
   "Unknown" = 4             # X 
 )
 # shape conversion to HTML
- shape_symbols = c("16" = "●", "17" = "▲", "15" = "■", "4" = "✕")
+shape_symbols = c("16" = "●", "17" = "▲", "15" = "■", "4" = "✕")
 
 # =============================================================================
 # HELPER FUNCTIONS
@@ -74,14 +74,14 @@ create_f1_contour <- function() {
   
   return(contour_data)
 }
-  # JSON helper function 
-  json_param <- function(data) {
-    if (is.null(data) || length(data) == 0) {
-      return("[]")
-    }
-    jsonlite::toJSON(data,auto_unbox = TRUE)
+# JSON helper function 
+json_param <- function(data) {
+  if (is.null(data) || length(data) == 0) {
+    return("[]")
   }
-  
+  jsonlite::toJSON(data,auto_unbox = TRUE)
+}
+
 # ============================================================================
 # MANUAL HTML LEGEND CREATION FUNCTIONS
 # ============================================================================
@@ -140,11 +140,6 @@ create_caller_legend <- function() {
 
 ui <- fluidPage(
   
-  div(
-    br(),
-    h3("SNV Benchmarking Dashboard", 
-       style = "color: #007bff; font-weight: 600; margin-bottom: 20px; font-size: 1.7em;text-align: center;")
-  ),
   
   # sidebar and main panel layout
   # Put title in the sidebar but make it stick to top
@@ -302,7 +297,7 @@ ui <- fluidPage(
   "))
   ),
   
-    tags$script(HTML("
+  tags$script(HTML("
     /* Table row expansion toggle */
   var expandedRows = {};
   
@@ -332,7 +327,7 @@ ui <- fluidPage(
   }
 ")),
   
-    tags$script(HTML("
+  tags$script(HTML("
     /* Insert metadata rows from R server */
   Shiny.addCustomMessageHandler('insertDetailsRow', function(data) {
     var experimentId = data.experimentId;
@@ -426,710 +421,710 @@ ui <- fluidPage(
                style = "margin: 0; font-size: 1.3em; font-weight: 600;")
         ),
         div(class = "sidebar-content",
-      h4("Filter Options:"),
-      
-      # Choose filter type
-      radioButtons(
-        "filter_type",
-        "Filter by:",
-        choices = list(
-          "Show All" = "none",
-          "Technology" = "tech", 
-          "Variant Caller" = "caller"
-        ),
-        selected = "none"
-      ),
-      
-      # Technology filter dropdown
-      conditionalPanel(
-        condition = "input.filter_type == 'tech'",
-        selectInput(
-          "technology",
-          "Choose Technology:",
-          choices = c("ILLUMINA", "PACBIO", "ONT", "MGI"),
-          selected = "ILLUMINA"
-        )
-      ),
-      
-      # Caller filter dropdown 
-      conditionalPanel(
-        condition = "input.filter_type == 'caller'",
-        selectInput(
-          "caller",
-          "Choose Caller:",
-          choices = c("DEEPVARIANT", "GATK", "CLAIR3"),
-          selected = "DEEPVARIANT"
-        )
-      ),
-      
-      # ====================================================================
-      # COMPARISON BUTTONS SECTION
-      # ====================================================================
-      hr(),
-      h4("Comparison Options:"),
-      
-      # Compare Technologies Button
-      actionButton(
-        "compare_techs",
-        "Compare Sequencing Technologies",
-        class = "btn-primary",
-        style = "width: 100%; margin-bottom: 10px;"
-      ),
-      
-      # Compare Callers Button  
-      actionButton(
-        "compare_callers", 
-        "Compare Variant Callers",
-        class = "btn-success",
-        style = "width: 100%; margin-bottom: 10px;"
-      ),
-      
-      # Compare Specific Experiments Button
-      actionButton(
-        "compare_experiments",
-        "Compare Specific Experiments", 
-        class = "btn-warning",
-        style = "width: 100%; margin-bottom: 10px;"
-      ),
-      
-      # ====================================================================
-      # TECHNOLOGY COMPARISON PANEL
-      # ====================================================================
-      conditionalPanel(
-        condition = "output.comparison_mode == 'tech_comparison'",
-        hr(),
-        h5("Technology Comparison Setup:"),
-        
-        # Select multiple technologies
-        checkboxGroupInput(
-          "selected_technologies",
-          "Select technologies (2 or more):",
-          choices = list(
-            "Illumina" = "ILLUMINA",
-            "PacBio" = "PACBIO",
-            "ONT" = "ONT", 
-            "MGI" = "MGI"
-          )
-        ),
-        
-        # Select one caller (control)
-        selectInput(
-          "tech_comparison_caller",
-          "Choose a caller (for all):",
-          choices = c("DeepVariant" = "DEEPVARIANT", 
-                      "GATK" = "GATK", 
-                      "Clair3" = "CLAIR3"),
-          selected = "DEEPVARIANT"
-        ),
-        
-        # Submit button for tech comparison
-        conditionalPanel(
-          condition = "input.selected_technologies && input.selected_technologies.length >= 2",
-          actionButton(
-            "submit_tech_comparison",
-            "Submit Technology Comparison",
-            class = "btn-primary",
-            style = "width: 100%;"
-          )
-        ),
-        
-        conditionalPanel(
-          condition = "!input.selected_technologies || input.selected_technologies.length < 2",
-          p("Please select at least 2 technologies", style = "color: red; font-size: 12px;")
-        )
-      ),
-      
-      # ====================================================================
-      # CALLER COMPARISON PANEL
-      # ====================================================================
-      conditionalPanel(
-        condition = "output.comparison_mode == 'caller_comparison'",
-        hr(),
-        h5("Caller Comparison Setup:"),
-        
-        # Select multiple callers
-        checkboxGroupInput(
-          "selected_callers",
-          "Select callers (2 or more):",
-          choices = list(
-            "DeepVariant" = "DEEPVARIANT",
-            "GATK" = "GATK",
-            "Clair3" = "CLAIR3"
-          )
-        ),
-        
-        # Select one technology (control)
-        selectInput(
-          "caller_comparison_tech",
-          "Choose a technology (for all):",
-          choices = c("Illumina" = "ILLUMINA", 
-                      "PacBio" = "PACBIO", 
-                      "ONT" = "ONT",
-                      "MGI" = "MGI"),
-          selected = "ILLUMINA"
-        ),
-        
-        # Submit button for caller comparison
-        conditionalPanel(
-          condition = "input.selected_callers && input.selected_callers.length >= 2",
-          actionButton(
-            "submit_caller_comparison",
-            "Submit Caller Comparison",
-            class = "btn-success",
-            style = "width: 100%;"
-          )
-        ),
-        
-        conditionalPanel(
-          condition = "!input.selected_callers || input.selected_callers.length < 2",
-          p("Please select at least 2 callers", style = "color: red; font-size: 12px;")
-        )
-      ),
-      
-      # ====================================================================
-      # EXPERIMENT SELECTION INFO PANEL
-      # ====================================================================
-      conditionalPanel(
-        condition = "output.comparison_mode == 'manual_selection'",
-        p("Click on experiments in the table select them for comparison.", style ="font-size: 15px;"),
-        
-        # Show selected count
-        textOutput("selected_experiments_count"),
-        
-        # Clear selection button
-        actionButton(
-          "clear_experiment_selection",
-          "Clear Selection",
-          class = "btn-secondary btn-sm",
-          style = "width: 100%"
-        )
-      ),
-      
-      # ====================================================================
-      # SELECTED EXPERIMENTS DISPLAY (Bottom of sidebar)
-      # ====================================================================
-      conditionalPanel(
-        condition = "output.comparison_mode == 'manual_selection' && output.has_selected_experiments",
-        hr(),
-        div(
-          class = "panel panel-info",
-          div(class = "panel-heading d-flex justify-content-between align-items-center", #heading
-              h5("Selected Experiments for Comparison", class = "mb-0"),
-              span(class = "badge badge-info rounded-pill", 
-                   textOutput("selected_count_badge", inline = TRUE))
-          ),
-          div(class = "panel-body", style = "padding: 10px;", #content (table)
-              div(style = "max-height: 90px; overflow-y: auto; overflow-x: auto; border: 1px solid #dee2e6;",
-                  tableOutput("compact_selected_experiments")
+            h4("Filter Options:"),
+            
+            # Choose filter type
+            radioButtons(
+              "filter_type",
+              "Filter by:",
+              choices = list(
+                "Show All" = "none",
+                "Technology" = "tech", 
+                "Variant Caller" = "caller"
               ),
-              br(),
-              div(style = "text-align: center;", #submit button
-                  actionButton(
-                    "submit_bottom_comparison",
-                    "Submit Selected Experiments",
-                    class = "btn-warning"
-                  )
+              selected = "none"
+            ),
+            
+            # Technology filter dropdown
+            conditionalPanel(
+              condition = "input.filter_type == 'tech'",
+              selectInput(
+                "technology",
+                "Choose Technology:",
+                choices = c("ILLUMINA", "PACBIO", "ONT", "MGI"),
+                selected = "ILLUMINA"
               )
-          )
-        )
-      ),
-    )),
+            ),
+            
+            # Caller filter dropdown 
+            conditionalPanel(
+              condition = "input.filter_type == 'caller'",
+              selectInput(
+                "caller",
+                "Choose Caller:",
+                choices = c("DEEPVARIANT", "GATK", "CLAIR3"),
+                selected = "DEEPVARIANT"
+              )
+            ),
+            
+            # ====================================================================
+            # COMPARISON BUTTONS SECTION
+            # ====================================================================
+            hr(),
+            h4("Comparison Options:"),
+            
+            # Compare Technologies Button
+            actionButton(
+              "compare_techs",
+              "Compare Sequencing Technologies",
+              class = "btn-primary",
+              style = "width: 100%; margin-bottom: 10px;"
+            ),
+            
+            # Compare Callers Button  
+            actionButton(
+              "compare_callers", 
+              "Compare Variant Callers",
+              class = "btn-success",
+              style = "width: 100%; margin-bottom: 10px;"
+            ),
+            
+            # Compare Specific Experiments Button
+            actionButton(
+              "compare_experiments",
+              "Compare Specific Experiments", 
+              class = "btn-warning",
+              style = "width: 100%; margin-bottom: 10px;"
+            ),
+            
+            # ====================================================================
+            # TECHNOLOGY COMPARISON PANEL
+            # ====================================================================
+            conditionalPanel(
+              condition = "output.comparison_mode == 'tech_comparison'",
+              hr(),
+              h5("Technology Comparison Setup:"),
+              
+              # Select multiple technologies
+              checkboxGroupInput(
+                "selected_technologies",
+                "Select technologies (2 or more):",
+                choices = list(
+                  "Illumina" = "ILLUMINA",
+                  "PacBio" = "PACBIO",
+                  "ONT" = "ONT", 
+                  "MGI" = "MGI"
+                )
+              ),
+              
+              # Select one caller (control)
+              selectInput(
+                "tech_comparison_caller",
+                "Choose a caller (for all):",
+                choices = c("DeepVariant" = "DEEPVARIANT", 
+                            "GATK" = "GATK", 
+                            "Clair3" = "CLAIR3"),
+                selected = "DEEPVARIANT"
+              ),
+              
+              # Submit button for tech comparison
+              conditionalPanel(
+                condition = "input.selected_technologies && input.selected_technologies.length >= 2",
+                actionButton(
+                  "submit_tech_comparison",
+                  "Submit Technology Comparison",
+                  class = "btn-primary",
+                  style = "width: 100%;"
+                )
+              ),
+              
+              conditionalPanel(
+                condition = "!input.selected_technologies || input.selected_technologies.length < 2",
+                p("Please select at least 2 technologies", style = "color: red; font-size: 12px;")
+              )
+            ),
+            
+            # ====================================================================
+            # CALLER COMPARISON PANEL
+            # ====================================================================
+            conditionalPanel(
+              condition = "output.comparison_mode == 'caller_comparison'",
+              hr(),
+              h5("Caller Comparison Setup:"),
+              
+              # Select multiple callers
+              checkboxGroupInput(
+                "selected_callers",
+                "Select callers (2 or more):",
+                choices = list(
+                  "DeepVariant" = "DEEPVARIANT",
+                  "GATK" = "GATK",
+                  "Clair3" = "CLAIR3"
+                )
+              ),
+              
+              # Select one technology (control)
+              selectInput(
+                "caller_comparison_tech",
+                "Choose a technology (for all):",
+                choices = c("Illumina" = "ILLUMINA", 
+                            "PacBio" = "PACBIO", 
+                            "ONT" = "ONT",
+                            "MGI" = "MGI"),
+                selected = "ILLUMINA"
+              ),
+              
+              # Submit button for caller comparison
+              conditionalPanel(
+                condition = "input.selected_callers && input.selected_callers.length >= 2",
+                actionButton(
+                  "submit_caller_comparison",
+                  "Submit Caller Comparison",
+                  class = "btn-success",
+                  style = "width: 100%;"
+                )
+              ),
+              
+              conditionalPanel(
+                condition = "!input.selected_callers || input.selected_callers.length < 2",
+                p("Please select at least 2 callers", style = "color: red; font-size: 12px;")
+              )
+            ),
+            
+            # ====================================================================
+            # EXPERIMENT SELECTION INFO PANEL
+            # ====================================================================
+            conditionalPanel(
+              condition = "output.comparison_mode == 'manual_selection'",
+              p("Click on experiments in the table select them for comparison.", style ="font-size: 15px;"),
+              
+              # Show selected count
+              textOutput("selected_experiments_count"),
+              
+              # Clear selection button
+              actionButton(
+                "clear_experiment_selection",
+                "Clear Selection",
+                class = "btn-secondary btn-sm",
+                style = "width: 100%"
+              )
+            ),
+            
+            # ====================================================================
+            # SELECTED EXPERIMENTS DISPLAY (Bottom of sidebar)
+            # ====================================================================
+            conditionalPanel(
+              condition = "output.comparison_mode == 'manual_selection' && output.has_selected_experiments",
+              hr(),
+              div(
+                class = "panel panel-info",
+                div(class = "panel-heading d-flex justify-content-between align-items-center", #heading
+                    h5("Selected Experiments for Comparison", class = "mb-0"),
+                    span(class = "badge badge-info rounded-pill", 
+                         textOutput("selected_count_badge", inline = TRUE))
+                ),
+                div(class = "panel-body", style = "padding: 10px;", #content (table)
+                    div(style = "max-height: 90px; overflow-y: auto; overflow-x: auto; border: 1px solid #dee2e6;",
+                        tableOutput("compact_selected_experiments")
+                    ),
+                    br(),
+                    div(style = "text-align: center;", #submit button
+                        actionButton(
+                          "submit_bottom_comparison",
+                          "Submit Selected Experiments",
+                          class = "btn-warning"
+                        )
+                    )
+                )
+              )
+            ),
+        )),
     
     # -------------------------------------------------------------------------
     # MAIN PANEL
     # -------------------------------------------------------------------------
     div(class = "main-content",
-      width = 9,
-      
-      # Export button (top right)
-      div(
-        style = "display: flex; justify-content: space-between; align-items: center; 
+        width = 9,
+        
+        # Export button (top right)
+        div(
+          style = "display: flex; justify-content: space-between; align-items: center; 
              margin-bottom: 0; padding-bottom: 0;",
-        div(
-          style = "flex-grow: 1;",
-        ),
-        div(
-          style = "margin-left: 20px; padding-top: 5px;",
-          downloadButton(
-            "export_html_report", 
-            label = tagList( "Export Report"),
-            class = "btn-primary btn-sm",
-            style = "font-size: 14px; padding: 6px 12px; white-space: nowrap;"
-          )
-        )
-      ),
-      
-      br(),
-      
-      tabsetPanel(
-        
-        # ====================================================================
-        # TAB 1: EXPERIMENT OVERVIEW
-        # ====================================================================
-        tabPanel(
-          "Experiments",
-          
-          # CHANGE: Add explicit container with full width
-          div(class = "container-fluid", style = "width: 100%; padding: 0;",
-              br(),
-              div(
-                class = "alert alert-info",
-                style = "margin-bottom: 20px;",
-                h5("Experiment Overview"),
-                p("This table displays all available benchmarking experiments with their key metadata. ", 
-                  "Use the sidebar to ", strong("filter by technology or variant caller"), 
-                  ", or choose from the comparison options to ", 
-                  strong("analyze multiple technologies"), ", ", 
-                  strong("compare variant callers"), ", or ", 
-                  strong("select specific experiments"), " for detailed analysis."),
-                p(style = "font-size: 0.9em; margin-bottom: 0;"
-                  , strong("Navigation:"), " Click the ▶ button in any row to expand detailed metadata, or switch to other tabs to view performance results and visualizations.")
-              ),
-              
-              # CHANGE: Full width table container
-              div(style = "width: 100%; overflow-x: auto;",
-                  DT::dataTableOutput("experiments_table")
-              )
-          )
-        ),
-        
-        # ====================================================================
-        # TAB 2: PERFORMANCE RESULTS 
-        # ====================================================================
-        tabPanel(
-          "Performance Results", 
-          br(),
-          # Add informative message
           div(
-            class = "alert alert-info",
-            style = "margin-bottom: 20px;",
-            h5("Performance Results"),
-            p("This table shows detailed performance metrics for each experiment. Each experiment displays ", 
-              strong("two rows"), ": one for ", 
-              span(style = "color: #d73027; font-weight: bold;", "SNP variants"), 
-              " and one for ", 
-              span(style = "color: #4575b4; font-weight: bold;", "INDEL variants"), 
-              ". Metrics are shown as percentages for easy comparison."),
+            style = "flex-grow: 1;",
           ),
-          DT::dataTableOutput("performance_table")
-        ),
-        
-        # ====================================================================
-        # TAB 3: VISUALIZATIONS (PRECISION/RECALL)
-        # ====================================================================
-        tabPanel(
-          "Visualizations",
-          br(),
-          fluidRow(
-            column(12,
-                   div(
-                     class = "alert alert-info",
-                     h5(" Performance Visualizations"),
-                     p("These scatter plots display precision vs recall performance for each experiment, with ", 
-                       strong("F1 contour lines"), " showing performance benchmarks. "),
-                     p(strong("Click points"), " and scroll down to view experiment details below, or ", strong("hover"), " for quick metrics"),
-                     p(style = "font-size: 0.9em; color: #6c757d;", "Tip: Drag to zoom, double-click to reset")
-                   )
-            )
-          ),
-          br(),
-          fluidRow(
-            # SNP Plot Column 
-            column(4,
-                   h4("SNP Performance", style = "color: #d73027; font-weight: bold;text-align: center;"),
-                   br(),
-                   plotlyOutput("snp_plot", height = "500px")
-            ),
-            # INDEL Plot Column 
-            column(4,
-                   h4("INDEL Performance" , style = "color: #4575b4; font-weight: bold;text-align: center;"),
-                   br(),
-                   plotlyOutput("indel_plot", height = "500px")
-            ),
-            # LEGENDS Column 
-            column(3,
-                   br(), br(), br(), br(),
-                   htmlOutput("technology_legend"),
-                   br(),
-                   htmlOutput("caller_legend")
-            )
-          ),
-          # Selected point/experiment details 
-          br(),
-          fluidRow(
-            column(12,
-                   conditionalPanel(
-                     condition = "output.has_selected_point",
-                     wellPanel(
-                       style = "background-color: #f8f9fa; border-left: 4px solid #007bff; margin-top: 15px;",
-                       fluidRow( 
-                         column(10,
-                                h5("Selected Experiment Details"),
-                                htmlOutput("basic_experiment_info")  # General metadata details
-                         ),
-                         column(2,
-                                div(style = "text-align: right; padding-top: 10px;",
-                                    actionButton("expand_metadata", "Show All Details", 
-                                                 class = "btn-primary btn-sm")
-                                )
-                         )
-                       ),
-                       
-                       # Expandable full metadata section
-                       conditionalPanel(
-                         condition = "input.expand_metadata % 2 == 1",
-                         hr(),
-                         htmlOutput("full_experiment_metadata") # Full metadata
-                       )
-                     )
-                   )
+          div(
+            style = "margin-left: 20px; padding-top: 5px;",
+            downloadButton(
+              "export_html_report", 
+              label = tagList( "Export Report"),
+              class = "btn-primary btn-sm",
+              style = "font-size: 14px; padding: 6px 12px; white-space: nowrap;"
             )
           )
         ),
-        # ====================================================================
-        # TAB 4: STRATIFIED ANALYSIS
-        # ====================================================================
         
-        tabPanel(
-          "Stratified Analysis",
-          br(),
+        br(),
+        
+        tabsetPanel(
           
-          # Info alert
-          div(
-            class = "alert alert-info",
-            style = "margin-bottom: 20px;",
-            h5("Stratified Performance Analysis"),
-            p("Analyze F1 scores across different genomic regions for the selected experiments. "),
-            p(style = "font-size: 0.9em; margin-bottom: 0;",
-              strong("Note: "), "Only experiments from your current selection (previous tabs) are shown.")
-          ),
-          
-          # Region selection panel
-          wellPanel(
-            style = "background-color: #f8f9fa; margin-bottom: 20px;",
-            h5("Select Regions to Analyze", style = "margin-top: 0;"),
+          # ====================================================================
+          # TAB 1: EXPERIMENT OVERVIEW
+          # ====================================================================
+          tabPanel(
+            "Experiments",
             
+            # CHANGE: Add explicit container with full width
+            div(class = "container-fluid", style = "width: 100%; padding: 0;",
+                br(),
+                div(
+                  class = "alert alert-info",
+                  style = "margin-bottom: 20px;",
+                  h5("Experiment Overview"),
+                  p("This table displays all available benchmarking experiments with their key metadata. ", 
+                    "Use the sidebar to ", strong("filter by technology or variant caller"), 
+                    ", or choose from the comparison options to ", 
+                    strong("analyze multiple technologies"), ", ", 
+                    strong("compare variant callers"), ", or ", 
+                    strong("select specific experiments"), " for detailed analysis."),
+                  p(style = "font-size: 0.9em; margin-bottom: 0;"
+                    , strong("Navigation:"), " Click the ▶ button in any row to expand detailed metadata, or switch to other tabs to view performance results and visualizations.")
+                ),
+                
+                # CHANGE: Full width table container
+                div(style = "width: 100%; overflow-x: auto;",
+                    DT::dataTableOutput("experiments_table")
+                )
+            )
+          ),
+          
+          # ====================================================================
+          # TAB 2: PERFORMANCE RESULTS 
+          # ====================================================================
+          tabPanel(
+            "Performance Results", 
+            br(),
+            # Add informative message
+            div(
+              class = "alert alert-info",
+              style = "margin-bottom: 20px;",
+              h5("Performance Results"),
+              p("This table shows detailed performance metrics for each experiment. Each experiment displays ", 
+                strong("two rows"), ": one for ", 
+                span(style = "color: #d73027; font-weight: bold;", "SNP variants"), 
+                " and one for ", 
+                span(style = "color: #4575b4; font-weight: bold;", "INDEL variants"), 
+                ". Metrics are shown as percentages for easy comparison."),
+            ),
+            DT::dataTableOutput("performance_table")
+          ),
+          
+          # ====================================================================
+          # TAB 3: VISUALIZATIONS (PRECISION/RECALL)
+          # ====================================================================
+          tabPanel(
+            "Visualizations",
+            br(),
             fluidRow(
               column(12,
-                     div(style = "background: white; border: 1px solid #dee2e6; border-radius: 5px; padding: 20px;",
-                         
-                         # Main Regions
-                         div(
-                           h6( "Main Regions", 
-                              style = "margin-bottom: 10px; color: #495057; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
-                           checkboxGroupInput(
-                             "core_regions",
-                             NULL,
-                             choices = list(
-                               "Overall" = "All Regions",
-                               "Easy Regions" = "Easy Regions", 
-                               "Difficult Regions" = "Difficult Regions"
-                             ),
-                             selected = c("All Regions"),
-                             inline = TRUE
+                     div(
+                       class = "alert alert-info",
+                       h5(" Performance Visualizations"),
+                       p("These scatter plots display precision vs recall performance for each experiment, with ", 
+                         strong("F1 contour lines"), " showing performance benchmarks. "),
+                       p(strong("Click points"), " and scroll down to view experiment details below, or ", strong("hover"), " for quick metrics"),
+                       p(style = "font-size: 0.9em; color: #6c757d;", "Tip: Drag to zoom, double-click to reset")
+                     )
+              )
+            ),
+            br(),
+            fluidRow(
+              # SNP Plot Column 
+              column(4,
+                     h4("SNP Performance", style = "color: #d73027; font-weight: bold;text-align: center;"),
+                     br(),
+                     plotlyOutput("snp_plot", height = "500px")
+              ),
+              # INDEL Plot Column 
+              column(4,
+                     h4("INDEL Performance" , style = "color: #4575b4; font-weight: bold;text-align: center;"),
+                     br(),
+                     plotlyOutput("indel_plot", height = "500px")
+              ),
+              # LEGENDS Column 
+              column(3,
+                     br(), br(), br(), br(),
+                     htmlOutput("technology_legend"),
+                     br(),
+                     htmlOutput("caller_legend")
+              )
+            ),
+            # Selected point/experiment details 
+            br(),
+            fluidRow(
+              column(12,
+                     conditionalPanel(
+                       condition = "output.has_selected_point",
+                       wellPanel(
+                         style = "background-color: #f8f9fa; border-left: 4px solid #007bff; margin-top: 15px;",
+                         fluidRow( 
+                           column(10,
+                                  h5("Selected Experiment Details"),
+                                  htmlOutput("basic_experiment_info")  # General metadata details
+                           ),
+                           column(2,
+                                  div(style = "text-align: right; padding-top: 10px;",
+                                      actionButton("expand_metadata", "Show All Details", 
+                                                   class = "btn-primary btn-sm")
+                                  )
                            )
                          ),
-                        
                          
-                         # Functional Regions (Collapsible)
-                         div(
-                           style = "margin-top: 15px;",
-                           tags$a(
-                             href = "#functional_collapse",
-                             `data-toggle` = "collapse",
-                             style = "text-decoration: none; color: #495057;",
-                             h6("▶ Functional Regions",
-                                style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
-                           ),
+                         # Expandable full metadata section
+                         conditionalPanel(
+                           condition = "input.expand_metadata % 2 == 1",
+                           hr(),
+                           htmlOutput("full_experiment_metadata") # Full metadata
+                         )
+                       )
+                     )
+              )
+            )
+          ),
+          # ====================================================================
+          # TAB 4: STRATIFIED ANALYSIS
+          # ====================================================================
+          
+          tabPanel(
+            "Stratified Analysis",
+            br(),
+            
+            # Info alert
+            div(
+              class = "alert alert-info",
+              style = "margin-bottom: 20px;",
+              h5("Stratified Performance Analysis"),
+              p("Analyze F1 scores across different genomic regions for the selected experiments. "),
+              p(style = "font-size: 0.9em; margin-bottom: 0;",
+                strong("Note: "), "Only experiments from your current selection (previous tabs) are shown.")
+            ),
+            
+            # Region selection panel
+            wellPanel(
+              style = "background-color: #f8f9fa; margin-bottom: 20px;",
+              h5("Select Regions to Analyze", style = "margin-top: 0;"),
+              
+              fluidRow(
+                column(12,
+                       div(style = "background: white; border: 1px solid #dee2e6; border-radius: 5px; padding: 20px;",
+                           
+                           # Main Regions
                            div(
-                             id = "functional_collapse",
-                             class = "collapse",
-                             style = "margin-top: 6px;",
+                             h6( "Main Regions", 
+                                 style = "margin-bottom: 10px; color: #495057; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
                              checkboxGroupInput(
-                               "functional_regions",
+                               "core_regions",
                                NULL,
                                choices = list(
-                                 "RefSeq CDS" = "RefSeq CDS",
-                                 "Not in CDS" = "Non-CDS Regions"
+                                 "Overall" = "All Regions",
+                                 "Easy Regions" = "Easy Regions", 
+                                 "Difficult Regions" = "Difficult Regions"
                                ),
-                               selected = character(0),
+                               selected = c("All Regions"),
                                inline = TRUE
                              )
-                           )
-                         ),
-                         
-                         
-                         # Homopolymer Regions
-                         div(
-                           style = "margin-top: 15px;",
-                           tags$a(
-                             href = "#homopolymer_collapse",
-                             `data-toggle` = "collapse",
-                             style = "text-decoration: none; color: #495057;",
-                             h6("▶ Homopolymer Regions",
-                                style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
                            ),
+                           
+                           
+                           # Functional Regions (Collapsible)
                            div(
-                             id = "homopolymer_collapse",
-                             class = "collapse",
-                             style = "margin-top: 6px;",
-                             checkboxGroupInput(
-                               "homopolymer_regions",
-                               NULL,
-                               choices = list(
-                                 "Homopolymer 4-6bp" = "Homopolymer 4-6bp",
-                                 "Homopolymer 7-11bp" = "Homopolymer 7-11bp",
-                                 "Homopolymer >11bp" = "Homopolymer >11bp"
-                               ),
-                               selected = character(0),
-                               inline = TRUE
-                             )
-                           )
-                         ),
-                         
-
-                         # GC Content Regions (Collapsible)
-                         div(
-                           style = "margin-top: 15px;",
-                           tags$a(
-                             href = "#gc_collapse",
-                             `data-toggle` = "collapse",
-                             style = "text-decoration: none; color: #495057;",
-                             h6("▶ GC Content Regions",
-                                style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
-                           ),
-                           div(
-                             id = "gc_collapse",
-                             class = "collapse",
-                             style = "margin-top: 10px;",
-                             fluidRow(
-                               column(4,
-                                      h6("Low GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
-                                      checkboxGroupInput(
-                                        "gc_low",
-                                        NULL,
-                                        choices = list(
-                                          "Very Low (<15%)" = "GC_<15",
-                                          "GC 15-20%" = "GC_15_20",
-                                          "GC 20-25%" = "GC_20_25",
-                                          "GC 25-30%" = "GC_25_30"
-                                        ),
-                                        selected = character(0)
-                                      )
-                               ),
-                               column(4,
-                                      h6("Normal GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
-                                      checkboxGroupInput(
-                                        "gc_normal",
-                                        NULL,
-                                        choices = list(
-                                          "GC 30-55%" = "GC_30_55",
-                                          "GC 55-60%" = "GC_55_60", 
-                                          "GC 60-65%" = "GC_60_65",
-                                          "GC 65-70%" = "GC_65_70"
-                                        ),
-                                        selected = character(0),
-                                      )
-                               ),
-                               column(4,
-                                      h6("High GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
-                                      checkboxGroupInput(
-                                        "gc_high",
-                                        NULL,
-                                        choices = list(
-                                          "GC 70-75%" = "GC_70_75",
-                                          "GC 75-80%" = "GC_75_80",
-                                          "GC 80-85%" = "GC_80_85",
-                                          "Very High (>85%)" = "GC_>85"
-                                        ),
-                                        selected = character(0)
-                                      )
-                                    )
+                             style = "margin-top: 15px;",
+                             tags$a(
+                               href = "#functional_collapse",
+                               `data-toggle` = "collapse",
+                               style = "text-decoration: none; color: #495057;",
+                               h6("▶ Functional Regions",
+                                  style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
                              ),
-                           )
-                         ),
-
-                         
-                         # Other Regions (Collapsible)
-                         div(
-                           style = "margin-top: 15px;",
-                           tags$a(
-                             href = "#other_collapse",
-                             `data-toggle` = "collapse",
-                             style = "text-decoration: none; color: #495057;",
-                             h6("▶ Other Regions",
-                                style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
-                           ),
-                           div(
-                             id = "other_collapse",
-                             class = "collapse",
-                             style = "margin-top: 6px;",
-                             
-                             # Complex regions
                              div(
-                               h6("Complex Regions:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
+                               id = "functional_collapse",
+                               class = "collapse",
+                               style = "margin-top: 6px;",
                                checkboxGroupInput(
-                                 "complex_regions",
+                                 "functional_regions",
                                  NULL,
                                  choices = list(
-                                   "MHC" = "MHC Region",
-                                   "Segmental Duplications" = "Segmental Duplications",
-                                   "Low Mappability" = "Low Mappability"
+                                   "RefSeq CDS" = "RefSeq CDS",
+                                   "Not in CDS" = "Non-CDS Regions"
                                  ),
                                  selected = character(0),
                                  inline = TRUE
                                )
                              )
+                           ),
+                           
+                           
+                           # Homopolymer Regions
+                           div(
+                             style = "margin-top: 15px;",
+                             tags$a(
+                               href = "#homopolymer_collapse",
+                               `data-toggle` = "collapse",
+                               style = "text-decoration: none; color: #495057;",
+                               h6("▶ Homopolymer Regions",
+                                  style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
+                             ),
+                             div(
+                               id = "homopolymer_collapse",
+                               class = "collapse",
+                               style = "margin-top: 6px;",
+                               checkboxGroupInput(
+                                 "homopolymer_regions",
+                                 NULL,
+                                 choices = list(
+                                   "Homopolymer 4-6bp" = "Homopolymer 4-6bp",
+                                   "Homopolymer 7-11bp" = "Homopolymer 7-11bp",
+                                   "Homopolymer >11bp" = "Homopolymer >11bp"
+                                 ),
+                                 selected = character(0),
+                                 inline = TRUE
+                               )
+                             )
+                           ),
+                           
+                           
+                           # GC Content Regions (Collapsible)
+                           div(
+                             style = "margin-top: 15px;",
+                             tags$a(
+                               href = "#gc_collapse",
+                               `data-toggle` = "collapse",
+                               style = "text-decoration: none; color: #495057;",
+                               h6("▶ GC Content Regions",
+                                  style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
+                             ),
+                             div(
+                               id = "gc_collapse",
+                               class = "collapse",
+                               style = "margin-top: 10px;",
+                               fluidRow(
+                                 column(4,
+                                        h6("Low GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
+                                        checkboxGroupInput(
+                                          "gc_low",
+                                          NULL,
+                                          choices = list(
+                                            "Very Low (<15%)" = "GC_<15",
+                                            "GC 15-20%" = "GC_15_20",
+                                            "GC 20-25%" = "GC_20_25",
+                                            "GC 25-30%" = "GC_25_30"
+                                          ),
+                                          selected = character(0)
+                                        )
+                                 ),
+                                 column(4,
+                                        h6("Normal GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
+                                        checkboxGroupInput(
+                                          "gc_normal",
+                                          NULL,
+                                          choices = list(
+                                            "GC 30-55%" = "GC_30_55",
+                                            "GC 55-60%" = "GC_55_60", 
+                                            "GC 60-65%" = "GC_60_65",
+                                            "GC 65-70%" = "GC_65_70"
+                                          ),
+                                          selected = character(0),
+                                        )
+                                 ),
+                                 column(4,
+                                        h6("High GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
+                                        checkboxGroupInput(
+                                          "gc_high",
+                                          NULL,
+                                          choices = list(
+                                            "GC 70-75%" = "GC_70_75",
+                                            "GC 75-80%" = "GC_75_80",
+                                            "GC 80-85%" = "GC_80_85",
+                                            "Very High (>85%)" = "GC_>85"
+                                          ),
+                                          selected = character(0)
+                                        )
+                                 )
+                               ),
+                             )
+                           ),
+                           
+                           
+                           # Other Regions (Collapsible)
+                           div(
+                             style = "margin-top: 15px;",
+                             tags$a(
+                               href = "#other_collapse",
+                               `data-toggle` = "collapse",
+                               style = "text-decoration: none; color: #495057;",
+                               h6("▶ Other Regions",
+                                  style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
+                             ),
+                             div(
+                               id = "other_collapse",
+                               class = "collapse",
+                               style = "margin-top: 6px;",
+                               
+                               # Complex regions
+                               div(
+                                 h6("Complex Regions:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
+                                 checkboxGroupInput(
+                                   "complex_regions",
+                                   NULL,
+                                   choices = list(
+                                     "MHC" = "MHC Region",
+                                     "Segmental Duplications" = "Segmental Duplications",
+                                     "Low Mappability" = "Low Mappability"
+                                   ),
+                                   selected = character(0),
+                                   inline = TRUE
+                                 )
+                               )
+                             )
                            )
-                         )
-                     )
-
-              )
-            ),
-
-            
-            # Quick selection buttons
-            fluidRow(
-              column(12,
-                     div(style = "text-align: center; margin: 15px 0;",
-                         actionButton("clear_all_regions", "Clear All", 
-                                      class = "btn-outline-danger btn-sm")
-                     )
-              )
-            ),
-            
-            # Update button
-            div(style = "text-align: center; margin-top: 15px;",
-                actionButton(
-                  "update_stratified",
-                  "Update Analysis",
-                  class = "btn-primary",
-                  style = "padding: 10px 25px; font-size: 16px;"
-                )
-            )
-          ),
-          # Results display
-          conditionalPanel(
-            condition = "output.has_stratified_data",
-            
-            # Summary info
-            fluidRow(
-              column(12,
-                     div(
-                       style = "background: #e9ecef; padding: 15px; margin-bottom: 20px; border-radius: 5px;",
-                       htmlOutput("stratified_summary")
-                     )
-              )
-            ),
-            
-            # Metric section
-            wellPanel(
-              style = "background-color: #f8f9fa; margin-bottom: 20px;",
-              div(
-                style = "display: flex; justify-content: center; gap: 15px;",
-                
-                # radio button
-                div(
-                  id = "metric-selection-container",
-                  style = "display: flex; gap: 15px;",
-                  
-                  # F1 Score (selected)
-                  div(
-                    class = "metric-pill",
-                    `data-value` = "f1_score",
-                    style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #007bff; background: #007bff; color: white; transition: all 0.2s ease; text-align: center;",
-                    "F1 Score"
-                  ),
-                  
-                  # Precision 
-                  div(
-                    class = "metric-pill",
-                    `data-value` = "precision",
-                    style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #dee2e6; background: white; color: #6c757d; transition: all 0.2s ease; text-align: center;",
-                    "Precision"
-                  ),
-                  
-                  # Recall 
-                  div(
-                    class = "metric-pill",
-                    `data-value` = "recall",
-                    style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #dee2e6; background: white; color: #6c757d; transition: all 0.2s ease; text-align: center;",
-                    "Recall"
-                  )
-                ),
-                
-                # Hidden radio button for Shiny
-                div(
-                  style = "display: none;",
-                  radioButtons(
-                    "selected_metric",
-                    NULL,
-                    choices = list(
-                      "F1" = "f1_score",
-                      "Precision" = "precision", 
-                      "Recall" = "recall"
-                    ),
-                    selected = "f1_score"
-                  )
-                )
-              )
-            ),
-            
-            tabsetPanel(
-              # Tab 1: Stratified plots
-              tabPanel("📊 Performance Plots",
-                       br(),
-                       fluidRow(
-                         # SNP Results (Left)
-                         column(6,
-                                h4("SNP Performance by Region" , style = "color: #d73027; font-weight: bold;text-align: center;"),
-                                br(),
-                                plotOutput("stratified_snp_plot", height = "600px")
-                         ),
-                         # INDEL Results (Right)  
-                         column(6,
-                                h4("INDEL Performance by Region", style = "color: #4575b4; font-weight: bold;text-align: center;"),
-                                br(),
-                                plotOutput("stratified_indel_plot", height = "600px")
-                         )
                        )
+                       
+                )
               ),
               
-              # Tab 2: Stratified table
-              tabPanel("📋 Data Tables",
-                       br(),
-                       
-                       # SNP Table Section
-                       div(
-                         h4("SNP Performance by Region", style = "color: #d73027; font-weight: bold; margin-bottom: 15px;"),
-                         DT::dataTableOutput("snp_metrics_table"),
-                         style = "margin-bottom: 40px;"
-                       ),
-                       
-                       hr(style = "border-top: 2px solid #dee2e6; margin: 30px 0;"),
-                       
-                       # INDEL Table Section  
-                       div(
-                         h4("INDEL Performance by Region", style = "color: #4575b4; font-weight: bold; margin-bottom: 15px;"),
-                         DT::dataTableOutput("indel_metrics_table")
+              
+              # Quick selection buttons
+              fluidRow(
+                column(12,
+                       div(style = "text-align: center; margin: 15px 0;",
+                           actionButton("clear_all_regions", "Clear All", 
+                                        class = "btn-outline-danger btn-sm")
                        )
+                )
+              ),
+              
+              # Update button
+              div(style = "text-align: center; margin-top: 15px;",
+                  actionButton(
+                    "update_stratified",
+                    "Update Analysis",
+                    class = "btn-primary",
+                    style = "padding: 10px 25px; font-size: 16px;"
+                  )
+              )
+            ),
+            # Results display
+            conditionalPanel(
+              condition = "output.has_stratified_data",
+              
+              # Summary info
+              fluidRow(
+                column(12,
+                       div(
+                         style = "background: #e9ecef; padding: 15px; margin-bottom: 20px; border-radius: 5px;",
+                         htmlOutput("stratified_summary")
+                       )
+                )
+              ),
+              
+              # Metric section
+              wellPanel(
+                style = "background-color: #f8f9fa; margin-bottom: 20px;",
+                div(
+                  style = "display: flex; justify-content: center; gap: 15px;",
+                  
+                  # radio button
+                  div(
+                    id = "metric-selection-container",
+                    style = "display: flex; gap: 15px;",
+                    
+                    # F1 Score (selected)
+                    div(
+                      class = "metric-pill",
+                      `data-value` = "f1_score",
+                      style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #007bff; background: #007bff; color: white; transition: all 0.2s ease; text-align: center;",
+                      "F1 Score"
+                    ),
+                    
+                    # Precision 
+                    div(
+                      class = "metric-pill",
+                      `data-value` = "precision",
+                      style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #dee2e6; background: white; color: #6c757d; transition: all 0.2s ease; text-align: center;",
+                      "Precision"
+                    ),
+                    
+                    # Recall 
+                    div(
+                      class = "metric-pill",
+                      `data-value` = "recall",
+                      style = "padding: 8px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 11px; border: 1px solid #dee2e6; background: white; color: #6c757d; transition: all 0.2s ease; text-align: center;",
+                      "Recall"
+                    )
+                  ),
+                  
+                  # Hidden radio button for Shiny
+                  div(
+                    style = "display: none;",
+                    radioButtons(
+                      "selected_metric",
+                      NULL,
+                      choices = list(
+                        "F1" = "f1_score",
+                        "Precision" = "precision", 
+                        "Recall" = "recall"
+                      ),
+                      selected = "f1_score"
+                    )
+                  )
+                )
+              ),
+              
+              tabsetPanel(
+                # Tab 1: Stratified plots
+                tabPanel("📊 Performance Plots",
+                         br(),
+                         fluidRow(
+                           # SNP Results (Left)
+                           column(6,
+                                  h4("SNP Performance by Region" , style = "color: #d73027; font-weight: bold;text-align: center;"),
+                                  br(),
+                                  plotOutput("stratified_snp_plot", height = "600px")
+                           ),
+                           # INDEL Results (Right)  
+                           column(6,
+                                  h4("INDEL Performance by Region", style = "color: #4575b4; font-weight: bold;text-align: center;"),
+                                  br(),
+                                  plotOutput("stratified_indel_plot", height = "600px")
+                           )
+                         )
+                ),
+                
+                # Tab 2: Stratified table
+                tabPanel("📋 Data Tables",
+                         br(),
+                         
+                         # SNP Table Section
+                         div(
+                           h4("SNP Performance by Region", style = "color: #d73027; font-weight: bold; margin-bottom: 15px;"),
+                           DT::dataTableOutput("snp_metrics_table"),
+                           style = "margin-bottom: 40px;"
+                         ),
+                         
+                         hr(style = "border-top: 2px solid #dee2e6; margin: 30px 0;"),
+                         
+                         # INDEL Table Section  
+                         div(
+                           h4("INDEL Performance by Region", style = "color: #4575b4; font-weight: bold; margin-bottom: 15px;"),
+                           DT::dataTableOutput("indel_metrics_table")
+                         )
+                ) 
               ) 
-            ) 
-          ), 
-          
-          # No data message
-          conditionalPanel(
-            condition = "!output.has_stratified_data",
-            div(
-              class = "alert alert-warning",
-              style = "margin-top: 30px; text-align: center;",
-              h5("No Data to Display"),
-              p("Please select some regions and experiments from previous tabs, then click 'Update Analysis'.")
+            ), 
+            
+            # No data message
+            conditionalPanel(
+              condition = "!output.has_stratified_data",
+              div(
+                class = "alert alert-warning",
+                style = "margin-top: 30px; text-align: center;",
+                h5("No Data to Display"),
+                p("Please select some regions and experiments from previous tabs, then click 'Update Analysis'.")
+              )
             )
+            # End of tab 4
           )
-          # End of tab 4
         )
-      )
     )
   )
 )  
@@ -1219,30 +1214,31 @@ server <- function(input, output, session) {
       filters <- list(caller = input$caller)
     }
     
+    
     return (db$get_experiments_overview(filters, NULL))
     
-
+    
     
   })
   
   performance_experiment_ids <- reactive({
-  if (current_mode() == "manual_selection") {
-    # Selected experiment IDs
-    selected_ids <- table_selected_ids()
-    if (length(selected_ids) > 0) {
-      return(selected_ids)
+    if (current_mode() == "manual_selection") {
+      # Selected experiment IDs
+      selected_ids <- table_selected_ids()
+      if (length(selected_ids) > 0) {
+        return(selected_ids)
+      } else {
+        # If no manual selection, fall back to filtered experiments
+        return(experiment_ids())
+      }
+    } else if (comparison_submitted()) {
+      # Comparison results IDs
+      return(comparison_results())
     } else {
-      # If no manual selection, fall back to filtered experiments
+      # Regular filtering IDs - this should work for the Performance Results tab
       return(experiment_ids())
     }
-  } else if (comparison_submitted()) {
-    # Comparison results IDs
-    return(comparison_results())
-  } else {
-    # Regular filtering IDs - this should work for the Performance Results tab
-    return(experiment_ids())
-  }
-})
+  })
   # 2.4
   # Complete metadata and performance results for visualization
   viz_performance_data <- reactive({
@@ -1347,7 +1343,7 @@ server <- function(input, output, session) {
     )
     
     all_selected_regions <- unique(all_selected_regions[all_selected_regions != ""])
-
+    
     return(all_selected_regions)
   })
   
@@ -1960,6 +1956,10 @@ server <- function(input, output, session) {
       '</button>'
     )
     
+    if ("created_at" %in% names(df)) {
+      df$created_at <- format(as.Date(df$created_at), "%Y/%m/%d")
+    }
+    
     # Reorder columns
     df <- df[, c("expand_button", setdiff(names(df), "expand_button"))]
     
@@ -2011,7 +2011,7 @@ server <- function(input, output, session) {
   })
   
   # -----------------------------------------------------------
-    # 5.6
+  # 5.6
   # Performance table with DT built-in conditional formatting
   output$performance_table <- DT::renderDataTable({
     df <- performance_data()
@@ -2298,7 +2298,7 @@ server <- function(input, output, session) {
   })
   # ---------------------------------------------
   
- # 6.3
+  # 6.3
   create_stratified_grouped_plot <- function(data, variant_type, metric_name = "f1_score") {
     
     # Filter for variant type
@@ -2440,7 +2440,7 @@ server <- function(input, output, session) {
     
     return(base_height + (n_regions * height_per_region))
   })
-
+  
   # 6.5 - INDEL stratified plot output
   output$stratified_indel_plot <- renderPlot({
     data <- stratified_filtered_data()
