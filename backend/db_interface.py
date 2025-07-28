@@ -133,6 +133,11 @@ def get_experiment_metadata(experiment_ids_param):
     if not experiment_ids:
         return pd.DataFrame()
     
+    # check if list is empty
+    if not experiment_ids or len(experiment_ids) == 0:
+        print("No experiment IDs provided to get_experiment_metadata")
+        return pd.DataFrame()
+    
     # Get full metadata   
     try:
         with get_db_session() as session:
