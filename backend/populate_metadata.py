@@ -48,7 +48,7 @@ def clean_dataframe_strings(df):
     cleaned_df = df.copy()
     
     # Columns to exclude from cleaning (keep original case for display)
-    exclude_columns = ['name', 'description', 'platform_name', 'chemistry']
+    exclude_columns = ['name', 'description', 'platform_name', 'chemistry', 'file_name']
 
     # Clean only string columns
     string_columns = cleaned_df.select_dtypes(include=['object']).columns
