@@ -2042,7 +2042,7 @@ server <- function(input, output, session) {
       colnames = c(
         "ID", "Experiment", "Technology", "Caller", 
         "Platform", "Chemistry", "Coverage", "Variant Type", 
-        "Recall (%)", "Precision (%)", "F1 Score (%)"
+        "F1 Score (%)", "Precision (%)", "Recall (%)"
       )
     ) %>%
       formatStyle(
