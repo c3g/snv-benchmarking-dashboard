@@ -743,11 +743,13 @@ ui <- fluidPage(
               ),
               # LEGENDS Column 
               column(3,
-                     br(), br(), br(), br(),
-                     htmlOutput("technology_legend"),
-                     br(),
-                     htmlOutput("caller_legend")
-              )
+                     div(style = "margin-top: 250px;",  # Equivalent to ~12 br() tags
+                         htmlOutput("technology_legend"),
+                         br(),
+                         htmlOutput("caller_legend")
+                     )
+              ),
+              column(1, "")
             ),
             # Selected point/experiment details 
             br(),
@@ -2159,7 +2161,7 @@ server <- function(input, output, session) {
           bins = 6,
           color = "black", 
           alpha = 0.8,
-          size = 0.5
+          linewidth = 0.5
         ) +
         geom_contour(
           data = contour, 
@@ -2168,8 +2170,9 @@ server <- function(input, output, session) {
           color = "gray40", 
           alpha = 0.6,
           linetype = "dotted",
-          size = 0.3
+          linewidth = 0.3
         ) +
+        
         geom_point(
           data = snp_data, 
           aes(x = precision, y = recall, 
@@ -2188,17 +2191,19 @@ server <- function(input, output, session) {
         theme_bw() +
         theme(
           plot.title = element_text(size = 12),
-          panel.grid.major = element_line(color = "grey90", size = 0.5),
-          panel.grid.minor = element_line(color = "grey95", size = 0.3),
+          panel.grid.major = element_line(color = "grey90", linewidth = 0.5),
+          panel.grid.minor = element_line(color = "grey95", linewidth = 0.3),
           legend.position = "none"        
         )
       
-      ggplotly(p, tooltip = "text", source = "snp_plot_isolated") %>%
-        layout(showlegend = FALSE,
-               dragmode = "zoom",
-               hoverlabel = list(align = "left")
-        ) %>%    
-        event_register("plotly_click")
+      suppressWarnings({
+        ggplotly(p, tooltip = "text", source = "snp_plot_isolated") %>%
+          layout(showlegend = FALSE,
+                 dragmode = "zoom",
+                 hoverlabel = list(align = "left")
+          ) %>%    
+          event_register("plotly_click")
+      })
       
     }, error = function(e) {
       p <- ggplot() + 
@@ -2246,7 +2251,7 @@ server <- function(input, output, session) {
           bins = 6,
           color = "black", 
           alpha = 0.8,
-          size = 0.5
+          linewidth = 0.5
         ) +
         geom_contour(
           data = contour, 
@@ -2255,7 +2260,7 @@ server <- function(input, output, session) {
           color = "gray40", 
           alpha = 0.6,
           linetype = "dotted",
-          size = 0.3
+          linewidth = 0.3
         ) +
         geom_point(
           data = indel_data, 
@@ -2275,17 +2280,19 @@ server <- function(input, output, session) {
         theme_bw() +
         theme(
           plot.title = element_text(size = 12),
-          panel.grid.major = element_line(color = "grey90", size = 0.5),
-          panel.grid.minor = element_line(color = "grey95", size = 0.3),
+          panel.grid.major = element_line(color = "grey90", linewidth = 0.5),
+          panel.grid.minor = element_line(color = "grey95", linewidth = 0.3),
           legend.position = "none"        
         )
       
-      ggplotly(p, tooltip = "text", source = "indel_plot_isolated") %>%
-        layout(showlegend = FALSE,
-               dragmode = "zoom",
-               hoverlabel = list(align = "left")
-        ) %>%  
-        event_register("plotly_click")
+      suppressWarnings({
+        ggplotly(p, tooltip = "text", source = "indel_plot_isolated") %>%
+          layout(showlegend = FALSE,
+                 dragmode = "zoom",
+                 hoverlabel = list(align = "left")
+          ) %>%    
+          event_register("plotly_click")
+      })
       
     }, error = function(e) {
       p <- ggplot() + 
