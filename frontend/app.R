@@ -180,9 +180,40 @@ ui <- fluidPage(
       padding: 20px;
       min-height: 100vh;
     }
-  "))
+  ")),
+    # Force tab 3 plot column width
+    tags$style(HTML("
+      /* Force plotly containers to respect column boundaries */
+      .plotly-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: hidden !important;
+      }
+      
+      /* Ensure plot columns don't expand beyond their allocated space */
+      .plot-column .plotly {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      
+      /* Force Bootstrap columns to maintain strict boundaries */
+      .col-sm-5 {
+        max-width: 41.66667% !important;  /* Exactly 5/12 of container */
+        flex: 0 0 41.66667% !important;
+      }
+      
+      .col-sm-2 {
+        max-width: 16.66667% !important;  /* Exactly 2/12 of container */
+        flex: 0 0 16.66667% !important;
+      }
+      
+      /* Prevent flexbox from allowing expansion */
+      .row {
+        flex-wrap: nowrap !important;
+      }
+    "))
   ),
-  
   #CSS for row expansion and full metadata info 
   tags$head(
     tags$style(HTML("
@@ -730,20 +761,20 @@ ui <- fluidPage(
             br(),
             fluidRow(
               # SNP Plot Column 
-              column(4,
+              column(4, class = "plot-column",
                      h4("SNP Performance", style = "color: #d73027; font-weight: bold;text-align: center;"),
                      br(),
                      plotlyOutput("snp_plot", height = "500px")
               ),
               # INDEL Plot Column 
-              column(4,
+              column(4, class = "plot-column",
                      h4("INDEL Performance" , style = "color: #4575b4; font-weight: bold;text-align: center;"),
                      br(),
                      plotlyOutput("indel_plot", height = "500px")
               ),
               # LEGENDS Column 
               column(3,
-                     div(style = "margin-top: 250px;",  # Equivalent to ~12 br() tags
+                     div(style = "margin-top: 160px;", 
                          htmlOutput("technology_legend"),
                          br(),
                          htmlOutput("caller_legend")
