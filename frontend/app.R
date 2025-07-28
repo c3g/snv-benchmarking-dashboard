@@ -1320,9 +1320,9 @@ server <- function(input, output, session) {
         "Chemistry" = chemistry_name,
         "Coverage" = mean_coverage,
         "Variant" = variant_type,
-        "Recall (%)" = recall,
+        "F1 Score (%)" = f1_score,
         "Precision (%)" = precision,
-        "F1 Score (%)" = f1_score
+        "Recall (%)" = recall
       )
     
     return(enhanced_data)
@@ -2473,7 +2473,7 @@ server <- function(input, output, session) {
     # Format the data showing all metrics
     display_data <- filtered_data %>%
       select(experiment_id, experiment_name, technology, caller, subset, 
-             recall, precision, f1_score) %>%
+             f1_score, precision, recall) %>%
       mutate(
         across(c(recall, precision, f1_score), ~ round(.x * 100, 2))
       ) %>%
@@ -2483,17 +2483,18 @@ server <- function(input, output, session) {
         "Technology" = technology,
         "Caller" = caller,
         "Region" = subset,
-        "Recall %" = recall,
+        "F1 Score %" = f1_score,
         "Precision %" = precision,
-        "F1 Score %" = f1_score
+        "Recall %" = recall
+
       )
     
     # Get column index of selected metric for highlighting
     metric_col_idx <- switch(selected_metric,
-                             "recall" = which(names(display_data) == "Recall %"),
-                             "precision" = which(names(display_data) == "Precision %"),
-                             "f1_score" = which(names(display_data) == "F1 Score %"),
-                             which(names(display_data) == "F1 Score %")  # Default fallback
+                             "f1_score" = which(names(display_data) == "F1 Score %"),    
+                             "precision" = which(names(display_data) == "Precision %"),   
+                             "recall" = which(names(display_data) == "Recall %"),         
+                             which(names(display_data) == "F1 Score %")  # default
     )
     
     # Create the data table with highlighting
