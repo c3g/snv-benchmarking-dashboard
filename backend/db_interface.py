@@ -445,7 +445,6 @@ def get_stratified_performance_by_regions(experiment_ids_param, variant_types=['
                     return pd.DataFrame()
             
             results = query.all()
-            print(f"Found {len(results)} results for regions: {regions}")
             
             # Convert to dataframe with metadata included
             data = []
