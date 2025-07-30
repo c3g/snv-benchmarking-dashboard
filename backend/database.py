@@ -30,7 +30,7 @@ Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Creates tables from models.py
 def create_tables():
-   # Base.metadata.drop_all(bind=engine) #---- for dropping all the existing tables and metadata
+    Base.metadata.drop_all(bind=engine) #---- for dropping all the existing tables and metadata
     Base.metadata.create_all(bind=engine)
 
 # Creates and returns a database session
