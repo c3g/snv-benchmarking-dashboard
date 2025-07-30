@@ -2378,8 +2378,20 @@ server <- function(input, output, session) {
     },
     
     content = function(file) {
+      # Get main visualization data
       viz_data <- viz_performance_data()
-      html_content <- generate_benchmarking_report(viz_data)
+      
+      # Get stratified data
+      stratified_data <- NULL
+      current_metric <- input$selected_metric %||% "f1_score"
+      
+      # Use tab 4 data
+      if (stratified_triggered() && nrow(stratified_filtered_data()) > 0) {
+        stratified_data <- stratified_filtered_data()
+      }
+      
+      # Generate report
+      html_content <- create_html_report(viz_data, stratified_data, current_metric)
       writeLines(html_content, file)
     }
   )

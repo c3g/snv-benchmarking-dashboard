@@ -11,8 +11,7 @@ library(geomtextpath)
 # =============================================================================
 # 1. HELPER FUNCTIONS
 # =============================================================================
-# 1.1
-# Safe data handling
+
 safe_percent <- function(x) {
   if (is.null(x) || is.na(x) || !is.numeric(x)) {
     return("N/A")
@@ -44,7 +43,7 @@ safe_coverage <- function(x) {
 # =============================================================================
 # 2. PLOT FUNCTIONS
 # =============================================================================
-# 2.1 Create F1 contour data
+
 create_f1_contour <- function() {
   f1_contour_function <- function(p, r) {
     result <- 2 * (p * r) / (p + r)
@@ -59,17 +58,12 @@ create_f1_contour <- function() {
   return(contour_data)
 }
 
-# -------------------------------------
-
-# 2.2
-# Calculate zoom limits based on data
 calculate_zoom_limits <- function(data) {
   if (nrow(data) == 0) {
     return(list(x_min = 0.98, x_max = 1.0, y_min = 0.98, y_max = 1.0))
   }
-
-  padding <- 0.002
   
+  padding <- 0.002
   x_range <- range(data$precision, na.rm = TRUE)
   y_range <- range(data$recall, na.rm = TRUE)
   
@@ -80,12 +74,9 @@ calculate_zoom_limits <- function(data) {
     y_max = min(1, y_range[2] + padding)
   ))
 }
-# -------------------------------------
 
-# 2.3
-# Create single plot with zoom
 create_zoomed_performance_plot <- function(data, variant_type) {
-  if (nrow(data) == 0) { # No data
+  if (nrow(data) == 0) {
     return(ggplot() + 
              annotate("text", x = 0.5, y = 0.5, label = paste("No", variant_type, "data"), size = 6) +
              xlim(0, 1) + ylim(0, 1) +
@@ -93,7 +84,6 @@ create_zoomed_performance_plot <- function(data, variant_type) {
              theme_bw())
   }
   
-  # Color and shape mappings
   technology_colors <- c(
     "ILLUMINA" = "#F8766D", "PACBIO" = "#C77CFF", 
     "ONT" = "#00BFC4", "MGI" = "#7CAE00", "Unknown" = "#E76BF3"
@@ -102,15 +92,11 @@ create_zoomed_performance_plot <- function(data, variant_type) {
     "DEEPVARIANT" = 16, "GATK" = 17, "CLAIR3" = 15, "Unknown" = 4
   )
   
-  # Create contour data
   contour <- create_f1_contour()
-  
-  # Calculate zoom limits
   zoom_limits <- calculate_zoom_limits(data)
   
-  # Create plot
   p <- ggplot() +
-    geom_textcontour( # Contour 1
+    geom_textcontour(
       data = contour, 
       aes(p, r, z = f1), 
       bins = 6, 
@@ -118,7 +104,7 @@ create_zoomed_performance_plot <- function(data, variant_type) {
       alpha = 0.5, 
       straight = TRUE
     ) +
-    geom_textcontour( # Contour 2
+    geom_textcontour(
       data = contour, 
       aes(p, r, z = f1), 
       bins = 12, 
@@ -127,7 +113,7 @@ create_zoomed_performance_plot <- function(data, variant_type) {
       alpha = 0.35, 
       straight = TRUE
     ) +
-    geom_text_repel( # ID label
+    geom_text_repel(
       data = data,
       aes(x = precision, y = recall, 
           label =  paste0("ID: ", experiment_id)),                 
@@ -142,16 +128,16 @@ create_zoomed_performance_plot <- function(data, variant_type) {
       label.r = unit(0.25, "lines"),             
       min.segment.length = 0.1                   
     ) +
-    geom_point( # Data points
+    geom_point(
       data = data, 
       aes(x = precision, y = recall, 
-          color = technology,        # Color by technology
-          shape = caller),      # Shape by caller
+          color = technology,
+          shape = caller),
       size = 3.5, 
       alpha = 0.8,
       stroke = 1            
     ) +
-    facet_zoom( # Zoomed-in view
+    facet_zoom(
       xlim = c(zoom_limits$x_min, zoom_limits$x_max),
       ylim = c(zoom_limits$y_min, zoom_limits$y_max)
     ) +
@@ -168,41 +154,32 @@ create_zoomed_performance_plot <- function(data, variant_type) {
   
   return(p)
 }
-# -------------------------------------
 
-# 2.4
-# Generate both SNP and INDEL plots
 generate_zoomed_plot_images <- function(viz_data) {
-  # Split data by variant type
   snp_data <- viz_data %>% filter(variant_type == "SNP")
   indel_data <- viz_data %>% filter(variant_type == "INDEL")
   
   snp_plot <- create_zoomed_performance_plot(snp_data, "SNP")
   indel_plot <- create_zoomed_performance_plot(indel_data, "INDEL")
   
-  # Save plots as png
   temp_snp <- tempfile(fileext = ".png")
   temp_indel <- tempfile(fileext = ".png")
   ggsave(temp_snp, snp_plot, width = 12, height = 6, dpi = 300)
   ggsave(temp_indel, indel_plot, width = 12, height = 6, dpi = 300)
-  # Convert to Base64 for HTML
+  
   snp_base64 <- base64enc::base64encode(temp_snp) 
   indel_base64 <- base64enc::base64encode(temp_indel)
   
-  file.remove(c(temp_snp, temp_indel)) # Remove extra files
+  file.remove(c(temp_snp, temp_indel))
   
   return(list(snp = snp_base64, indel = indel_base64))
 }
 
-# -------------------------------------
-
-# 2.5
-# Generate plot section in HTML
 generate_plots_section <- function(viz_data) {
   if (nrow(viz_data) == 0) {
     return('<h2>Performance Visualizations</h2><p>No data available for visualization</p>')
   }
-
+  
   plots <- generate_zoomed_plot_images(viz_data)
   
   html_plots <- paste0('
@@ -216,7 +193,6 @@ generate_plots_section <- function(viz_data) {
             <h3>SNP Performance</h3>
             <img src="data:image/png;base64,', plots$snp, '" 
                 style="width: 100%; max-width: 1000px; border: 1px solid #dee2e6; border-radius: 5px;" />
-
         </div>
         
         <div style="margin-bottom: 40px;">
@@ -227,11 +203,203 @@ generate_plots_section <- function(viz_data) {
   
   return(html_plots)
 }
+
 # =============================================================================
-# 3. DATA PROCESSING FUNCTIONS
+# 3. STRATIFIED PLOT FUNCTIONS
 # =============================================================================
 
-# Prepare all data
+generate_stratified_plots <- function(stratified_data, selected_metric = "f1_score") {
+  if (nrow(stratified_data) == 0) {
+    return(list(snp = NULL, indel = NULL))
+  }
+  
+  tech_caller_colors <- c(
+    "ILLUMINA-DEEPVARIANT" = "#F8766D", "ILLUMINA-GATK" = "#E55A5A", "ILLUMINA-CLAIR3" = "#FF9999",
+    "PACBIO-DEEPVARIANT" = "#C77CFF", "PACBIO-GATK" = "#B366FF", "PACBIO-CLAIR3" = "#D999FF",
+    "ONT-DEEPVARIANT" = "#00BFC4", "ONT-GATK" = "#00A5A8", "ONT-CLAIR3" = "#33CCCC",
+    "MGI-DEEPVARIANT" = "#7CAE00", "MGI-GATK" = "#6B9500", "MGI-CLAIR3" = "#99CC33"
+  )
+  
+  metric_labels <- list("f1_score" = "F1 Score", "precision" = "Precision", "recall" = "Recall")
+  metric_label <- metric_labels[[selected_metric]] %||% "Metric"
+  
+  create_variant_plot <- function(variant_type) {
+    plot_data <- stratified_data %>%
+      filter(variant_type == !!variant_type) %>%
+      mutate(
+        tech_caller = paste(technology, caller, sep = "-"),
+        exp_label = paste0("ID:", experiment_id, " (", technology, "-", caller, ")"),
+        metric_value = !!sym(selected_metric)
+      ) %>%
+      arrange(subset, desc(experiment_id))
+    
+    if (nrow(plot_data) == 0) {
+      return(ggplot() + 
+               annotate("text", x = 0.5, y = 0.5, label = paste("No", variant_type, "data"), size = 6) +
+               theme_minimal())
+    }
+    
+    p <- ggplot(plot_data, aes(x = metric_value, y = exp_label)) + 
+      geom_col(aes(fill = tech_caller), alpha = 0.85, width = 0.7) + 
+      geom_text(aes(label = paste0(round(metric_value * 100, 2), "%")), 
+                hjust = -0.1, size = 3.5, color = "black") +
+      scale_fill_manual(values = tech_caller_colors, na.value = "gray70") +
+      scale_x_continuous(limits = c(0, 1.1), labels = scales::percent_format()) +
+      facet_wrap(~ subset, scales = "free_y", ncol = 1) +
+      labs(x = metric_label, y = "Experiment", fill = "Technology + Caller") +
+      theme_bw() +
+      theme(
+        strip.background = element_rect(fill = "#f8f9fa", color = "#dee2e6"),
+        strip.text = element_text(face = "bold", size = 12),
+        axis.text.y = element_text(face = "bold", size = 9),
+        axis.text.x = element_text(face = "bold", size = 9),
+        legend.position = "bottom",
+        legend.text = element_text(size = 8),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor = element_blank()
+      ) +
+      guides(fill = guide_legend(ncol = 4, byrow = TRUE))
+    
+    return(p)
+  }
+  
+  snp_plot <- create_variant_plot("SNP")
+  indel_plot <- create_variant_plot("INDEL")
+  
+  temp_snp <- tempfile(fileext = ".png")
+  temp_indel <- tempfile(fileext = ".png")
+  
+  n_regions <- length(unique(stratified_data$subset))
+  n_experiments <- length(unique(stratified_data$experiment_id))
+  plot_height <- max(8, n_regions * 2 + n_experiments * 0.5)
+  
+  ggsave(temp_snp, snp_plot, width = 12, height = plot_height, dpi = 300)
+  ggsave(temp_indel, indel_plot, width = 12, height = plot_height, dpi = 300)
+  
+  snp_base64 <- base64enc::base64encode(temp_snp)
+  indel_base64 <- base64enc::base64encode(temp_indel)
+  
+  file.remove(c(temp_snp, temp_indel))
+  
+  return(list(snp = snp_base64, indel = indel_base64))
+}
+
+create_stratified_table <- function(stratified_data, selected_metric = "f1_score") {
+  if (nrow(stratified_data) == 0) {
+    return('<p>No data available for table</p>')
+  }
+  
+  table_data <- stratified_data %>%
+    select(experiment_id, experiment_name, technology, caller, variant_type, subset, recall, precision, f1_score) %>%
+    mutate(
+      across(c(recall, precision, f1_score), ~ round(.x * 100, 2))
+    ) %>%
+    arrange(experiment_id, variant_type, subset)
+  
+  html_table <- '
+    <div style="margin-top: 30px;">
+        <h3>Detailed Results Table</h3>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 13px;">
+                <thead>
+                    <tr style="background-color: #f8f9fa;">
+                        <th style="padding: 8px; text-align: left; border-bottom: 2px solid #dee2e6; font-weight: bold;">ID</th>
+                        <th style="padding: 8px; text-align: left; border-bottom: 2px solid #dee2e6; font-weight: bold;">Experiment</th>
+                        <th style="padding: 8px; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: bold;">Technology</th>
+                        <th style="padding: 8px; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: bold;">Caller</th>
+                        <th style="padding: 8px; text-align: center; border-bottom: 2px solid #dee2e6; font-weight: bold;">Variant</th>
+                        <th style="padding: 8px; text-align: left; border-bottom: 2px solid #dee2e6; font-weight: bold;">Region</th>
+                        <th style="padding: 8px; text-align: right; border-bottom: 2px solid #dee2e6; font-weight: bold;">Recall (%)</th>
+                        <th style="padding: 8px; text-align: right; border-bottom: 2px solid #dee2e6; font-weight: bold;">Precision (%)</th>
+                        <th style="padding: 8px; text-align: right; border-bottom: 2px solid #dee2e6; font-weight: bold;">F1 Score (%)</th>
+                    </tr>
+                </thead>
+                <tbody>'
+  
+  for (i in 1:nrow(table_data)) {
+    row <- table_data[i, ]
+    row_color <- if (row$variant_type == "SNP") "#fdf2f2" else "#f2f7fd"
+    
+    recall_style <- if (selected_metric == "recall") "background-color: #e3f2fd; font-weight: bold;" else ""
+    precision_style <- if (selected_metric == "precision") "background-color: #e3f2fd; font-weight: bold;" else ""
+    f1_style <- if (selected_metric == "f1_score") "background-color: #e3f2fd; font-weight: bold;" else ""
+    
+    html_table <- paste0(html_table, '
+                    <tr style="background-color: ', row_color, ';">
+                        <td style="padding: 6px; border-bottom: 1px solid #ddd;">', row$experiment_id, '</td>
+                        <td style="padding: 6px; border-bottom: 1px solid #ddd; font-size: 12px;">', safe_value(row$experiment_name), '</td>
+                        <td style="padding: 6px; border-bottom: 1px solid #ddd; text-align: center;">', safe_value(row$technology), '</td>
+                        <td style="padding: 6px; border-bottom: 1px solid #ddd; text-align: center;">', safe_value(row$caller), '</td>
+                        <td style="padding: 6px; border-bottom: 1px solid #ddd; text-align: center; font-weight: bold;">', row$variant_type, '</td>
+                        <td style="padding: 6px; border-bottom: 1px solid #ddd;">', safe_value(row$subset), '</td>
+                        <td style="padding: 6px; border-bottom: 1px solid #ddd; text-align: right; ', recall_style, '">', row$recall, '%</td>
+                        <td style="padding: 6px; border-bottom: 1px solid #ddd; text-align: right; ', precision_style, '">', row$precision, '%</td>
+                        <td style="padding: 6px; border-bottom: 1px solid #ddd; text-align: right; ', f1_style, '">', row$f1_score, '%</td>
+                    </tr>')
+  }
+  
+  html_table <- paste0(html_table, '
+                </tbody>
+            </table>
+        </div>
+    </div>')
+  
+  return(html_table)
+}
+
+add_stratified_section <- function(stratified_data, selected_metric = "f1_score") {
+  if (is.null(stratified_data) || nrow(stratified_data) == 0) {
+    return('<h2>Stratified Analysis</h2><p>No stratified data available</p>')
+  }
+  
+  n_experiments <- length(unique(stratified_data$experiment_id))
+  n_regions <- length(unique(stratified_data$subset))
+  n_results <- nrow(stratified_data)
+  
+  metric_labels <- list("f1_score" = "F1 Score", "precision" = "Precision", "recall" = "Recall")
+  metric_label <- metric_labels[[selected_metric]] %||% "Performance Metric"
+  
+  html_content <- paste0('
+    <h2>Stratified Performance Analysis</h2>
+    <p style="color: #6c757d; margin-bottom: 20px;">
+        Performance analysis across different genomic regions showing ', metric_label, ' scores.
+        Analysis includes ', n_experiments, ' experiments across ', n_regions, ' genomic regions 
+        (', n_results, ' total results).
+    </p>
+    
+    <div style="background: #e9ecef; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+        <strong>Analysis Summary:</strong> ', n_experiments, ' experiments × ', n_regions, ' regions = ', n_results, ' total results
+    </div>')
+  
+  plots <- generate_stratified_plots(stratified_data, selected_metric)
+  
+  if (!is.null(plots$snp)) {
+    html_content <- paste0(html_content, '
+        <div style="margin-bottom: 40px;">
+            <h3 style="color: #d73027; font-weight: bold;">SNP Performance by Region</h3>
+            <img src="data:image/png;base64,', plots$snp, '" 
+                style="width: 100%; max-width: 1000px; border: 1px solid #dee2e6; border-radius: 5px;" />
+        </div>')
+  }
+  
+  if (!is.null(plots$indel)) {
+    html_content <- paste0(html_content, '
+        <div style="margin-bottom: 40px;">
+            <h3 style="color: #4575b4; font-weight: bold;">INDEL Performance by Region</h3>
+            <img src="data:image/png;base64,', plots$indel, '" 
+                 style="width: 100%; max-width: 1000px; border: 1px solid #dee2e6; border-radius: 5px;" />
+        </div>')
+  }
+  
+  html_content <- paste0(html_content, create_stratified_table(stratified_data, selected_metric))
+  
+  return(html_content)
+}
+
+# =============================================================================
+# 4. DATA PROCESSING FUNCTIONS
+# =============================================================================
+
 process_variant_data <- function(viz_data, variant_type) {
   viz_data %>% 
     filter(variant_type == !!variant_type) %>%
@@ -240,7 +408,6 @@ process_variant_data <- function(viz_data, variant_type) {
     arrange(desc(f1_numeric))
 }
 
-# HTML section generators - section styles
 generate_html_header <- function() {
   '<!DOCTYPE html>
 <html lang="en">
@@ -309,7 +476,6 @@ generate_html_header <- function() {
             gap: 20px;
             margin-top: 15px;
         }
-        
         .metadata-card {
             background: #ffffff;
             border: 1px solid #dee2e6;
@@ -318,11 +484,9 @@ generate_html_header <- function() {
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             transition: box-shadow 0.3s ease;
         }
-        
         .metadata-card:hover {
             box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
-        
         .metadata-card h4 {
             color: #495057;
             margin: 0 0 15px 0;
@@ -332,12 +496,6 @@ generate_html_header <- function() {
             padding-bottom: 8px;
             display: flex;
             align-items: center;
-        }
-        
-        .metadata-card h4 i {
-            margin-right: 8px;
-            font-size: 18px;
-            color: #007bff;
         }
         .error-message {
             background: #f8d7da;
@@ -352,7 +510,7 @@ generate_html_header <- function() {
     <div class="container">
         <h1>SNV Benchmarking Report</h1>'
 }
-# Summary section
+
 generate_summary_section <- function(viz_data, experiment_ids) {
   technologies <- unique(viz_data$technology[!is.na(viz_data$technology)])
   callers <- unique(viz_data$caller[!is.na(viz_data$caller)])
@@ -372,7 +530,6 @@ generate_summary_section <- function(viz_data, experiment_ids) {
       </div>')
 }
 
-# Performance table section
 generate_performance_table <- function(data, variant_type) {
   if (nrow(data) == 0) {
     return(paste0('
@@ -423,7 +580,6 @@ generate_performance_table <- function(data, variant_type) {
         </table>')
 }
 
-# Metadata section
 generate_metadata_section <- function(viz_data, experiment_ids) {
   html_metadata <- '<h2>Experiment Metadata</h2>'
   
@@ -436,11 +592,9 @@ generate_metadata_section <- function(viz_data, experiment_ids) {
         <div class="metadata-section">
             <h3>Experiment ', exp_id, ': ', safe_value(exp_data$experiment_name), '</h3>
             
-            <!-- 4-column semantic grid -->
             <div class="metadata-grid-4col">
-                <!-- SEQUENCING PLATFORM -->
                 <div class="metadata-card">
-                    <h4><i class="icon-dna"></i> Sequencing Platform</h4>
+                    <h4>Sequencing Platform</h4>
                     <div class="metadata-item"><strong>Technology:</strong> ', safe_value(exp_data$technology), '</div>
                     <div class="metadata-item"><strong>Platform:</strong> ', safe_value(exp_data$platform_name), '</div>
                     <div class="metadata-item"><strong>Version:</strong> ', safe_value(exp_data$platform_version), '</div>
@@ -449,9 +603,8 @@ generate_metadata_section <- function(viz_data, experiment_ids) {
                     <div class="metadata-item"><strong>Chemistry:</strong> ', safe_value(exp_data$chemistry_name), '</div>
                 </div>
                 
-                <!-- ANALYSIS PIPELINE -->
                 <div class="metadata-card">
-                    <h4><i class="icon-pipeline"></i> Analysis Pipeline</h4>
+                    <h4>Analysis Pipeline</h4>
                     <div class="metadata-item"><strong>Variant Caller:</strong> ', safe_value(exp_data$caller), '</div>
                     <div class="metadata-item"><strong>Caller Version:</strong> ', safe_value(exp_data$caller_version), '</div>
                     <div class="metadata-item"><strong>Caller Type:</strong> ', safe_value(exp_data$caller_type), '</div>
@@ -460,9 +613,8 @@ generate_metadata_section <- function(viz_data, experiment_ids) {
                     <div class="metadata-item"><strong>Benchmark Tool:</strong> ', safe_value(exp_data$benchmark_tool_name), ' ', safe_value(exp_data$benchmark_tool_version), '</div>
                 </div>
                 
-                <!-- QUALITY METRICS -->
                 <div class="metadata-card">
-                    <h4><i class="icon-quality"></i> Quality Metrics</h4>
+                    <h4>Quality Metrics</h4>
                     <div class="metadata-item"><strong>Mean Coverage:</strong> ', safe_coverage(exp_data$mean_coverage), '</div>
                     <div class="metadata-item"><strong>Read Length:</strong> ', 
                               ifelse(is.na(exp_data$read_length), 
@@ -474,9 +626,8 @@ generate_metadata_section <- function(viz_data, experiment_ids) {
                               ifelse(is.na(exp_data$created_at), "N/A", format(as.POSIXct(exp_data$created_at), "%Y-%m-%d")), '</div>
                 </div>
                 
-                <!-- VARIANT & TRUTH SET -->
                 <div class="metadata-card">
-                    <h4><i class="icon-truth"></i> Variants & Truth Set</h4>
+                    <h4>Variants & Truth Set</h4>
                     <div class="metadata-item"><strong>Variant Type:</strong> ', safe_value(exp_data$variant_type), '</div>
                     <div class="metadata-item"><strong>Variant Origin:</strong> ', safe_value(exp_data$variant_origin), '</div>
                     <div class="metadata-item"><strong>Variant Size:</strong> ', safe_value(exp_data$variant_size), '</div>
@@ -494,8 +645,6 @@ generate_metadata_section <- function(viz_data, experiment_ids) {
   return(html_metadata)
 }
 
-
- # Footer section
 generate_html_footer <- function() {
   paste0('
         <div class="footer">
@@ -506,7 +655,6 @@ generate_html_footer <- function() {
 </html>')
 }
 
-# Error message
 generate_error_html <- function(error_message) {
   paste0('<!DOCTYPE html>
 <html>
@@ -521,11 +669,12 @@ generate_error_html <- function(error_message) {
 </body>
 </html>')
 }
+
 # =============================================================================
-# 4. MAIN REPORT GENERATION FUNCTION
+# 5. MAIN REPORT GENERATION FUNCTIONS
 # =============================================================================
+
 generate_benchmarking_report <- function(viz_data) {
-  
   if (is.null(viz_data) || nrow(viz_data) == 0) {
     return(generate_error_html("No data available for export"))
   }
@@ -535,7 +684,6 @@ generate_benchmarking_report <- function(viz_data) {
     indel_data <- process_variant_data(viz_data, "INDEL")
     experiment_ids <- unique(viz_data$experiment_id[!is.na(viz_data$experiment_id)])
     
-    # Generate HTML sections
     html_header <- generate_html_header()
     html_summary <- generate_summary_section(viz_data, experiment_ids)
     html_plots <- generate_plots_section(viz_data)
@@ -544,7 +692,6 @@ generate_benchmarking_report <- function(viz_data) {
     html_metadata <- generate_metadata_section(viz_data, experiment_ids)
     html_footer <- generate_html_footer()
     
-    # Combine all sections (plots come after summary, before tables)
     paste0(html_header, html_summary, html_plots, html_snp_table, 
            html_indel_table, html_metadata, html_footer)
     
@@ -553,3 +700,34 @@ generate_benchmarking_report <- function(viz_data) {
   })
 }
 
+create_html_report <- function(viz_data, stratified_data = NULL, selected_metric = "f1_score") {
+  if (is.null(viz_data) || nrow(viz_data) == 0) {
+    return(generate_error_html("No data available for export"))
+  }
+  
+  tryCatch({
+    snp_data <- process_variant_data(viz_data, "SNP")
+    indel_data <- process_variant_data(viz_data, "INDEL")
+    experiment_ids <- unique(viz_data$experiment_id[!is.na(viz_data$experiment_id)])
+    
+    html_header <- generate_html_header()
+    html_summary <- generate_summary_section(viz_data, experiment_ids)
+    html_plots <- generate_plots_section(viz_data)
+    html_snp_table <- generate_performance_table(snp_data, "SNP")
+    html_indel_table <- generate_performance_table(indel_data, "INDEL")
+    
+    html_stratified <- ""
+    if (!is.null(stratified_data) && nrow(stratified_data) > 0) {
+      html_stratified <- add_stratified_section(stratified_data, selected_metric)
+    }
+    
+    html_metadata <- generate_metadata_section(viz_data, experiment_ids)
+    html_footer <- generate_html_footer()
+    
+    paste0(html_header, html_summary, html_plots, html_snp_table, 
+           html_indel_table, html_stratified, html_metadata, html_footer)
+    
+  }, error = function(e) {
+    generate_error_html(paste("Export error:", e$message))
+  })
+}
