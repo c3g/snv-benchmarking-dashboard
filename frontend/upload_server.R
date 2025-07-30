@@ -216,7 +216,7 @@ upload_server <- function(input, output, session) {
         duration = 10
       )
       
-      # Debug: Print error details
+      #  error details
       cat("Upload Error Details:\n")
       print(e)
       
@@ -224,7 +224,6 @@ upload_server <- function(input, output, session) {
     })
   })
   
-  # Return reactive values or functions that main app might need
   return(list(
     upload_success = reactive({ input$submit_upload })  # For triggering refreshes
   ))
