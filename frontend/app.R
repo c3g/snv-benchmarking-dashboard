@@ -1223,8 +1223,7 @@ ui <- fluidPage(
               ),
               column(3,
                      selectInput("platform_type", "Platform Type",
-                                 choices = c("SRS" = "srs", "LRS" = "lrs"),
-                                 selected = "srs")
+                                 choices = c("","SRS" = "srs", "LRS" = "lrs"))
               ),
               column(3,
                      textInput("platform_version", "Platform Version",
@@ -1253,8 +1252,7 @@ ui <- fluidPage(
               ),
               column(3,
                      selectInput("caller_type", "Caller Type",
-                                 choices = c("ML" = "ml", "Traditional" = "traditional"),
-                                 selected = "ml")
+                                 choices = c("","ML" = "ml", "Traditional" = "traditional"))
               ),
               column(3,
                      textInput("caller_version", "Caller Version",
@@ -1345,21 +1343,22 @@ ui <- fluidPage(
             # Row 9: Quality Metrics
             h5("Quality Metrics", style = "color: #007bff; margin-top: 20px;"),
             fluidRow(
-              column(3,
+              column(2,
                      numericInput("mean_coverage", "Mean Coverage", 
                                   value = NA, min = 1, max = 200, step = 0.1)
               ),
               column(3,
-                     numericInput("read_length", "Read Length (bp)", 
+                     numericInput("read_length", "Read Length (bp) _ SRS", 
                                   value = NA, min = 50, max = 500, step = 0.1)
               ),
+
               column(3,
-                     numericInput("mean_read_length", "Mean Read Length (bp)", 
-                                  value = NA, min = 100, max = 100000, step = 0.1)
-              ),
-              column(3,
-                     numericInput("mean_insert_size", "Mean Insert Size (bp)", 
+                     numericInput("mean_insert_size", "Mean Insert Size (bp) _ SRS", 
                                   value = NA, min = 100, max = 1000, step = 1)
+              ),
+              column(4,
+                     numericInput("mean_read_length", "Mean Read Length (bp) _ LRS", 
+                                  value = NA, min = 100, max = 100000, step = 0.1)
               )
             )
           ),
@@ -2086,107 +2085,143 @@ server <- function(input, output, session) {
   
   # 5.2
   # Basic experiment info (always shown when point is clicked)
+  # Replace this section in your app.R (around line 450-480)
+  
+  # 5.2
+  # Basic experiment info (always shown when point is clicked)
   output$basic_experiment_info <- renderUI({
     exp_id <- plot_clicked_id()
-    if (is.null(exp_id)) return(NULL)
     
-    # Get experiment metadata
-    exp_id_json <- json_param(list(exp_id))
-    metadata <- db$get_experiment_metadata(exp_id_json)
+    # Add validation checks
+    if (is.null(exp_id) || is.na(exp_id) || length(exp_id) == 0) {
+      return(NULL)
+    }
     
-    if (nrow(metadata) == 0) return(p("No metadata found"))
+    # Ensure exp_id is numeric and valid
+    exp_id <- as.numeric(exp_id)
+    if (is.na(exp_id) || exp_id <= 0) {
+      return(p("Invalid experiment ID"))
+    }
     
-    meta <- metadata[1, ]
-    
-    div(
-      h6(strong(meta$name), style = "color: #007bff; margin-bottom: 10px;"),
+    # Get experiment metadata with error handling
+    tryCatch({
+      exp_id_json <- json_param(list(exp_id))
+      metadata <- db$get_experiment_metadata(exp_id_json)
+      
+      if (nrow(metadata) == 0) {
+        return(p("No metadata found for experiment ID:", exp_id))
+      }
+      
+      meta <- metadata[1, ]
+      
       div(
-        class = "row",
-        div(class = "col-md-3",
-            p(strong("Technology: "), meta$technology %||% "N/A", style = "margin-bottom: 5px;")
-        ),
-        div(class = "col-md-3",
-            p(strong("Platform: "), meta$platform_name %||% "N/A", style = "margin-bottom: 5px;")
-        ),
-        div(class = "col-md-3",
-            p(strong("Caller: "), paste(meta$caller %||% "N/A", meta$caller_version %||% ""), style = "margin-bottom: 5px;")
-        ),
-        div(class = "col-md-3",
-            p(strong("Coverage: "), 
-              ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x")), 
-              style = "margin-bottom: 5px;")
+        h6(strong(meta$name), style = "color: #007bff; margin-bottom: 10px;"),
+        div(
+          class = "row",
+          div(class = "col-md-3",
+              p(strong("Technology: "), meta$technology %||% "N/A", style = "margin-bottom: 5px;")
+          ),
+          div(class = "col-md-3",
+              p(strong("Platform: "), meta$platform_name %||% "N/A", style = "margin-bottom: 5px;")
+          ),
+          div(class = "col-md-3",
+              p(strong("Caller: "), paste(meta$caller %||% "N/A", meta$caller_version %||% ""), style = "margin-bottom: 5px;")
+          ),
+          div(class = "col-md-3",
+              p(strong("Coverage: "), 
+                ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x")), 
+                style = "margin-bottom: 5px;")
+          )
         )
       )
-    )
+    }, error = function(e) {
+      p("Error loading metadata: ", e$message, style = "color: red;")
+    })
   })
+  
   # -----------------------------------------------------------
   
   # 5.3
   # Full experiment metadata (shown when expanded) - Tab 3
   output$full_experiment_metadata <- renderUI({
     exp_id <- plot_clicked_id()
-    if (is.null(exp_id)) return(NULL)
     
-    # Get experiment metadata
-    exp_id_json <- json_param(list(exp_id))
-    metadata <- db$get_experiment_metadata(exp_id_json)
+    # Add the same validation checks
+    if (is.null(exp_id) || is.na(exp_id) || length(exp_id) == 0) {
+      return(NULL)
+    }
     
-    if (nrow(metadata) == 0) return(p("No metadata found"))
+    exp_id <- as.numeric(exp_id)
+    if (is.na(exp_id) || exp_id <= 0) {
+      return(p("Invalid experiment ID"))
+    }
     
-    meta <- metadata[1, ]
-    
-    div(
-      h5("Complete Experiment Details"),
+    # Get experiment metadata with error handling
+    tryCatch({
+      exp_id_json <- json_param(list(exp_id))
+      metadata <- db$get_experiment_metadata(exp_id_json)
+      
+      if (nrow(metadata) == 0) {
+        return(p("No metadata found for experiment ID:", exp_id))
+      }
+      
+      meta <- metadata[1, ]
+      
       div(
-        class = "metadata-grid-4col",
-        
-        # SEQUENCING PLATFORM CARD
-        div(class = "metadata-card",
-            h6("Sequencing Platform"),
-            p(strong("Technology: "), meta$technology %||% "N/A"),
-            p(strong("Platform: "), meta$platform_name %||% "N/A"),
-            p(strong("Platform Type: "), meta$platform_type %||% "N/A"),
-            p(strong("Platform Version: "), meta$platform_version %||% "N/A"),
-            p(strong("Target: "), meta$target %||% "N/A"),
-            p(strong("Chemistry: "), meta$chemistry_name %||% "N/A")
-        ),
-        
-        # ANALYSIS PIPELINE CARD
-        div(class = "metadata-card",
-            h6("Analysis Pipeline"),
-            p(strong("Variant Caller: "), meta$caller %||% "N/A"),
-            p(strong("Caller Version: "), meta$caller_version %||% "N/A"),
-            p(strong("Caller Type: "), meta$caller_type %||% "N/A"),
-            p(strong("Caller Model: "), meta$caller_model %||% "N/A"),
-            p(strong("Aligner: "), paste(meta$aligner_name %||% "N/A", meta$aligner_version %||% "")),
-            p(strong("Benchmark Tool: "), paste(meta$benchmark_tool_name %||% "N/A", meta$benchmark_tool_version %||% ""))
-        ),
-        
-        # QUALITY METRICS CARD
-        div(class = "metadata-card",
-            h6("Quality Metrics"),
-            p(strong("Mean Coverage: "), ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x"))),
-            p(strong("Read Length: "), 
-              ifelse(is.na(meta$read_length), 
-                     ifelse(is.na(meta$mean_read_length), "N/A", paste0(meta$mean_read_length, " bp (mean)")), 
-                     paste0(meta$read_length, " bp"))),
-            p(strong("Mean Insert Size: "), ifelse(is.na(meta$mean_insert_size), "N/A", paste0(meta$mean_insert_size, " bp"))),
-            p(strong("Created: "), ifelse(is.na(meta$created_at), "N/A", format(as.POSIXct(meta$created_at), "%Y-%m-%d")))
-        ),
-        
-        # VARIANTS & TRUTH SET CARD
-        div(class = "metadata-card",
-            h6("Variants & Truth Set"),
-            p(strong("Variant Type: "), meta$variant_type %||% "N/A"),
-            p(strong("Variant Origin: "), meta$variant_origin %||% "N/A"),
-            p(strong("Variant Size: "), meta$variant_size %||% "N/A"),
-            p(strong("Is Phased: "), ifelse(is.na(meta$is_phased), "N/A", ifelse(meta$is_phased, "Yes", "No"))),
-            p(strong("Truth Set: "), paste(meta$truth_set_name %||% "N/A", meta$truth_set_version %||% "")),
-            p(strong("Sample: "), meta$truth_set_sample %||% "N/A"),
-            p(strong("Reference: "), meta$truth_set_reference %||% "N/A")
+        h5("Complete Experiment Details"),
+        div(
+          class = "metadata-grid-4col",
+          
+          # SEQUENCING PLATFORM CARD
+          div(class = "metadata-card",
+              h6("Sequencing Platform"),
+              p(strong("Technology: "), meta$technology %||% "N/A"),
+              p(strong("Platform: "), meta$platform_name %||% "N/A"),
+              p(strong("Platform Type: "), meta$platform_type %||% "N/A"),
+              p(strong("Platform Version: "), meta$platform_version %||% "N/A"),
+              p(strong("Target: "), meta$target %||% "N/A"),
+              p(strong("Chemistry: "), meta$chemistry_name %||% "N/A")
+          ),
+          
+          # ANALYSIS PIPELINE CARD
+          div(class = "metadata-card",
+              h6("Analysis Pipeline"),
+              p(strong("Variant Caller: "), meta$caller %||% "N/A"),
+              p(strong("Caller Version: "), meta$caller_version %||% "N/A"),
+              p(strong("Caller Type: "), meta$caller_type %||% "N/A"),
+              p(strong("Caller Model: "), meta$caller_model %||% "N/A"),
+              p(strong("Aligner: "), paste(meta$aligner_name %||% "N/A", meta$aligner_version %||% "")),
+              p(strong("Benchmark Tool: "), paste(meta$benchmark_tool_name %||% "N/A", meta$benchmark_tool_version %||% ""))
+          ),
+          
+          # QUALITY METRICS CARD
+          div(class = "metadata-card",
+              h6("Quality Metrics"),
+              p(strong("Mean Coverage: "), ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x"))),
+              p(strong("Read Length: "), 
+                ifelse(is.na(meta$read_length), 
+                       ifelse(is.na(meta$mean_read_length), "N/A", paste0(meta$mean_read_length, " bp (mean)")), 
+                       paste0(meta$read_length, " bp"))),
+              p(strong("Mean Insert Size: "), ifelse(is.na(meta$mean_insert_size), "N/A", paste0(meta$mean_insert_size, " bp"))),
+              p(strong("Created: "), ifelse(is.na(meta$created_at), "N/A", format(as.POSIXct(meta$created_at), "%Y-%m-%d")))
+          ),
+          
+          # VARIANTS & TRUTH SET CARD
+          div(class = "metadata-card",
+              h6("Variants & Truth Set"),
+              p(strong("Variant Type: "), meta$variant_type %||% "N/A"),
+              p(strong("Variant Origin: "), meta$variant_origin %||% "N/A"),
+              p(strong("Variant Size: "), meta$variant_size %||% "N/A"),
+              p(strong("Is Phased: "), ifelse(is.na(meta$is_phased), "N/A", ifelse(meta$is_phased, "Yes", "No"))),
+              p(strong("Truth Set: "), paste(meta$truth_set_name %||% "N/A", meta$truth_set_version %||% "")),
+              p(strong("Sample: "), meta$truth_set_sample %||% "N/A"),
+              p(strong("Reference: "), meta$truth_set_reference %||% "N/A")
+          )
         )
       )
-    )
+    }, error = function(e) {
+      p("Error loading full metadata: ", e$message, style = "color: red;")
+    })
   })
   # -----------------------------------------------------------
   
