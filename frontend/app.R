@@ -640,9 +640,7 @@ ui <- fluidPage(
               div(
                 class = "panel panel-info",
                 div(class = "panel-heading d-flex justify-content-between align-items-center", #heading
-                    h5("Selected Experiments for Comparison", class = "mb-0"),
-                    span(class = "badge badge-info rounded-pill", 
-                         textOutput("selected_count_badge", inline = TRUE))
+                    h5("Selected Experiments for Comparison", class = "mb-0")
                 ),
                 div(class = "panel-body", style = "padding: 10px;", #content (table)
                     div(style = "max-height: 90px; overflow-y: auto; overflow-x: auto; border: 1px solid #dee2e6;",
@@ -667,7 +665,7 @@ ui <- fluidPage(
     div(class = "main-content",
         width = 9,
         
-        # Export button (top right)
+        # Download and Upload button (top right)
         div(
           style = "display: flex; justify-content: space-between; align-items: center; 
              margin-bottom: 0; padding-bottom: 0;",
@@ -679,14 +677,14 @@ ui <- fluidPage(
             
             actionButton(
               "show_upload_modal", 
-              label = tagList(icon("upload"), "Upload Data"),
+              label = tagList(icon("upload"), "Upload Dataset"),
               class = "btn-success btn-sm",
               style = "font-size: 14px; padding: 6px 12px; white-space: nowrap;"
             ),
             
             downloadButton(
               "export_html_report", 
-              label = tagList( "Export Report"),
+              label = tagList( "Download Report"),
               class = "btn-primary btn-sm",
               style = "font-size: 14px; padding: 6px 12px; white-space: nowrap;"
             )
