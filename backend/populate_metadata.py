@@ -386,6 +386,9 @@ def populate_database_from_csv(file_path=metadata_CSV_file_path):
     if raw_df is None:
         return False
     
+    # skip NAN rows
+    raw_df = raw_df.dropna(subset=['name'])
+
     # Clean the entire DataFrame
     metadata_df = clean_dataframe_strings(raw_df)
     print(f"Loaded CSV with {len(metadata_df)} rows")
