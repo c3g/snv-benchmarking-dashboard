@@ -373,29 +373,49 @@ add_stratified_section <- function(stratified_data, selected_metric = "f1_score"
   
   plots <- generate_stratified_plots(stratified_data, selected_metric)
   
+  # Two-column layout for plots (like Tab 4)
+  html_content <- paste0(html_content, '
+    <div style="display: flex; gap: 20px; margin-bottom: 40px; align-items: flex-start;">
+        <div style="flex: 1;">
+            <h3 style="color: #d73027; font-weight: bold; text-align: center; margin-bottom: 15px;">SNP Performance by Region</h3>')
+  
   if (!is.null(plots$snp)) {
     html_content <- paste0(html_content, '
-        <div style="margin-bottom: 40px;">
-            <h3 style="color: #d73027; font-weight: bold;">SNP Performance by Region</h3>
             <img src="data:image/png;base64,', plots$snp, '" 
-                style="width: 100%; max-width: 1000px; border: 1px solid #dee2e6; border-radius: 5px;" />
-        </div>')
+                style="width: 100%; border: 1px solid #dee2e6; border-radius: 5px;" />')
+  } else {
+    html_content <- paste0(html_content, '
+            <div style="text-align: center; padding: 40px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px;">
+                <p style="color: #6c757d;">No SNP data available</p>
+            </div>')
   }
+  
+  html_content <- paste0(html_content, '
+        </div>
+        <div style="flex: 1;">
+            <h3 style="color: #4575b4; font-weight: bold; text-align: center; margin-bottom: 15px;">INDEL Performance by Region</h3>')
   
   if (!is.null(plots$indel)) {
     html_content <- paste0(html_content, '
-        <div style="margin-bottom: 40px;">
-            <h3 style="color: #4575b4; font-weight: bold;">INDEL Performance by Region</h3>
             <img src="data:image/png;base64,', plots$indel, '" 
-                 style="width: 100%; max-width: 1000px; border: 1px solid #dee2e6; border-radius: 5px;" />
-        </div>')
+                 style="width: 100%; border: 1px solid #dee2e6; border-radius: 5px;" />')
+  } else {
+    html_content <- paste0(html_content, '
+            <div style="text-align: center; padding: 40px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px;">
+                <p style="color: #6c757d;">No INDEL data available</p>
+            </div>')
   }
   
+  html_content <- paste0(html_content, '
+        </div>
+    </div>')
+  
+
+  # Add the data table at the bottom
   html_content <- paste0(html_content, create_stratified_table(stratified_data, selected_metric))
   
   return(html_content)
 }
-
 # =============================================================================
 # 4. DATA PROCESSING FUNCTIONS
 # =============================================================================
