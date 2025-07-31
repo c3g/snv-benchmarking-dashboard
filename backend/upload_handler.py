@@ -58,6 +58,24 @@ def validate_metadata(metadata):
     
     return True, "Metadata is valid"
 
+def get_next_experiment_id():
+    """
+    Simple function to get the next experiment ID
+    Returns: int (next available ID)
+    """
+    try:
+        if os.path.exists(METADATA_CSV_PATH):
+            existing_df = pd.read_csv(METADATA_CSV_PATH)
+            # Remove NaN rows to get accurate count
+            existing_df = existing_df.dropna(subset=['name'])
+            return len(existing_df) + 1
+        else:
+            return 1
+    except Exception as e:
+        print(f"Error getting next ID: {e}")
+        return 1  # Fallback to 1
+
+
 def generate_safe_filename(metadata):
     """
     Generate filename using the format from filename_generator.py:
@@ -114,6 +132,7 @@ def create_metadata_entry(metadata, filename):
         return str(value).lower() == 'true'
     
     return {
+        'ID': experiment_id,
         'name': metadata['exp_name'],
         'technology': metadata['technology'].lower(),
         'target': metadata.get('target', 'wgs').lower(),
@@ -198,7 +217,7 @@ def process_upload(temp_file_path, metadata_json_string):
         else:
             # Create with proper columns
             existing_df = pd.DataFrame(columns=[
-                'name', 'technology', 'target', 'platform_name', 'platform_type',
+                'ID', 'name', 'technology', 'target', 'platform_name', 'platform_type',
                 'platform_version', 'chemistry_name', 'caller_name', 'caller_type',
                 'caller_version', 'caller_model', 'aligner_name', 'aligner_version',
                 'truth_set_name', 'truth_set_sample', 'truth_set_version',
