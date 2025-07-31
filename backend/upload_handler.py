@@ -1,4 +1,3 @@
-
 import json
 import pandas as pd
 import os
@@ -43,7 +42,7 @@ def validate_happy_file(file_path):
 
 def validate_metadata(metadata):
     """Validate required metadata fields"""
-    required = ['exp_name', 'technology', 'platform_name', 'caller_name']
+    required = ['exp_name', 'technology', 'platform_name', 'caller_name', 'mean_coverage','truth_set_name'] #_______________________________________________________
     
     for field in required:
         value = metadata.get(field, "").strip()
@@ -60,12 +59,46 @@ def validate_metadata(metadata):
     return True, "Metadata is valid"
 
 def generate_safe_filename(metadata):
-    """Generate filename with timestamp to avoid collisions"""
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    sample = metadata['exp_name'].split('_')[0]
+    """
+    Generate filename using the format from filename_generator.py:
+    {experiment_id:03d}_{sample}_{technology}_{platform}_{caller}_{truthset}.csv
+    """
     
-    filename = f"{timestamp}_{sample}_{metadata['technology']}_{metadata['caller_name']}.csv"
-    return filename
+    def strip_value(value):
+        if value is None or pd.isna(value): 
+            return ""
+        return str(value).strip()
+    
+    try:
+        # Get next experiment ID by counting existing rows
+        if os.path.exists(METADATA_CSV_PATH):
+            existing_df = pd.read_csv(METADATA_CSV_PATH)
+            # Remove NaN rows to get accurate count
+            existing_df = existing_df.dropna(subset=['name'])
+            experiment_id = len(existing_df) + 1
+        else:
+            experiment_id = 1
+        
+        # Extract sample name (first part before underscore)
+        sample = strip_value(str(metadata.get('exp_name', '')).split('_')[0]) #HG002
+        
+        # Clean all metadata components
+        technology = strip_value(metadata.get('technology', '')).lower()
+        platform = strip_value(metadata.get('platform_name', '')).lower()
+        caller = strip_value(metadata.get('caller_name', '')).lower()
+        truthset = strip_value(metadata.get('truth_set_name', 'GIAB')).lower()
+        
+        # Build filename with 3 zero padding for correct order
+        filename = f"{experiment_id:03d}_{sample}_{technology}_{platform}_{caller}_{truthset}.csv"
+        
+        return filename
+        
+    except Exception as e:
+        # Fallback to timestamp if anything fails
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        sample = metadata['exp_name'].split('_')[0]
+        return f"{timestamp}_{sample}_{metadata['technology']}_{metadata['caller_name']}.csv"
+    
 
 def create_metadata_entry(metadata, filename):
     """Create metadata row for CSV"""
@@ -94,16 +127,16 @@ def create_metadata_entry(metadata, filename):
         'caller_model': metadata.get('caller_model', ''),
         'aligner_name': metadata.get('aligner_name', ''),
         'aligner_version': metadata.get('aligner_version', ''),
-        'truth_set_name': metadata.get('truth_set_name', 'giab').lower(),
+        'truth_set_name': metadata.get('truth_set_name', '').lower(),
         'truth_set_sample': metadata.get('truth_set_sample', 'hg002').lower(),
-        'truth_set_version': metadata.get('truth_set_version', '4.2.1'),
-        'truth_set_reference': metadata.get('truth_set_reference', 'grch38').lower(),
+        'truth_set_version': metadata.get('truth_set_version', ''),
+        'truth_set_reference': metadata.get('truth_set_reference', '').lower(),
         'variant_type': metadata.get('variant_type', 'snp+indel').lower(),
-        'variant_size': metadata.get('variant_size', 'small').lower(),
-        'variant_origin': metadata.get('variant_origin', 'germline').lower(),
+        'variant_size': metadata.get('variant_size', '').lower(),
+        'variant_origin': metadata.get('variant_origin', '').lower(),
         'is_phased': safe_bool(metadata.get('is_phased', 'false')),
         'benchmark_tool_name': metadata.get('benchmark_tool_name', 'hap.py').lower(),
-        'benchmark_tool_version': metadata.get('benchmark_tool_version', '0.3.12'),
+        'benchmark_tool_version': metadata.get('benchmark_tool_version', ''),
         'mean_coverage': safe_float(metadata.get('mean_coverage')),
         'read_length': safe_float(metadata.get('read_length')),
         'mean_insert_size': safe_float(metadata.get('mean_insert_size')),
@@ -113,9 +146,9 @@ def create_metadata_entry(metadata, filename):
         'upload_date': datetime.now().strftime('%Y-%m-%d')
     }
 
-def process_upload_atomic(temp_file_path, metadata_json_string):
+def process_upload(temp_file_path, metadata_json_string):
     """
-    ATOMIC upload processing - either everything succeeds or everything fails
+    Upload processing
     
     Returns: {"success": bool, "message": str, "filename": str or None}
     """
@@ -123,7 +156,7 @@ def process_upload_atomic(temp_file_path, metadata_json_string):
     temp_work_dir = None
     
     try:
-        print(f"🔄 Starting atomic upload process...")
+        print(f"Starting upload process...")
         
         # Parse metadata
         try:
@@ -144,7 +177,7 @@ def process_upload_atomic(temp_file_path, metadata_json_string):
         if not is_valid_meta:
             return {"success": False, "message": f"Metadata validation failed: {meta_msg}", "filename": None}
         
-        # STEP 2: Setup working directory (for atomic operations)
+        # STEP 2: Setup working directory
         temp_work_dir = tempfile.mkdtemp(prefix="upload_")
         print(f"   Step 3: Working in {temp_work_dir}")
         
@@ -178,8 +211,8 @@ def process_upload_atomic(temp_file_path, metadata_json_string):
         # Add new entry
         updated_df = pd.concat([existing_df, pd.DataFrame([metadata_entry])], ignore_index=True)
         
-        # STEP 5: ATOMIC COMMIT - Move everything at once
-        print("   Step 5: Atomic commit...")
+        # STEP 5: commit
+        print("   Step 5: commit...")
         
         # Ensure target directory exists
         os.makedirs(DATA_FOLDER, exist_ok=True)
@@ -233,4 +266,4 @@ def process_upload_atomic(temp_file_path, metadata_json_string):
 # Simple interface for R
 def upload_experiment(file_path, metadata_json):
     """Simple interface for R Shiny"""
-    return process_upload_atomic(file_path, metadata_json)
+    return process_upload(file_path, metadata_json)
