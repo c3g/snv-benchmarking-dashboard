@@ -86,6 +86,55 @@ json_param <- function(data) {
   jsonlite::toJSON(data,auto_unbox = TRUE)
 }
 
+# format uppercase enum to normal for display
+format_for_display <- function(value) {
+  if (is.na(value) || is.null(value)) return("N/A")
+  
+  display_map <- list(
+    # Technologies
+    "ILLUMINA" = "Illumina",
+    "PACBIO" = "PacBio", 
+    "ONT" = "ONT",
+    "MGI" = "MGI",
+    
+    # Callers
+    "DEEPVARIANT" = "DeepVariant",
+    "GATK" = "GATK",
+    "CLAIR3" = "Clair3",
+    
+    # Caller Types
+    "ML" = "Machine Learning",
+    "TRADITIONAL" = "Traditional",
+    
+    # Truth Sets
+    "GIAB" = "GIAB",
+    "CMRG" = "CMRG", 
+    "T2T" = "T2T",
+    
+    # Targets
+    "WGS" = "Whole Genome",
+    "WES" = "Whole Exome",
+    
+    # Platform Types
+    "SRS" = "Short Read",
+    "LRS" = "Long Read",
+    
+    # Variant Types
+    "SNPINDEL" = "SNP + INDEL",
+    "SNP" = "SNP",
+    "INDEL" = "INDEL",
+    
+    # Origins
+    "GERMLINE" = "Germline",
+    "SOMATIC" = "Somatic",
+    
+    # Tools
+    "HAPPY" = "hap.py"
+  )
+  
+  # Return pretty name if exists, otherwise return original
+  return(display_map[[value]] %||% value)
+}
 # ============================================================================
 # MANUAL HTML LEGEND CREATION FUNCTIONS
 # ============================================================================
@@ -2023,7 +2072,10 @@ server <- function(input, output, session) {
     if (nrow(df) == 0) {
       return(DT::datatable(data.frame(Message = "No experiments found")))
     }
-    
+    # Format for display
+    df$technology <- sapply(df$technology, format_for_display)
+    df$caller <- sapply(df$caller, format_for_display)
+
     df$expand_button <- paste0(
       '<button class="details-toggle" onclick="toggleDetails(', df$id, ')">',
       '▶',
@@ -2093,6 +2145,10 @@ server <- function(input, output, session) {
     if (nrow(df) == 0) {
       return(DT::datatable(data.frame(Message = "No performance data found")))
     }
+
+    # Format for display
+    df$technology <- sapply(df$technology, format_for_display)
+    df$caller <- sapply(df$caller, format_for_display)
     
     # Remove the row_class column if it exists
     if ("row_class" %in% names(df)) {
@@ -2229,9 +2285,9 @@ server <- function(input, output, session) {
       snp_data$tooltip_text <- paste(
         "<b>ID:", snp_data$experiment_id," - ",
         "<b>", ifelse(is.na(snp_data$experiment_name) | is.null(snp_data$experiment_name), "Unknown", snp_data$experiment_name), "</b>",
-        "<br><b>Technology:</b>", ifelse(is.na(snp_data$technology) | is.null(snp_data$technology), "N/A", snp_data$technology),
+        "<br><b>Technology:</b>", sapply(snp_data$technology, format_for_display),
         "<br><b>Platform:</b>", ifelse(is.na(snp_data$platform_name) | is.null(snp_data$platform_name), "N/A", snp_data$platform_name),
-        "<br><b>Caller:</b>", ifelse(is.na(snp_data$caller) | is.null(snp_data$caller), "N/A", snp_data$caller),
+        "<br><b>Caller:</b>", sapply(snp_data$caller, format_for_display),
         "<br><br><b>Performance:</b>",
         "<br>• Precision:", paste0(round(as.numeric(snp_data$precision)*100, 2), "%"),
         "<br>• Recall:", paste0(round(as.numeric(snp_data$recall)*100, 2), "%"),
