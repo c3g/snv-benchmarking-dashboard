@@ -32,7 +32,9 @@ RUN install2.r --error \
     tidyr \
     base64enc \
     ggforce \
-    dplyr
+    dplyr \
+    shinyBS \
+    scales
 
 # Install app in /app folder
 COPY backend/ /app/backend/
