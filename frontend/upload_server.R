@@ -31,12 +31,12 @@ upload_server <- function(input, output, session) {
       if (!grepl("\\.csv$", file_info$name, ignore.case = TRUE)) {
         output$file_status <- renderUI({
           div(class = "alert alert-danger", style = "padding: 8px; margin: 5px 0;",
-              "❌ Please upload a CSV file")
+              "Please upload a CSV file")
         })
       } else if (file_info$size == 0) {
         output$file_status <- renderUI({
           div(class = "alert alert-danger", style = "padding: 8px; margin: 5px 0;",
-              "❌ File appears to be empty")
+              "File appears to be empty")
         })
       } else if (file_info$size > 100 * 1024 * 1024) {  # 100MB limit
         output$file_status <- renderUI({
@@ -46,7 +46,7 @@ upload_server <- function(input, output, session) {
       } else {
         output$file_status <- renderUI({
           div(class = "alert alert-success", style = "padding: 8px; margin: 5px 0;",
-              paste("✅ File ready:", file_info$name, 
+              paste("File ready:", file_info$name, 
                     paste0("(", round(file_info$size / 1024, 1), " KB)")))
         })
       }
@@ -56,21 +56,49 @@ upload_server <- function(input, output, session) {
   })
   
   # Generate filename preview
+  # Generate filename preview
   output$filename_preview <- renderText({
     if (!is.null(input$exp_name) && input$exp_name != "" &&
         !is.null(input$technology) && input$technology != "" &&
-        !is.null(input$caller_name) && input$caller_name != "") {
+        !is.null(input$platform_name) && input$platform_name != "" &&
+        !is.null(input$caller_name) && input$caller_name != "" &&
+        !is.null(input$truth_set_name) && input$truth_set_name != "") {
       
-      # Generate preview filename (similar to Python logic)
-      timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
-      sample <- strsplit(input$exp_name, "_")[[1]][1]
+      # Helper function to clean values
+      strip_value <- function(value) {
+        if (is.null(value) || is.na(value) || value == "") {
+          return("")
+        }
+        return(trimws(as.character(value)))
+      }
       
-      filename <- paste0(timestamp, "_", sample, "_", 
-                         input$technology, "_", input$caller_name, ".csv")
+      tryCatch({
+        # Get next experiment ID 
+        if (file.exists(system.file("", package = "base"))) {  
+          preview_id <- "XXX"  # Placeholder ----------------------------------------------------------------------------------to be fixed
+        }
+        
+        # Extract sample name
+        sample <- strsplit(strip_value(input$exp_name), "_")[[1]][1]
+        if (is.na(sample) || sample == "") sample <- "UNKNOWN"
+        
+        # Clean all metadata components
+        technology <- tolower(strip_value(input$technology))
+        platform <- tolower(strip_value(input$platform_name))
+        caller <- tolower(strip_value(input$caller_name))
+        truthset <- tolower(strip_value(input$truth_set_name))
+        
+        # Build filename matching Python format: {id:03d}_{sample}_{technology}_{platform}_{caller}_{truthset}.csv
+        filename <- paste0(preview_id, "_", sample, "_", technology, "_", platform, "_", caller, "_", truthset, ".csv")
+        
+        return(paste("Preview:", filename))
+        
+      }, error = function(e) {
+        return("Error generating preview")
+      })
       
-      return(paste("Preview:", filename))
     } else {
-      return("Fill required fields to see filename preview")
+      return("Fill required fields (*) to see filename preview")
     }
   })
   
@@ -79,7 +107,7 @@ upload_server <- function(input, output, session) {
     
     # Basic validation checks
     if (is.null(input$upload_file)) {
-      showNotification("❌ Please select a file to upload", type = "error", duration = 5)
+      showNotification("Please select a file to upload", type = "error", duration = 5)
       return()
     }
     
@@ -95,7 +123,7 @@ upload_server <- function(input, output, session) {
     
     if (length(missing_fields) > 0) {
       showNotification(
-        paste("❌ Please fill required fields:", paste(missing_fields, collapse = ", ")), 
+        paste("Please fill required fields:", paste(missing_fields, collapse = ", ")), 
         type = "error", 
         duration = 6
       )
@@ -104,7 +132,7 @@ upload_server <- function(input, output, session) {
     
     # Show loading notification
     loading_id <- showNotification(
-      "🔄 Processing upload... Please wait", 
+      " Processing upload... Please wait", 
       type = "message", 
       duration = NULL,
       closeButton = FALSE
@@ -165,8 +193,8 @@ upload_server <- function(input, output, session) {
         
       ), auto_unbox = TRUE)
       
-      # Debug: Print metadata (remove in production)
-      cat("📝 Metadata JSON:\n", metadata_json, "\n")
+      # Print metadata 
+      cat(" Metadata JSON:\n", metadata_json, "\n")
       
       # Call Python upload handler
       result <- upload_handler$upload_experiment(
@@ -181,7 +209,7 @@ upload_server <- function(input, output, session) {
       if (result$success) {
         # Success notification
         showNotification(
-          HTML(paste("✅ Upload Successful!<br>", result$message)), 
+          HTML(paste(" Upload Successful!<br>", result$message)), 
           type = "message", 
           duration = 8
         )
@@ -189,15 +217,13 @@ upload_server <- function(input, output, session) {
         # Close modal
         toggleModal(session, "upload_modal", toggle = "close")
         
-        # Optional: Refresh data tables
-        # You might want to trigger a refresh of your experiments table here
-        # Return success for potential reactive triggers
+        # Refresh data tables
         return(TRUE)
         
       } else {
         # Error notification
         showNotification(
-          HTML(paste("❌ Upload Failed<br>", result$message)), 
+          HTML(paste("Upload Failed<br>", result$message)), 
           type = "error", 
           duration = 12
         )
@@ -211,7 +237,7 @@ upload_server <- function(input, output, session) {
       
       # Show error
       showNotification(
-        paste("❌ Upload Error:", e$message), 
+        paste("Upload Error:", e$message), 
         type = "error", 
         duration = 10
       )
