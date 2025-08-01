@@ -523,7 +523,7 @@ ui <- fluidPage(
             conditionalPanel(
               condition = "input.filter_type == 'tech'",
               selectInput(
-                "technology",
+                "filter_technology",
                 "Choose Technology:",
                 choices = c("ILLUMINA", "PACBIO", "ONT", "MGI"),
                 selected = "ILLUMINA"
@@ -534,7 +534,7 @@ ui <- fluidPage(
             conditionalPanel(
               condition = "input.filter_type == 'caller'",
               selectInput(
-                "caller",
+                "filter_caller",
                 "Choose Caller:",
                 choices = c("DEEPVARIANT", "GATK", "CLAIR3"),
                 selected = "DEEPVARIANT"
@@ -1269,9 +1269,9 @@ server <- function(input, output, session) {
     
     # filtering
     if (input$filter_type == "tech") {
-      return(db$get_experiments_by_technology(input$technology))
+      return(db$get_experiments_by_technology(input$filter_technology))
     } else if (input$filter_type == "caller") {
-      return(db$get_experiments_by_caller(input$caller))
+      return(db$get_experiments_by_caller(input$filter_caller))
     } else {
       overview <- db$get_experiments_overview()
       return(overview$id)
@@ -1290,9 +1290,9 @@ server <- function(input, output, session) {
     if (current_mode() == "manual_selection") {
       filters <- NULL
       if (input$filter_type == "tech") {
-        filters <- list(technology = input$technology)
+        filters <- list(technology = input$filter_technology)
       } else if (input$filter_type == "caller") {
-        filters <- list(caller = input$caller)
+        filters <- list(caller = input$filter_caller)
       }
       return(db$get_experiments_overview(filters, NULL))
     }
@@ -1300,9 +1300,9 @@ server <- function(input, output, session) {
     # Regular filtering
     filters <- NULL
     if (input$filter_type == "tech") {
-      filters <- list(technology = input$technology)
+      filters <- list(technology = input$filter_technology)
     } else if (input$filter_type == "caller") {
-      filters <- list(caller = input$caller)
+      filters <- list(caller = input$filter_caller)
     }
     
     
