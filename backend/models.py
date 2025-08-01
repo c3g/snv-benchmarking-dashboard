@@ -8,7 +8,7 @@ import enum
 Base = declarative_base()
 
 # ============================================================================
-# ENUM DEFINITIONS
+# ENUM DEFINITIONS - All uppercase
 # ============================================================================
 
 class SeqTechName(enum.Enum):
@@ -37,7 +37,7 @@ class CallerName(enum.Enum):
 class CallerType(enum.Enum):
     """ Variant caller types"""
     ML = "ML"
-    TRADITIONAL = "Traditional"
+    TRADITIONAL = "TRADITIONAL"
 
 class TruthSetName(enum.Enum):
     """ Benchmarking truth sets """
@@ -74,7 +74,7 @@ class VariantType(enum.Enum):
     INDEL = "INDEL" # Insertion/Deletion
     DEL = "DEL"  # Deletion
     INS = "INS"  # Insertion
-    SNPINDEL = "SNP+INDEL"
+    SNPINDEL = "SNPINDEL"
 
 class BenchmarkToolName(enum.Enum):
     """benchmarking tools"""
@@ -83,7 +83,8 @@ class BenchmarkToolName(enum.Enum):
     TRUVARI = "TRUVARI" 
 
 class RegionType(enum.Enum):
-    """All genomic regions from hap.py stratified analysis"""
+    """All genomic regions from hap.py stratified analysis
+    Values are kept display-freindly to match happy outputs"""
     
     # All
     ALL = "All Regions"
