@@ -5,7 +5,6 @@ import shutil
 import tempfile
 from datetime import datetime
 from pathlib import Path
-import uuid
 
 from config import DATA_FOLDER, METADATA_CSV_PATH
 from populate_metadata import populate_database_from_csv
@@ -42,11 +41,11 @@ def validate_happy_file(file_path):
 
 def validate_metadata(metadata):
     """Validate required metadata fields"""
-    required = ['exp_name', 'technology', 'platform_name', 'caller_name', 'mean_coverage','truth_set_name'] #_______________________________________________________
+    required = ['exp_name', 'technology', 'platform_name', 'caller_name', 'truth_set_name']
     
     for field in required:
-        value = metadata.get(field, "").strip()
-        if not value:
+        value = metadata.get(field, "")
+        if not value or str(value).strip() == "":
             return False, f"Required field '{field}' is missing"
     
     # Validate enums
@@ -75,11 +74,9 @@ def get_next_experiment_id():
         print(f"Error getting next ID: {e}")
         return 1  # Fallback to 1
 
-
-def generate_safe_filename(metadata):
+def generate_safe_filename(metadata, experiment_id):
     """
-    Generate filename using the format from filename_generator.py:
-    {experiment_id:03d}_{sample}_{technology}_{platform}_{caller}_{truthset}.csv
+    Generate filename using the format from filename_generator.py
     """
     
     def strip_value(value):
@@ -88,23 +85,14 @@ def generate_safe_filename(metadata):
         return str(value).strip()
     
     try:
-        # Get next experiment ID by counting existing rows
-        if os.path.exists(METADATA_CSV_PATH):
-            existing_df = pd.read_csv(METADATA_CSV_PATH)
-            # Remove NaN rows to get accurate count
-            existing_df = existing_df.dropna(subset=['name'])
-            experiment_id = len(existing_df) + 1
-        else:
-            experiment_id = 1
-        
         # Extract sample name (first part before underscore)
-        sample = strip_value(str(metadata.get('exp_name', '')).split('_')[0]) #HG002
+        sample = strip_value(str(metadata.get('exp_name', '')).split('_')[0])
         
         # Clean all metadata components
         technology = strip_value(metadata.get('technology', '')).lower()
         platform = strip_value(metadata.get('platform_name', '')).lower()
         caller = strip_value(metadata.get('caller_name', '')).lower()
-        truthset = strip_value(metadata.get('truth_set_name', 'GIAB')).lower()
+        truthset = strip_value(metadata.get('truth_set_name', '')).lower()
         
         # Build filename with 3 zero padding for correct order
         filename = f"{experiment_id:03d}_{sample}_{technology}_{platform}_{caller}_{truthset}.csv"
@@ -116,10 +104,11 @@ def generate_safe_filename(metadata):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         sample = metadata['exp_name'].split('_')[0]
         return f"{timestamp}_{sample}_{metadata['technology']}_{metadata['caller_name']}.csv"
-    
 
-def create_metadata_entry(metadata, filename):
-    """Create metadata row for CSV"""
+def create_metadata_entry(metadata, filename, experiment_id):
+    """
+    Create metadata row for CSV
+    """
     
     # Helper function for safe conversion
     def safe_float(value):
@@ -132,7 +121,7 @@ def create_metadata_entry(metadata, filename):
         return str(value).lower() == 'true'
     
     return {
-        'ID': experiment_id,
+        'ID': experiment_id,  # Use the passed experiment_id
         'name': metadata['exp_name'],
         'technology': metadata['technology'].lower(),
         'target': metadata.get('target', 'wgs').lower(),
@@ -162,7 +151,7 @@ def create_metadata_entry(metadata, filename):
         'mean_read_length': metadata.get('mean_read_length', ''),
         'file_name': filename,
         'file_path': None,
-        'upload_date': datetime.now().strftime('%Y-%m-%d')
+        'upload_date': datetime.now().strftime('%Y-%m-%d'),
     }
 
 def process_upload(temp_file_path, metadata_json_string):
@@ -196,26 +185,29 @@ def process_upload(temp_file_path, metadata_json_string):
         if not is_valid_meta:
             return {"success": False, "message": f"Metadata validation failed: {meta_msg}", "filename": None}
         
-        # STEP 2: Setup working directory
+        # STEP 2: Get experiment ID ONCE
+        experiment_id = get_next_experiment_id()
+        print(f"   Assigned experiment ID: {experiment_id}")
+        
+        # STEP 3: Setup working directory
         temp_work_dir = tempfile.mkdtemp(prefix="upload_")
         print(f"   Step 3: Working in {temp_work_dir}")
         
-        # STEP 3: Generate filename and prepare data
-        filename = generate_safe_filename(metadata)
+        # STEP 4: Generate filename and prepare data
+        filename = generate_safe_filename(metadata, experiment_id)  # Pass the ID
         temp_file_copy = os.path.join(temp_work_dir, filename)
         
         # Copy file to working directory first
         shutil.copy2(temp_file_path, temp_file_copy)
         print(f"   Step 4: File copied to working directory")
         
-        # STEP 4: Prepare metadata update
-        metadata_entry = create_metadata_entry(metadata, filename)
+        # STEP 5: Prepare metadata update
+        metadata_entry = create_metadata_entry(metadata, filename, experiment_id)  # Pass the ID
         
         # Read existing metadata or create new
         if os.path.exists(METADATA_CSV_PATH):
             existing_df = pd.read_csv(METADATA_CSV_PATH)
         else:
-            # Create with proper columns
             existing_df = pd.DataFrame(columns=[
                 'ID', 'name', 'technology', 'target', 'platform_name', 'platform_type',
                 'platform_version', 'chemistry_name', 'caller_name', 'caller_type',
@@ -230,7 +222,7 @@ def process_upload(temp_file_path, metadata_json_string):
         # Add new entry
         updated_df = pd.concat([existing_df, pd.DataFrame([metadata_entry])], ignore_index=True)
         
-        # STEP 5: commit
+        # STEP 6: commit
         print("   Step 5: commit...")
         
         # Ensure target directory exists
@@ -245,7 +237,7 @@ def process_upload(temp_file_path, metadata_json_string):
         
         print("   Step 6: Files committed successfully")
         
-        # STEP 6: Update database (separate from file operations)
+        # STEP 7: Update database (separate from file operations)
         print("   Step 7: Updating database...")
         try:
             db_success = populate_database_from_csv()
