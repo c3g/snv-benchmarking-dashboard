@@ -234,6 +234,17 @@ ui <- fluidPage(
       min-height: 100vh;
     }
   ")),
+  # Capitalize all table entries
+  tags$style(HTML("
+    .dataTables_wrapper tbody td {
+      text-transform: capitalize !important;
+    }
+
+    /* Keep numbers and special cases normal */
+    .dataTables_wrapper tbody td:nth-child(1) {
+      text-transform: none !important;  /* ID column */
+    }
+  ")),
     # Force tab 3 plot column width
     tags$style(HTML("
       /* Force plotly containers to respect column boundaries */
@@ -2116,7 +2127,6 @@ server <- function(input, output, session) {
           list(targets = c(3:10), className = "dt-center")
         )
       ),
-      
       rownames = FALSE,
       colnames = c("", "ID", "Name", "Technology", "Platform", "Caller", "Version", "Chemistry", "Truth Set", "Sample", "Created")
     ) %>%
