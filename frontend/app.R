@@ -2072,9 +2072,6 @@ server <- function(input, output, session) {
     if (nrow(df) == 0) {
       return(DT::datatable(data.frame(Message = "No experiments found")))
     }
-    # Format for display
-    df$technology <- sapply(df$technology, format_for_display)
-    df$caller <- sapply(df$caller, format_for_display)
 
     df$expand_button <- paste0(
       '<button class="details-toggle" onclick="toggleDetails(', df$id, ')">',
@@ -2145,10 +2142,6 @@ server <- function(input, output, session) {
     if (nrow(df) == 0) {
       return(DT::datatable(data.frame(Message = "No performance data found")))
     }
-
-    # Format for display
-    df$technology <- sapply(df$technology, format_for_display)
-    df$caller <- sapply(df$caller, format_for_display)
     
     # Remove the row_class column if it exists
     if ("row_class" %in% names(df)) {
@@ -2285,9 +2278,8 @@ server <- function(input, output, session) {
       snp_data$tooltip_text <- paste(
         "<b>ID:", snp_data$experiment_id," - ",
         "<b>", ifelse(is.na(snp_data$experiment_name) | is.null(snp_data$experiment_name), "Unknown", snp_data$experiment_name), "</b>",
-        "<br><b>Technology:</b>", sapply(snp_data$technology, format_for_display),
-        "<br><b>Platform:</b>", ifelse(is.na(snp_data$platform_name) | is.null(snp_data$platform_name), "N/A", snp_data$platform_name),
-        "<br><b>Caller:</b>", sapply(snp_data$caller, format_for_display),
+        "<br><b>Technology:</b>", snp_data$technology,
+        "<br><b>Caller:</b>", snp_data$caller,
         "<br><br><b>Performance:</b>",
         "<br>• Precision:", paste0(round(as.numeric(snp_data$precision)*100, 2), "%"),
         "<br>• Recall:", paste0(round(as.numeric(snp_data$recall)*100, 2), "%"),
@@ -2376,8 +2368,8 @@ server <- function(input, output, session) {
         "<b>ID:", indel_data$experiment_id," - ",
         "<b>", ifelse(is.na(indel_data$experiment_name) | is.null(indel_data$experiment_name), "Unknown", indel_data$experiment_name), "</b>",
         "<br><b>Technology:</b>", ifelse(is.na(indel_data$technology) | is.null(indel_data$technology), "N/A", indel_data$technology),
-        "<br><b>Platform:</b>", ifelse(is.na(indel_data$platform_name) | is.null(indel_data$platform_name), "N/A", indel_data$platform_name),
-        "<br><b>Caller:</b>", ifelse(is.na(indel_data$caller) | is.null(indel_data$caller), "N/A", indel_data$caller),
+        "<br><b>Technology:</b>", snp_data$technology,
+        "<br><b>Caller:</b>", snp_data$caller,
         "<br><br><b>Performance:</b>",
         "<br>• Precision:", paste0(round(as.numeric(indel_data$precision)*100, 2), "%"),
         "<br>• Recall:", paste0(round(as.numeric(indel_data$recall)*100, 2), "%"),
