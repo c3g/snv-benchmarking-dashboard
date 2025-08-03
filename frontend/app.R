@@ -234,7 +234,7 @@ ui <- fluidPage(
       min-height: 100vh;
     }
   ")),
-  # Capitalize all table entries
+  # Capitalize all table entries (text)
   tags$style(HTML("
     .dataTables_wrapper tbody td {
       text-transform: capitalize !important;
