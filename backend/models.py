@@ -1,4 +1,15 @@
-# Defining normalized database tables for each type of metadata using SQLAlchemy
+# ============================================================================
+# models.py
+# ============================================================================
+"""
+Database models and enums for SNV Benchmarking Dashboard.
+
+Main components:
+- Enum definitions for all categorical data types
+- SQLAlchemy table models for normalized database structure
+- Relationship definitions between tables
+- RegionType enum with hap.py mapping methods
+"""
 
 from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, Enum, func
 from sqlalchemy.ext.declarative import declarative_base
@@ -19,39 +30,39 @@ class SeqTechName(enum.Enum):
     PACBIO = "PACBIO"
 
 class SeqTechTarget(enum.Enum):
-    """ Sequencing targets """
+    """Sequencing targets"""
     WGS = "WGS" # whole genome sequencing
     WES = "WES" # exon sequencing    
 
 class SeqTechPlatformType(enum.Enum):
-    """ Sequencing Platform types """
+    """Sequencing Platform types"""
     SRS = "SRS"  # Short Read Sequencing
     LRS = "LRS" # Long Read Sequencing
 
 class CallerName(enum.Enum):
-    """ Variant caller names """
+    """Variant caller names"""
     DEEPVARIANT = "DEEPVARIANT"
     GATK = "GATK"
     CLAIR3 = "CLAIR3"
 
 class CallerType(enum.Enum):
-    """ Variant caller types"""
+    """Variant caller types"""
     ML = "ML"
     TRADITIONAL = "TRADITIONAL"
 
 class TruthSetName(enum.Enum):
-    """ Benchmarking truth sets """
+    """Benchmarking truth sets"""
     GIAB = "GIAB" # Genome in a Bottle
     CMRG = "CMRG" # Challenging Medically Relevant Genes
     T2T = "T2T" # Telomere to Telomere
 
 class TruthSetReference(enum.Enum):
-    """ Benchmarking truth set references"""
+    """Benchmarking truth set references"""
     GRCH37 = "GRCH37"
     GRCH38 = "GRCH38"
 
 class TruthSetSample(enum.Enum): 
-    """ Benchmarking samples """
+    """Benchmarking samples"""
     HG001 = "HG001"
     HG002 = "HG002"
     HG003 = "HG003"
@@ -59,17 +70,17 @@ class TruthSetSample(enum.Enum):
     HCC1395 = "HCC1395" # triple negative breast cancer
 
 class VariantOrigin(enum.Enum):
-    """ Origins of variants """
+    """Origins of variants"""
     GERMLINE = "GERMLINE" # reproductive cells
-    SOMATIC = "SOMATIC"  # non-productive cells
+    SOMATIC = "SOMATIC"  # non-reproductive cells
 
 class VariantSize(enum.Enum):
-    """ Sizes of variants """
+    """Sizes of variants"""
     SMALL = "SMALL"
     LARGE = "LARGE"
 
 class VariantType(enum.Enum):
-    """ Types of variants """
+    """Types of variants"""
     SNP = "SNP"  # Single Nucleotide Polymorphism
     INDEL = "INDEL" # Insertion/Deletion
     DEL = "DEL"  # Deletion
@@ -77,14 +88,16 @@ class VariantType(enum.Enum):
     SNPINDEL = "SNPINDEL"
 
 class BenchmarkToolName(enum.Enum):
-    """benchmarking tools"""
+    """Benchmarking tools"""
     HAPPY = "HAPPY"
     VCFDIST = "VCFDIST"
     TRUVARI = "TRUVARI" 
 
 class RegionType(enum.Enum):
-    """All genomic regions from hap.py stratified analysis
-    Values are kept display-freindly to match happy outputs"""
+    """
+    All genomic regions from hap.py stratified analysis.
+    Values are kept display-friendly to match hap.py outputs.
+    """
     
     # All
     ALL = "All Regions"
@@ -125,7 +138,18 @@ class RegionType(enum.Enum):
     
     @classmethod
     def from_string(cls, region_str):
-        """Convert and map hap.py region string to enum"""
+        """
+        Convert hap.py region string to enum value.
+        
+        Maps the raw region strings from hap.py CSV files to their corresponding
+        enum values for database storage.
+        
+        Args:
+            region_str (str): Raw region string from hap.py output (e.g., "*", "easy", "GC_<15")
+            
+        Returns:
+            RegionType: Corresponding enum value or None if mapping not found
+        """
         mapping = {
             "*": cls.ALL,
             "easy": cls.EASY,
@@ -157,7 +181,18 @@ class RegionType(enum.Enum):
     
     @classmethod
     def from_display_name(cls, display_name):
-        """Convert UI display names to enum values"""
+        """
+        Convert UI display names to enum values.
+        
+        Maps user-friendly region names from the dashboard UI to their
+        corresponding enum values for database queries.
+        
+        Args:
+            display_name (str): User-friendly name from UI (e.g., "All Regions", "Easy Regions")
+            
+        Returns:
+            RegionType: Corresponding enum value or None if mapping not found
+        """
         mapping = {
             # Main regions
             "All Regions": cls.ALL,
@@ -194,14 +229,13 @@ class RegionType(enum.Enum):
         }
         
         return mapping.get(display_name)
+
 # ============================================================================
 # DATABASE TABLES
 # ============================================================================
 
 class SequencingTechnology(Base):
-    """
-    Sequencing technology and platform information.
-    """
+    """Sequencing technology and platform information"""
     __tablename__ = "sequencing_technologies"
 
     id = Column(Integer, primary_key=True)
@@ -212,18 +246,13 @@ class SequencingTechnology(Base):
     platform_version = Column(String(50))
 
     # Relationships 
-    experiments = relationship("Experiment", back_populates="sequencing_technology")  
-    # in the 'one' class: 
-    # 'many' class table title = relationship("'many' class python name", back_populates="field name in 'many'class"-----------------------####
+    experiments = relationship("Experiment", back_populates="sequencing_technology")
     
     def __repr__(self):
         return f"<SequencingTechnology(tech={self.technology.value}, platform={self.platform_name})>"
 
-
 class VariantCaller(Base): 
-    """
-    Variant calling algorithms and details.
-    """
+    """Variant calling algorithms and details"""
     __tablename__ = 'variant_callers' 
 
     id = Column(Integer, primary_key=True)
@@ -232,16 +261,13 @@ class VariantCaller(Base):
     version = Column(String(50))
     model = Column(String(50))
 
-    
     experiments = relationship("Experiment", back_populates="variant_caller")
     
     def __repr__(self):
         return f"<VariantCaller(name={self.name.value}, version={self.version})>"
 
 class Aligner(Base): 
-    """
-    Alignment algorithms and versions.
-    """
+    """Alignment algorithms and versions"""
     __tablename__ = 'aligners'
     
     id = Column(Integer, primary_key=True)
@@ -254,9 +280,7 @@ class Aligner(Base):
         return f"<Aligner(name={self.name}, version={self.version})>"
 
 class TruthSet(Base):
-    """ 
-    Validation/Truth sets and details.
-    """
+    """Validation/Truth sets and details"""
     __tablename__ = 'truth_sets'
     
     id = Column(Integer, primary_key=True)
@@ -271,9 +295,7 @@ class TruthSet(Base):
         return f"<TruthSet(name={self.name.value}, sample={self.sample.value})>"
 
 class BenchmarkTool(Base):
-    """
-    Benchmarking tools and versions
-    """
+    """Benchmarking tools and versions"""
     __tablename__ = 'benchmark_tools' 
     
     id = Column(Integer, primary_key=True)
@@ -286,9 +308,7 @@ class BenchmarkTool(Base):
         return f"<BenchmarkTool(name={self.name.value}, version={self.version})>"
 
 class Variant(Base):
-    """ 
-    Variant types and details.
-    """
+    """Variant types and details"""
     __tablename__ = 'variants'
     
     id = Column(Integer, primary_key=True)
@@ -303,9 +323,7 @@ class Variant(Base):
         return f"<Variant(type={self.type.value}, origin={self.origin.value})>"
 
 class QualityControl(Base):
-    """
-    Quality control metrics.
-    """
+    """Quality control metrics"""
     __tablename__ = 'quality_control_metrics'
 
     id = Column(Integer, primary_key=True)
@@ -321,11 +339,8 @@ class QualityControl(Base):
     def __repr__(self):
         return f"<QualityControl(coverage={self.mean_coverage}, read_length={self.read_length})>"
 
-
 class Chemistry(Base):
-    """
-    Chemistry details.
-    """
+    """Chemistry details"""
     __tablename__ = 'chemistries'
     id = Column(Integer, primary_key=True)
     name = Column(String(50))  # e.g., "SPRQ"
@@ -337,7 +352,6 @@ class Chemistry(Base):
 
     def __repr__(self):
         return f"<Chemistry(name={self.name}, version={self.version})>"
-    
 
 # ============================================================================
 # MAIN EXPERIMENT TABLE
@@ -345,7 +359,7 @@ class Chemistry(Base):
 
 class Experiment(Base):
     """
-    Main table linking all the metadata adn details related to a benchmarking experiment.
+    Main table linking all metadata and details related to a benchmarking experiment.
     """
     __tablename__ = 'experiments'
     
@@ -354,7 +368,7 @@ class Experiment(Base):
     description = Column(String(1000))
     
     # Foreign keys to reference tables
-    sequencing_technology_id = Column(Integer, ForeignKey('sequencing_technologies.id')) #referencing the table name
+    sequencing_technology_id = Column(Integer, ForeignKey('sequencing_technologies.id'))
     variant_caller_id = Column(Integer, ForeignKey('variant_callers.id'))
     aligner_id = Column(Integer, ForeignKey('aligners.id'))
     truth_set_id = Column(Integer, ForeignKey('truth_sets.id'))
@@ -383,10 +397,11 @@ class Experiment(Base):
 # ============================================================================
 # BENCHMARKING RESULTS TABLES
 # ============================================================================
+
 class OverallResult(Base):
     """
-    Fast access table for overall (*) region results of the hap.py files only.
-    Used for main dashboard performance.
+    Fast access table for overall (*) region results from hap.py files 
+    Used for main performane results (Tab 2 and 3) 
     """
     __tablename__ = 'overall_results'
     
@@ -417,15 +432,14 @@ class OverallResult(Base):
     
 class BenchmarkResult(Base):
     """
-    Full Benchmarking experiment results (including all region types) from hap.py output.
-    Used for stratified analysis.
+    Full benchmarking experiment results (including all region types) from hap.py output.
+    Used for stratified analysis (Tab 4 only)
     """
     __tablename__ = 'benchmark_results'
     
     id = Column(Integer, primary_key=True)
     experiment_id = Column(Integer, ForeignKey('experiments.id'), nullable=False)
 
-    
     # Core identifiers (filtering criteria)
     variant_type = Column(String(20), nullable=False)      # SNP, INDEL
     subtype = Column(String(100), default='NULL')             # Always 'NULL'
