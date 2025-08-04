@@ -79,11 +79,21 @@ def test_connection():
         return False
 
 # ============================================================================
-# VALIDATION FUNCTIONS (moved from config.py)
+# VALIDATION FUNCTIONS
 # ============================================================================
 
 def validate_environment():
-    """Validate environment setup and permissions"""
+    """
+        Validate that the environment is properly set up for database operations.
+        
+        Checks to ensure the application can:
+        - Read and write to the configured data folder
+        - Create and access the database file
+        - Handle file permissions correctly
+        
+        Returns:
+            bool: True if all validation checks pass, False if any fail
+        """
     from config import DATA_FOLDER
     
     # Check data folder access
