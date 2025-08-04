@@ -12,22 +12,48 @@ Main workflow:
 5. Link all metadata through the Experiment table
 """
 
+import os
+import logging
+from config import config_valid
 import pandas as pd
 from database import get_db_session
 from models import *
 from config import METADATA_CSV_PATH
 from happy_parser import parse_happy_csv
 
+#logging
+logger = logging.getLogger(__name__)
+
 # Path to metadata CSV file
 metadata_CSV_file_path = METADATA_CSV_PATH
 
 #Loads CSV file and returns pandas metadata dataframe
 def load_csv_metadata(file_path):
+    """Load CSV with proper validation and error handling"""
+    
+    # Check if file exists
+    if not os.path.exists(file_path):
+        logger.error(f"Metadata CSV file not found: {file_path}")
+        return None
+    
+    # Check file access
+    if not os.access(file_path, os.R_OK):
+        logger.error(f"Cannot read metadata CSV file: {file_path}")
+        return None
+    
     try:
+        # Check if file is empty
+        if os.path.getsize(file_path) == 0:
+            logger.error("Metadata CSV file is empty")
+            return None
+        
+        # read metadata CSV
         metadata_df = pd.read_csv(file_path)
+        logger.info(f"--- Successfully loaded {len(metadata_df)} rows from metadata CSV ---")
         return metadata_df
+        
     except Exception as e:
-        print(f"Error loading CSV: {e}")
+        logger.error(f"Error loading metadata CSV: {e}")
         return None
 
 # ============================================================================
@@ -137,8 +163,17 @@ ENUM_MAPPINGS = {
 
 def map_enum(enum_type, value):
     """Convert CSV string value to corresponding database enum."""
-    return ENUM_MAPPINGS.get(enum_type, {}).get(clean_value(value))
-
+    if not value:
+        return None
+    try:
+        mapped = ENUM_MAPPINGS.get(enum_type, {}).get(clean_value(value))
+        if mapped is None:
+            logger.warning(f"Unknown {enum_type} value: '{value}' - using None")
+        return mapped
+    except Exception as e:
+        logger.warning(f"Error mapping {enum_type} value '{value}': {e}")
+        return None
+    
 # Booleans (i.e. Is_Phased)
 def map_boolean(value):
     """Convert string to boolean"""
@@ -175,14 +210,14 @@ def add_record_if_not_exists(session, model_class, filter_fields, all_fields, re
             new_record = model_class(**all_fields)
             session.add(new_record)
             session.flush()  # Get the ID without committing
-            print(f"Added {record_name}: {' '.join(str(v) for v in filter_fields.values() if v)}")
+            logger.info(f"Added {record_name}: {' '.join(str(v) for v in filter_fields.values() if v)}")
             return new_record
         else:
-            print(f"Already exists {record_name}: {' '.join(str(v) for v in filter_fields.values() if v)}")
+            logger.debug(f"Already exists {record_name}: {' '.join(str(v) for v in filter_fields.values() if v)}")
             return existing
                 
     except Exception as e:
-        print(f"Error adding {record_name}: {e}")
+        logger.error(f"Error adding {record_name}: {e}")
         return None
 
 # ============================================================================
@@ -349,7 +384,7 @@ def add_experiment(session, row, metadata_objects):
     ).first()
     
     if existing_experiment:
-        print(f"Experiment already exists: {experiment_name}")
+        logger.warning(f"Experiment already exists: {experiment_name}")
         return existing_experiment
     
     try:
@@ -369,11 +404,11 @@ def add_experiment(session, row, metadata_objects):
         
         session.add(new_experiment)
         session.flush()  # Get the ID
-        print(f"Created experiment: {experiment_name} (ID: {new_experiment.id})")
+        logger.info(f"Created experiment: {experiment_name} (ID: {new_experiment.id})")
         return new_experiment
                     
     except Exception as e:
-        print(f"Error adding experiment {experiment_name}: {e}")
+        logger.error(f"Error adding experiment {experiment_name}: {e}")
         return None
 
 
@@ -381,58 +416,65 @@ def populate_database_from_csv(file_path=metadata_CSV_file_path):
     """
     Main function to populate the entire database from CSV metadata and hap.py files
     """
+    if not config_valid:
+        logger.error("Configuration invalid - cannot populate database")
+        return False
+    
+    logger.info("--- Starting database population ---")
+    
     # Load CSV file
     raw_df = load_csv_metadata(file_path)
     if raw_df is None:
+        logger.error("Failed to load metadata CSV")
         return False
     
-    # skip NAN rows
+    # clean and process, skip NaN rows
     raw_df = raw_df.dropna(subset=['name'])
-
-    # Clean the entire DataFrame
     metadata_df = clean_dataframe_strings(raw_df)
-    print(f"Loaded CSV with {len(metadata_df)} rows")
-    
+    logger.info(f"Processing {len(metadata_df)} experiments")
+
     try:
         with get_db_session() as session:
             for index, row in metadata_df.iterrows():
-                print(f"\nProcessing row {index + 1}: {row.get('name', 'Unknown')}")
-                
-                # Create all metadata records and collect objects
-                metadata_objects = {
-                    'seq_tech': add_sequencing_tech(session, row),
-                    'caller': add_variant_caller(session, row),
-                    'aligner': add_aligner(session, row),
-                    'truth_set': add_truth_set(session, row),
-                    'benchmark_tool': add_benchmark_tool(session, row),
-                    'variant': add_variant(session, row),
-                    'chemistry': add_chemistry(session, row),
-                    'qc': add_quality_control(session, row)
-                }
+                try:
+                    logger.info(f"Processing experiment {index + 1}: {row.get('name', 'Unknown')}")
+                                        
+                    # Create all metadata records and collect objects
+                    metadata_objects = {
+                        'seq_tech': add_sequencing_tech(session, row),
+                        'caller': add_variant_caller(session, row),
+                        'aligner': add_aligner(session, row),
+                        'truth_set': add_truth_set(session, row),
+                        'benchmark_tool': add_benchmark_tool(session, row),
+                        'variant': add_variant(session, row),
+                        'chemistry': add_chemistry(session, row),
+                        'qc': add_quality_control(session, row)
+                    }
 
-                # Create experiment (handles duplicates internally)
-                experiment = add_experiment(session, row, metadata_objects)
-                
-                if not experiment:
-                    print(f"Failed to create experiment for {row['name']}")
-                    continue
-                
-                # Parse hap.py results if file exists
-                file_name = row.get('file_name')
-                if file_name and not pd.isna(file_name):
-                    result = parse_happy_csv(file_name, experiment.id, session)
-                    if result["success"]:
-                        print(f"Loaded results: {result['message']}")
-                    else:
-                        print(f"Failed to load results: {result.get('error')}")
-                
-                print(f"Complete setup for: {row['name']}")
+                    # Create experiment (handles duplicates internally)
+                    experiment = add_experiment(session, row, metadata_objects)
+                    
+                    if not experiment:
+                        logger.warning(f"Failed to create experiment for {row['name']}")
+                        continue
+                    
+                    # Parse hap.py results if file exists
+                    file_name = row.get('file_name')
+                    if file_name and not pd.isna(file_name):
+                        result = parse_happy_csv(file_name, experiment.id, session)
+                        if result["success"]:
+                            logger.info(f"Loaded results: {result['message']}")
+                        else:
+                            logger.warning(f"Failed to load results: {result.get('error')}")
+                    
+                    logger.info(f"--- Complete setup for: {row['ID']}{row['name']}  ---")
+                except Exception as e:
+                    logger.error(f"Failed to process experiment {row.get('ID', 'unknown')}{row.get('name', 'Unknown')}: {e}")
+                    continue  # Skip this experiment, continue with others
             
-        print("Database population completed successfully!")
+        logger.info("--- Database population completed ---")
         return True
         
     except Exception as e:
-        print(f"❌ Error populating database: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Database population failed: {e}")
         return False
