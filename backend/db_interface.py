@@ -1,49 +1,78 @@
+# ============================================================================
 # db_interface.py
+# ============================================================================
 """
-Core SQLAlchemy interface for Benchmarking Dashboard - translator between Rshiny and the DB
-Provides functions for R Shiny dashboard (with Reticulate)
+Database interface and query functions for SNV Benchmarking Dashboard frontend (R) to access the data.
 
-Main Functions:
-1. get_experiments_overview() - Light overview of all experiments
-2. get_experiment_metadata(experiment_ids) - Detailed metadata for selected experiments  
-3. get_performance_results(experiment_ids, variant_types) - Performance data for selected experiments
-4. get_experiments_by_filter() - filtering to get experiment IDs/info
+Main components:
+- Experiment overview and metadata retrieval
+- Performance data queries
+- Stratified analysis data retrieval  
+- Technology and caller-based filtering
+- JSON parameter handling for R Shiny integration
 """
 
 import pandas as pd
 import json
+import logging
 from sqlalchemy.orm import joinedload
 from database import get_db_session
 from models import *
 
-# ========================================================================
-# 1. EXPERIMENTS OVERVIEW
-# ========================================================================
+logger = logging.getLogger(__name__)
+
+# ============================================================================
+# db_interface.py
+# ============================================================================
+def parse_experiment_ids(experiment_ids_param):
+    """
+    Parse experiment IDs from various input formats (JSON string, list, or single value) and returns a list.
+    """
+    if experiment_ids_param is None:
+        return []
+        
+    try:
+        if isinstance(experiment_ids_param, str):
+            experiment_ids = json.loads(experiment_ids_param)
+            if not isinstance(experiment_ids, list):
+                experiment_ids = [experiment_ids]  # Convert single value to list
+        elif isinstance(experiment_ids_param, list):
+            experiment_ids = experiment_ids_param
+        else:
+            # Single value (int/float)
+            experiment_ids = [experiment_ids_param]
+            
+        return experiment_ids
+        
+    except json.JSONDecodeError as e:
+        logger.error(f"Error parsing experiment_ids JSON: {e}")
+        return []
+    except Exception as e:
+        logger.error(f"Error processing experiment_ids: {e}")
+        return []
+
+# ============================================================================
+# EXPERIMENT OVERVIEW AND METADATA
+# ============================================================================
+
 def get_experiments_overview(filters=None, experiment_ids_param=None):
     """
-    Get basic experiment information for dashboard overview.
+    Get basic experiment information for dashboard overview table.
+    
+    Retrieves experiments key metadata for the main dashboard table. 
+    Supports filtering by technology/caller and specific experiment ID selection.
     
     Args:
         filters (dict): Optional filters like {'technology': 'ILLUMINA', 'caller': 'DEEPVARIANT'}
-        experiment_ids (list): Optional list of specific experiment IDs to retrieve
+        experiment_ids_param (str/list): JSON string or list of specific experiment IDs (picked in frontend)
         
     Returns:
-        pandas.DataFrame: Experiment overview data
+        pandas.DataFrame: Experiment overview data with columns: id, name, technology, 
+                         platform, caller, caller_version, chemistry, truth_set, sample, created_at
     """
     # Parse JSON IDs
-    experiment_ids = None
-    if experiment_ids_param is not None:
-        try:
-            if isinstance(experiment_ids_param, str):
-                experiment_ids = json.loads(experiment_ids_param)
-                if not isinstance(experiment_ids, list):
-                    experiment_ids = [experiment_ids]  # Convert single value to list
-            else:
-                experiment_ids = experiment_ids_param
-        except json.JSONDecodeError as e:
-            print(f"Error parsing experiment_ids JSON: {e}")
-            return pd.DataFrame()
-        
+    experiment_ids = parse_experiment_ids(experiment_ids_param)
+
     # Get metadata from database
     try:
         with get_db_session() as session:
@@ -68,7 +97,7 @@ def get_experiments_overview(filters=None, experiment_ids_param=None):
                             SequencingTechnology.technology == tech_enum
                         )
                     except ValueError:
-                        print(f"Invalid technology filter: {filters['technology']}")
+                        logger.error(f"Invalid technology filter: {filters['technology']}")
                         return pd.DataFrame()
                 
                 if 'caller' in filters:
@@ -78,7 +107,7 @@ def get_experiments_overview(filters=None, experiment_ids_param=None):
                             VariantCaller.name == caller_enum
                         )
                     except ValueError:
-                        print(f"Invalid caller filter: {filters['caller']}")
+                        logger.error(f"Invalid caller filter: {filters['caller']}")
                         return pd.DataFrame()
             
             experiments = query.all()
@@ -93,7 +122,7 @@ def get_experiments_overview(filters=None, experiment_ids_param=None):
                     'platform': exp.sequencing_technology.platform_name if (exp.sequencing_technology and exp.sequencing_technology.platform_name) else "N/A",
                     'caller': exp.variant_caller.name.value if exp.variant_caller else "N/A",
                     'caller_version': exp.variant_caller.version if (exp.variant_caller and exp.variant_caller.version) else "N/A",
-                    'chemistry': exp.chemistry.name if (exp.chemistry and exp.chemistry.name) else "N/A",  # <-- FIX THIS LINE
+                    'chemistry': exp.chemistry.name if (exp.chemistry and exp.chemistry.name) else "N/A",
                     'truth_set': exp.truth_set.name.value if exp.truth_set else "N/A",
                     'sample': exp.truth_set.sample.value if exp.truth_set else "N/A",
                     'created_at': exp.created_at.strftime('%Y-%m-%d') if exp.created_at else "N/A"
@@ -102,40 +131,29 @@ def get_experiments_overview(filters=None, experiment_ids_param=None):
             return pd.DataFrame(data)
             
     except Exception as e:
-        print(f"Error in get_experiments_overview: {e}")
+        logger.error(f"Error in get_experiments_overview: {e}")
         return pd.DataFrame()
-# ========================================================================
-# 2. DETAILED EXPERIMENT METADATA
-# ========================================================================
+
 def get_experiment_metadata(experiment_ids_param):
     """
     Get complete metadata for specific experiments.
-    Use after user selects experiments from overview or filtering.
+    
+    Retrieves detailed metadata for selected experiments including all related
+    tables (technology, caller, aligner, truth set, etc.). 
+    Used in Tab 1 (row expansion)
     
     Args:
-        experiment_ids (list): List of experiment IDs to get metadata for
+        experiment_ids_param (str/list): JSON string or list of experiment IDs to get metadata for
         
     Returns:
-        pandas.DataFrame: Complete metadata for selected experiments
+        pandas.DataFrame: Complete metadata for selected experiments with all available fields
     """
     # Parse JSON IDs
-    try:
-        if isinstance(experiment_ids_param, str):
-            experiment_ids = json.loads(experiment_ids_param)
-            if not isinstance(experiment_ids, list):
-                experiment_ids = [experiment_ids]  # Convert single value to list
-        else:
-            experiment_ids = experiment_ids_param
-    except json.JSONDecodeError as e:
-        print(f"Error parsing experiment_ids JSON: {e}")
-        return pd.DataFrame()
-    
-    if not experiment_ids:
-        return pd.DataFrame()
-    
+    experiment_ids = parse_experiment_ids(experiment_ids_param)
+
     # check if list is empty
     if not experiment_ids or len(experiment_ids) == 0:
-        print("No experiment IDs provided to get_experiment_metadata")
+        logger.warning("No experiment IDs provided to get_experiment_metadata")
         return pd.DataFrame()
     
     # Get full metadata   
@@ -212,31 +230,29 @@ def get_experiment_metadata(experiment_ids_param):
             return pd.DataFrame(data)
             
     except Exception as e:
-        print(f"Error in get_experiment_metadata: {e}")
+        logger.error(f"Error in get_experiment_metadata: {e}")
         return pd.DataFrame()
 
-# ========================================================================
-# 3. DETAILED EXPERIMENT PERFORMANCE RESULTS
-# ======================================================================== 
+# ============================================================================
+# PERFORMANCE DATA QUERIES
+# ============================================================================
+
 def get_experiments_with_performance(experiment_ids_param, variant_types=['SNP', 'INDEL']):
     """
-    Single comprehensive query combining performance data with metadata.
-    Returns all data needed for Tabs 2 & 3 (Performance Results + Visualizations)
+    Get performance data combined with metadata for selected experiments.
+    
+    Joins performance results from OverallResult table with complete experiment metadata. 
+    Used for performance tables and visualizations in the dashboard (Tabs 2 and 3).
+    
+    Args:
+        experiment_ids_param (str/list): JSON string or list of experiment IDs
+        variant_types (list): List of variant types to include (default: ['SNP', 'INDEL'])
+        
+    Returns:
+        pandas.DataFrame: Combined performance metrics and metadata for each experiment/variant type
     """
     # Parse JSON IDs
-    try:
-        if isinstance(experiment_ids_param, str):
-            experiment_ids = json.loads(experiment_ids_param)
-            if not isinstance(experiment_ids, list):
-                experiment_ids = [experiment_ids]
-        else:
-            experiment_ids = experiment_ids_param
-    except json.JSONDecodeError as e:
-        print(f"Error parsing experiment_ids JSON: {e}")
-        return pd.DataFrame()
-    
-    if not experiment_ids:
-        return pd.DataFrame()
+    experiment_ids = parse_experiment_ids(experiment_ids_param)
 
     try:
         with get_db_session() as session:
@@ -310,7 +326,7 @@ def get_experiments_with_performance(experiment_ids_param, variant_types=['SNP',
             ).join(
                 VariantCaller, Experiment.variant_caller_id == VariantCaller.id
             ).outerjoin(
-                # Optional joins (using outerjoin to avoid missing data)
+                # Optional joins (outerjoin to avoid missing data)
                 Aligner, Experiment.aligner_id == Aligner.id
             ).outerjoin(
                 TruthSet, Experiment.truth_set_id == TruthSet.id
@@ -329,7 +345,7 @@ def get_experiments_with_performance(experiment_ids_param, variant_types=['SNP',
             
             results = query.all()
             
-            # Convert to DataFrame with proper column handling
+            # Convert to DataFrame 
             data = []
             for result in results:
                 data.append({
@@ -398,31 +414,30 @@ def get_experiments_with_performance(experiment_ids_param, variant_types=['SNP',
             return pd.DataFrame(data)
             
     except Exception as e:
-        print(f"Error in get_experiments_with_performance: {e}")
+        logger.error(f"Error in get_experiments_with_performance: {e}")
         import traceback
         traceback.print_exc()
         return pd.DataFrame()
 
 def get_stratified_performance_by_regions(experiment_ids_param, variant_types=['SNP', 'INDEL'], regions=None):
     """
-    Get stratified results filtered by regions
-    Only loads data for selected regions
+    Get stratified performance results filtered by specific genomic regions.
+    
+    Retrieves detailed performance metrics across different genomic regions
+    (easy/difficult, GC content, functional regions, etc.) for stratified analysis (Tab 4)
+    Only loads data for user-selected regions.
+    
+    Args:
+        experiment_ids_param (str/list): JSON string or list of experiment IDs
+        variant_types (list): List of variant types to include (default: ['SNP', 'INDEL'])  
+        regions (list): List of region names to filter by (e.g., ['All Regions', 'Easy Regions'])
+        
+    Returns:
+        pandas.DataFrame: Stratified performance data with experiment metadata
     """
     
-    # Parse JSON IDs (same as before)
-    try:
-        if isinstance(experiment_ids_param, str):
-            experiment_ids = json.loads(experiment_ids_param)
-            if not isinstance(experiment_ids, list):
-                experiment_ids = [experiment_ids]
-        else:
-            experiment_ids = experiment_ids_param
-    except json.JSONDecodeError as e:
-        print(f"Error parsing experiment_ids JSON: {e}")
-        return pd.DataFrame()
-    
-    if not experiment_ids:
-        return pd.DataFrame()
+    # Parse JSON IDs
+    experiment_ids = parse_experiment_ids(experiment_ids_param)
 
     try:
         with get_db_session() as session:
@@ -434,7 +449,7 @@ def get_stratified_performance_by_regions(experiment_ids_param, variant_types=['
                 BenchmarkResult.variant_type.in_(variant_types)
             )
 
-            # FIXED: Use the correct method for UI region names
+            # Filter by regions if specified
             if regions and len(regions) > 0:
                 region_enums = []
                 for region_name in regions:
@@ -446,7 +461,7 @@ def get_stratified_performance_by_regions(experiment_ids_param, variant_types=['
                 if region_enums:
                     query = query.filter(BenchmarkResult.subset.in_(region_enums))
                 else:
-                    print(f"No valid regions found for: {regions}")
+                    logger.warning(f"No valid regions found for: {regions}")
                     return pd.DataFrame()
             
             results = query.all()
@@ -480,20 +495,21 @@ def get_stratified_performance_by_regions(experiment_ids_param, variant_types=['
             return pd.DataFrame(data)
             
     except Exception as e:
-        print(f"Error in get_stratified_performance_by_regions: {e}")
+        logger.error(f"Error in get_stratified_performance_by_regions: {e}")
         import traceback
         traceback.print_exc()
         return pd.DataFrame()
-# ========================================================================
-# 4. FILTER EXPERIMENTS BY SEQUNCING TECHNOLGY
-# ========================================================================
+
+# ============================================================================
+# FILTERING FUNCTIONS
+# ============================================================================
 
 def get_experiments_by_technology(technology):
     """
-    Get experiment IDs for a specific sequencing technology.
+    Get experiment IDs that match a specific sequencing technology.
     
     Args:
-        technology (str): Technology name - "Illumina", "PacBio", "ONT", or "MGI"
+        technology (str): Technology name - "ILLUMINA", "PACBIO", "ONT", or "MGI"
         
     Returns:
         list: List of experiment IDs matching the technology
@@ -504,34 +520,31 @@ def get_experiments_by_technology(technology):
             try:
                 tech_enum = SeqTechName(technology.strip().upper())
             except ValueError:
-                print(f"Invalid technology: {technology}")
-                print(f"Valid options: {[t.value for t in SeqTechName]}")
+                logger.error(f"Invalid technology: {technology}")
+                logger.info(f"Valid options: {[t.value for t in SeqTechName]}")
                 return []
             
             # Query joining Experiment with Sequencing technologies
             query = session.query(Experiment.id).join(
                 SequencingTechnology
             ).filter(
-                SequencingTechnology.technology == tech_enum # Filter for chosen sequencing tech
+                SequencingTechnology.technology == tech_enum
             )
             
             # Extract IDs
             result = query.all()
-            return [row[0] for row in result] #returns ID
+            return [row[0] for row in result]
             
     except Exception as e:
-        print(f"Error getting experiments by technology: {e}")
+        logger.error(f"Error getting experiments by technology: {e}")
         return []
 
-# ========================================================================
-# 4. FILTER EXPERIMENTS BY VARIANT CALLER
-# ========================================================================
 def get_experiments_by_caller(caller):
     """
-    Get experiment IDs for a specific variant caller.
+    Get experiment IDs that match a specific variant caller.
     
     Args:
-        caller (str): Caller name - "DeepVariant", "GATK", or "Clair3"
+        caller (str): Caller name - "DEEPVARIANT", "GATK", or "CLAIR3"
         
     Returns:
         list: List of experiment IDs matching the caller
@@ -542,15 +555,15 @@ def get_experiments_by_caller(caller):
             try:
                 caller_enum = CallerName(caller.strip().upper())
             except ValueError:
-                print(f"Invalid caller: {caller}")
-                print(f"Valid options: {[c.value for c in CallerName]}")
+                logger.error(f"Invalid caller: {caller}")
+                logger.info(f"Valid options: {[c.value for c in CallerName]}")
                 return []
             
-            # Query joining Experiment with varaint caller
+            # Query joining Experiment with variant caller
             query = session.query(Experiment.id).join(
                 VariantCaller
             ).filter(
-                VariantCaller.name == caller_enum # Filters for chosen callers
+                VariantCaller.name == caller_enum
             )
             
             # Extract IDs
@@ -558,13 +571,12 @@ def get_experiments_by_caller(caller):
             return [row[0] for row in result]
             
     except Exception as e:
-        print(f"Error getting experiments by caller: {e}")
+        logger.error(f"Error getting experiments by caller: {e}")
         return []
-    
 
-# ========================================================================
-# 5. GET TECHNOLOGY FROM ID
-# ========================================================================
+# ============================================================================
+# INDIVIDUAL EXPERIMENT LOOKUPS
+# ============================================================================
 
 def get_technology(experiment_id):
     """
@@ -574,7 +586,7 @@ def get_technology(experiment_id):
         experiment_id (int): Single experiment ID
         
     Returns:
-        str or None: Technology name (e.g., "Illumina", "PacBio", "ONT", "MGI") or None if not found
+        str or None: Technology name (e.g., "ILLUMINA", "PACBIO") or None if not found
     """
     try:
         with get_db_session() as session:
@@ -589,12 +601,9 @@ def get_technology(experiment_id):
                 return None
             
     except Exception as e:
-        print(f"Error getting technology for experiment {experiment_id}: {e}")
+        logger.error(f"Error getting technology for experiment {experiment_id}: {e}")
         return None
 
-# ========================================================================
-# 5. GET CALLER FROM ID
-# ========================================================================
 def get_caller(experiment_id):
     """
     Get variant caller name for a specific experiment.
@@ -603,7 +612,7 @@ def get_caller(experiment_id):
         experiment_id (int): Single experiment ID
         
     Returns:
-        str or None: Caller name (e.g., "DeepVariant", "GATK", "Clair3") or None if not found
+        str or None: Caller name (e.g., "DEEPVARIANT", "GATK") or None if not found
     """
     try:
         with get_db_session() as session:
@@ -618,5 +627,5 @@ def get_caller(experiment_id):
                 return None
             
     except Exception as e:
-        print(f"Error getting caller for experiment {experiment_id}: {e}")
+        logger.error(f"Error getting caller for experiment {experiment_id}: {e}")
         return None
