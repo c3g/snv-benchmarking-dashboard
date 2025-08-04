@@ -1,10 +1,25 @@
-# database manager (connects to the database, creates sessions tests connection)
+# ============================================================================
+# database.py
+# ============================================================================
+"""
+Database connection, session management, and validation for SNV Benchmarking Dashboard.
+
+Main components:
+- SQLite database engine setup and configuration
+- Session context management with proper error handling
+- Database table creation and connection testing
+- Environment validation and permission checks
+"""
+
 import os
-from config import DATABASE_PATH
+import logging
+from config import DATABASE_PATH, DATA_FOLDER
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from contextlib import contextmanager
 from models import Base
+
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # SQLITE/POSTGRES CONFIGURATION
@@ -42,7 +57,7 @@ def get_db_session():
         session.commit()
     except Exception as e:
         session.rollback()
-        print(f"Database error: {e}")  # Add logging
+        logger.error(f"Database error: {e}")
         raise e
     finally:
         session.close()
@@ -57,8 +72,38 @@ def test_connection():
     try:
         with get_db_session() as session: # Creates a database connection
             session.execute(text("SELECT 1"))
-            print("Connection Successful")
+            logger.info("Database connection successful")
             return True
     except Exception as e:
-        print(f"Database connection failed: {e}")
+        logger.error(f"Database connection failed: {e}")
         return False
+
+# ============================================================================
+# VALIDATION FUNCTIONS (moved from config.py)
+# ============================================================================
+
+def validate_environment():
+    """Validate environment setup and permissions"""
+    from config import DATA_FOLDER
+    
+    # Check data folder access
+    if not os.path.exists(DATA_FOLDER):
+        logger.error(f"DATA_FOLDER does not exist: {DATA_FOLDER}")
+        return False
+    
+    if not os.access(DATA_FOLDER, os.R_OK | os.W_OK):
+        logger.error(f"Cannot read/write to DATA_FOLDER: {DATA_FOLDER}")
+        return False
+    
+    # Check database directory access
+    db_dir = os.path.dirname(DATABASE_PATH)
+    if not os.path.exists(db_dir):
+        logger.error(f"Database directory does not exist: {db_dir}")
+        return False
+        
+    if not os.access(db_dir, os.R_OK | os.W_OK):
+        logger.error(f"Cannot read/write to database directory: {db_dir}")
+        return False
+    
+    logger.info("Environment validation successful")
+    return True
