@@ -60,7 +60,29 @@ def validate_happy_data(df):
 # ============================================================================
 
 def parse_happy_csv(happy_file_name, experiment_id, session):
-    """Parse hap.py CSV file and store results in database"""
+    """
+    Parse hap.py CSV output file and store performance metrics in database.
+    
+    Processes hap.py benchmarking results by:
+    1. Checking for existing results (skip if already processed)
+    2. Validating file existence and format
+    3. Filtering for specific rows (Subtype='*', Filter='ALL')
+    4. Converting hap.py regions to database enums
+    5. Storing stratified results in BenchmarkResult table
+    6. Storing summary results in OverallResult table (for 'All Regions' only)
+    
+    Args:
+        happy_file_name (str): Filename of hap.py CSV (e.g., '001_HG002_Illumina_DeepVariant.csv')
+        experiment_id (int): Database ID of the experiment these results belong to
+        session: Active SQLAlchemy session for database operations
+        
+    Returns:
+        dict: Success/failure status with message
+            {"success": True, "message": "Added X results..."}
+            {"success": False, "error": "File not found"}
+            {"success": True, "message": "Results already exist", "skipped": True}
+    """
+    
     happy_file_path = get_data_file_path(happy_file_name)
     
     logger.debug(f"Parsing hap.py file: {happy_file_name} for experiment {experiment_id}")

@@ -1,55 +1,53 @@
+# ============================================================================
+# populate_metadata.py
+# ============================================================================
 """
-populate_metadata.py
+Metadata parsing and database population for SNV Benchmarking Dashboard.
 
-Parses experiment metadata from CSV files and populates the normalized database tables.
-Handles data validation, enum mapping, and prevents duplicate records.
-
-Main workflow:
-1. Load CSV file containing experiment metadata
-2. Clean and validate each data value
-3. Map string values to database enums
-4. Create database records (skipping duplicates)
-5. Link all metadata through the Experiment table
+Main components:
+- CSV metadata loading and validation
+- Data cleaning and enum mapping
+- Database record creation (with duplicate prevention)
+- Experiment linking and hap.py results integration
 """
 
 import os
 import logging
-from config import config_valid
 import pandas as pd
 from database import get_db_session
 from models import *
 from config import METADATA_CSV_PATH
 from happy_parser import parse_happy_csv
+from utils import clean_value, safe_float
 
-#logging
 logger = logging.getLogger(__name__)
 
-# Path to metadata CSV file
-metadata_CSV_file_path = METADATA_CSV_PATH
+# Keep original case for display columns (not converted to lowercase)
+DISPLAY_COLUMNS = ['name', 'description', 'platform_name', 'chemistry_name','caller_model','aligner_name','file_name']
 
-#Loads CSV file and returns pandas metadata dataframe
-def load_csv_metadata(file_path):
-    """Load CSV with proper validation and error handling"""
+# ============================================================================
+# CSV LOADING AND VALIDATION
+# ============================================================================
+
+def load_csv_metadata(file_path=METADATA_CSV_PATH):
+    """Load and validate CSV metadata file"""
     
-    # Check if file exists
+    # File existence and access checks
     if not os.path.exists(file_path):
         logger.error(f"Metadata CSV file not found: {file_path}")
         return None
     
-    # Check file access
     if not os.access(file_path, os.R_OK):
         logger.error(f"Cannot read metadata CSV file: {file_path}")
         return None
     
+    if os.path.getsize(file_path) == 0:
+        logger.error("Metadata CSV file is empty")
+        return None
+    
     try:
-        # Check if file is empty
-        if os.path.getsize(file_path) == 0:
-            logger.error("Metadata CSV file is empty")
-            return None
-        
-        # read metadata CSV
         metadata_df = pd.read_csv(file_path)
-        logger.info(f"--- Successfully loaded {len(metadata_df)} rows from metadata CSV ---")
+        logger.info(f"Successfully loaded {len(metadata_df)} rows from metadata CSV")
         return metadata_df
         
     except Exception as e:
@@ -57,48 +55,37 @@ def load_csv_metadata(file_path):
         return None
 
 # ============================================================================
-# CLEAN AND CONVERT ENTRY VALUE
+# DATA CLEANING AND CONVERSION
 # ============================================================================
-
-def clean_value(value):
-    """Cleans entry values and converts them to lowercase Strings, used by enum mappers"""
-    if value is None or pd.isna(value): 
-        return None
-    return str(value).strip().lower()
 
 def clean_dataframe_strings(df):
     """
-    Clean all string columns in the DataFrame to lowercase.
-    Leaves numeric columns unchanged.
+    Clean string columns to lowercase for enum matching, while preserving display columns.
+    
+    prepares CSV data for database insertion by normalizing most string fields to lowercase,
+    but keeps certain columns in their original case for better display in the UI (DISPLAY_COLUMNS).
+    
+    Args:
+        df (pandas.DataFrame): Raw CSV data loaded from metadata file
+        
+    Returns:
+        pandas.DataFrame: Cleaned dataframe with normalized strings
+
     """
     cleaned_df = df.copy()
     
-    # Columns to exclude from cleaning (keep original case for display)
-    exclude_columns = ['name', 'description', 'platform_name', 'chemistry_name', 'file_name']
-
-    # Clean only string columns
     string_columns = cleaned_df.select_dtypes(include=['object']).columns
     for col in string_columns:
-            if col not in exclude_columns:
-                cleaned_df[col] = cleaned_df[col].apply(clean_value)
+        if col not in DISPLAY_COLUMNS:
+            cleaned_df[col] = cleaned_df[col].apply(clean_value)
     
     return cleaned_df
 
-# Converts strings to floats while handling commas
-def safe_float(value):
-    if value is None or pd.isna(value):
-        return None
-    try:
-        str_value = str(value).replace(',', '')
-        return float(str_value)
-    except (ValueError, TypeError):
-        return None
-    
 # ============================================================================
-# METADATA ENUM MAPPERS (Case Insensitive)
+# ENUM MAPPING
 # ============================================================================
-# Dictionary mapping CSV string values to corresponding database enum values
 
+# Dictionary for converting cleaned strings to enums
 ENUM_MAPPINGS = {
     'technology': {
         'illumina': SeqTechName.ILLUMINA,
@@ -162,84 +149,80 @@ ENUM_MAPPINGS = {
 }
 
 def map_enum(enum_type, value):
-    """Convert CSV string value to corresponding database enum."""
+    """
+    Convert CSV string values to their corresponding database enum values.
+    
+    Uses ENUM_MAPPINGS dictionary to translate user-friendly CSV values 
+    (like 'illumina', 'deepvariant') into proper SQLAlchemy enum objects.
+    
+    Args:
+        enum_type (str): Type of enum to map to (e.g., 'technology', 'caller_name')
+        value (str): Raw value from CSV (e.g., 'ILLUMINA', 'DeepVariant')
+        
+    Returns:
+        Enum: Corresponding SQLAlchemy enum value (e.g., SeqTechName.ILLUMINA)
+    """
     if not value:
         return None
     try:
         mapped = ENUM_MAPPINGS.get(enum_type, {}).get(clean_value(value))
         if mapped is None:
-            logger.warning(f"Unknown {enum_type} value: '{value}' - using None")
+            logger.warning(f"Unknown {enum_type} value: '{value}'")
         return mapped
     except Exception as e:
         logger.warning(f"Error mapping {enum_type} value '{value}': {e}")
         return None
-    
-# Booleans (i.e. Is_Phased)
+
 def map_boolean(value):
     """Convert string to boolean"""
-    if clean_value(value) == 'true':
-        return True
-    else:
-        return False
+    return clean_value(value) == 'true'
 
 # ============================================================================
-# GENERIC METADATA ADDING FUNCTION
+# RECORD CREATION FUNCTIONS
 # ============================================================================
 
 def add_record_if_not_exists(session, model_class, filter_fields, all_fields, record_name):
     """
-    Generic function to add metadata record only if it doesn't already exist.
-    Prevents duplicate records and works with any SQLAlchemy model.
+    Generic function to create a database record only if it doesn't already exist.
+    Prevents duplicate records by checking for existing entries first.
     
     Args:
-        session: passed as parameter instead of creating a new one
-        model_class: SQLAlchemy model class (e.g., SequencingTechnology)
-        filter_fields (dict): Fields to check for existing records
-        all_fields (dict): Complete field set for new record creation
-        record_name (str): Description for logging purposes
+        session: Active SQLAlchemy database session for queries and commits
+        model_class: SQLAlchemy model class to create (e.g., SequencingTechnology, VariantCaller)
+        filter_fields (dict): Fields to check for existing records (e.g., {'name': 'ILLUMINA', 'platform': 'NovaSeq'})
+        all_fields (dict): Complete field set for creating new record (includes filter_fields + additional fields)
+        record_name (str): Human-readable description for logging (e.g., "sequencing tech", "variant caller")
         
     Returns:
-        SQLAlchemy object: New or existing record instance
+        SQLAlchemy object: Either the existing record (if found) or newly created record
     """
     try:
-        # Check if record already exists by starting query on model table
         existing = session.query(model_class).filter_by(**filter_fields).first()
             
         if not existing:
-            # creates a new instance of the model and stages it for insertion
             new_record = model_class(**all_fields)
             session.add(new_record)
-            session.flush()  # Get the ID without committing
-            logger.info(f"Added {record_name}: {' '.join(str(v) for v in filter_fields.values() if v)}")
+            session.flush()
+            logger.debug(f"Added {record_name}")
             return new_record
         else:
-            logger.debug(f"Already exists {record_name}: {' '.join(str(v) for v in filter_fields.values() if v)}")
+            logger.debug(f"Already exists {record_name}")
             return existing
                 
     except Exception as e:
         logger.error(f"Error adding {record_name}: {e}")
         return None
 
-# ============================================================================
-# METADATA ADDERS
-# ============================================================================
-
 def add_sequencing_tech(session, row):
-    """
-    Create SequencingTechnology record from CSV row. (if not already exist)
-    """
-    # Map fields to enums
+    """Create SequencingTechnology record from CSV row"""
     tech_enum = map_enum('technology', row['technology'])
     target_enum = map_enum('target', row['target'])
     type_enum = map_enum('platform_type', row['platform_type'])
     
-    # Fields used to check for duplicates
     filter_fields = {
         'technology': tech_enum,
         'platform_name': row['platform_name'],
-    
     }
-    # Complete record data
     all_fields = {
         **filter_fields,
         'target': target_enum,
@@ -250,20 +233,14 @@ def add_sequencing_tech(session, row):
     return add_record_if_not_exists(session, SequencingTechnology, filter_fields, all_fields, "sequencing tech")
 
 def add_variant_caller(session, row):
-    """
-    Create VariantCaller record from CSV row.
-    """
-    # Map fields to enums
+    """Create VariantCaller record from CSV row"""
     name_enum = map_enum('caller_name', row['caller_name'])
     type_enum = map_enum('caller_type', row['caller_type'])
     
-    # Fields used to check for duplicates
     filter_fields = {
         'name': name_enum,
         'version': row['caller_version']
     }
-
-    # Complete record data
     all_fields = {
         **filter_fields,
         'type': type_enum,
@@ -272,111 +249,94 @@ def add_variant_caller(session, row):
     return add_record_if_not_exists(session, VariantCaller, filter_fields, all_fields, "variant caller")
 
 def add_aligner(session, row):
-    """
-    Create Aligner record from CSV row.
-    """
-    # Fields used to check for duplicates
+    """Create Aligner record from CSV row"""
+    # Skip if no aligner name provided
+    if not row.get('aligner_name') or pd.isna(row.get('aligner_name')) or str(row.get('aligner_name')).strip() == '':
+        return None
+        
     filter_fields = {
         'name': row['aligner_name'],
         'version': row['aligner_version']
     }
-    
     return add_record_if_not_exists(session, Aligner, filter_fields, filter_fields, "aligner")
 
 def add_truth_set(session, row):
-    """
-    Create TruthSet record from CSV row.
-    """
-    # Map fields to enums
+    """Create TruthSet record from CSV row"""
     name_enum = map_enum('truth_set_name', row['truth_set_name'])
     reference_enum = map_enum('truth_set_reference', row['truth_set_reference'])
     sample_enum = map_enum('truth_set_sample', row['truth_set_sample'])
     
-    # Fields used to check for duplicates
     filter_fields = {
         'name': name_enum,
         'version': row['truth_set_version'],
         'sample': sample_enum,
         'reference': reference_enum
     }
-    
     return add_record_if_not_exists(session, TruthSet, filter_fields, filter_fields, "truth set")
 
 def add_benchmark_tool(session, row):
-    """
-    Create BenchmarkTool record from CSV row.
-    """
-    # Map fields to enums
+    """Create BenchmarkTool record from CSV row"""
     tool_enum = map_enum('benchmark_tool_name', row['benchmark_tool_name'])
     
-    # Fields used to check for duplicates
     filter_fields = {
         'name': tool_enum,
         'version': row['benchmark_tool_version']
     }
-    
     return add_record_if_not_exists(session, BenchmarkTool, filter_fields, filter_fields, "benchmark tool")
 
 def add_variant(session, row):
-    """
-    Create Variant record from CSV row.
-    """
-    # Map fields to enums
+    """Create Variant record from CSV row"""
     type_enum = map_enum('variant_type', row['variant_type'])
     size_enum = map_enum('variant_size', row['variant_size'])
     origin_enum = map_enum('variant_origin', row['variant_origin'])
     phased_bool = map_boolean(row['is_phased'])
     
-    # Fields used to check for duplicates
     filter_fields = {
         'type': type_enum,
         'size': size_enum,
         'origin': origin_enum,
         'is_phased': phased_bool
     }
-    
     return add_record_if_not_exists(session, Variant, filter_fields, filter_fields, "variant")
 
 def add_chemistry(session, row):
-    """
-    Create Chemistry record from CSV row.
-    """
-    # Map fields to enums
+    """Create Chemistry record from CSV row"""
+    # Skip if no chemistry name provided
+    if not row.get('chemistry_name') or pd.isna(row.get('chemistry_name')) or str(row.get('chemistry_name')).strip() == '':
+        return None
+        
     tech_enum = map_enum('technology', row['technology'])
     
-    # Fields used to check for duplicates
     filter_fields = {
         'name': row['chemistry_name'],
         'sequencing_technology': tech_enum,
         'sequencing_platform': row['platform_name'],
         'version': row.get('chemistry_version', None)
     }
-    
     return add_record_if_not_exists(session, Chemistry, filter_fields, filter_fields, "chemistry")
 
 def add_quality_control(session, row):
-    """
-    Create Quality Control Metrics from CSV row
-    """
+    """Create QualityControl record from CSV row"""
     all_fields = {
         'mean_coverage': safe_float(row.get('mean_coverage', None)),
         'read_length': safe_float(row.get('read_length', None)),
         'mean_read_length': safe_float(row.get('mean_read_length', None)),
         'mean_insert_size': safe_float(row.get('mean_insert_size', None))
     }
-
-    filter_fields = all_fields.copy()  # Use all fields to check for duplicates
     
+    # Skip if all QC fields are None/empty
+    if all(value is None for value in all_fields.values()):
+        return None
+    
+    filter_fields = all_fields.copy()
     return add_record_if_not_exists(session, QualityControl, filter_fields, all_fields, "quality control")
 
 def add_experiment(session, row, metadata_objects):
-    """
-    Create Experiment record linking all metadata via foreign keys.
-    """
+    """Create Experiment record linking all metadata"""
     experiment_name = row['name']
     description = row.get('description', f"Benchmarking experiment for {experiment_name}")
     
-    # Check if experiment already exists ---------------------------------------------------------------------------------------------------------
+    # Check if experiment already exists
     existing_experiment = session.query(Experiment).filter_by(
         name=experiment_name,
         sequencing_technology_id=metadata_objects['seq_tech'].id if metadata_objects['seq_tech'] else None,
@@ -388,7 +348,6 @@ def add_experiment(session, row, metadata_objects):
         return existing_experiment
     
     try:
-        # Create new experiment
         new_experiment = Experiment(
             name=experiment_name,
             description=description,
@@ -403,7 +362,7 @@ def add_experiment(session, row, metadata_objects):
         )
         
         session.add(new_experiment)
-        session.flush()  # Get the ID
+        session.flush()
         logger.info(f"Created experiment: {experiment_name} (ID: {new_experiment.id})")
         return new_experiment
                     
@@ -411,35 +370,34 @@ def add_experiment(session, row, metadata_objects):
         logger.error(f"Error adding experiment {experiment_name}: {e}")
         return None
 
+# ============================================================================
+# MAIN POPULATION FUNCTION
+# ============================================================================
 
-def populate_database_from_csv(file_path=metadata_CSV_file_path):
-    """
-    Main function to populate the entire database from CSV metadata and hap.py files
-    """
-    if not config_valid:
-        logger.error("Configuration invalid - cannot populate database")
-        return False
+def populate_database_from_csv(file_path=METADATA_CSV_PATH):
+    """Main function to populate database from CSV metadata and hap.py files"""
+    logger.info("Starting database population from CSV")
     
-    logger.info("--- Starting database population ---")
-    
-    # Load CSV file
+    # Load and validate CSV
     raw_df = load_csv_metadata(file_path)
     if raw_df is None:
         logger.error("Failed to load metadata CSV")
         return False
     
-    # clean and process, skip NaN rows
+    # Clean and process data
     raw_df = raw_df.dropna(subset=['name'])
     metadata_df = clean_dataframe_strings(raw_df)
     logger.info(f"Processing {len(metadata_df)} experiments")
 
+    success_count = 0
+    
     try:
         with get_db_session() as session:
             for index, row in metadata_df.iterrows():
                 try:
                     logger.info(f"Processing experiment {index + 1}: {row.get('name', 'Unknown')}")
                                         
-                    # Create all metadata records and collect objects
+                    # Create all metadata records
                     metadata_objects = {
                         'seq_tech': add_sequencing_tech(session, row),
                         'caller': add_variant_caller(session, row),
@@ -451,14 +409,13 @@ def populate_database_from_csv(file_path=metadata_CSV_file_path):
                         'qc': add_quality_control(session, row)
                     }
 
-                    # Create experiment (handles duplicates internally)
+                    # Create experiment
                     experiment = add_experiment(session, row, metadata_objects)
-                    
                     if not experiment:
                         logger.warning(f"Failed to create experiment for {row['name']}")
                         continue
                     
-                    # Parse hap.py results if file exists
+                    # Parse hap.py results if available
                     file_name = row.get('file_name')
                     if file_name and not pd.isna(file_name):
                         result = parse_happy_csv(file_name, experiment.id, session)
@@ -467,12 +424,14 @@ def populate_database_from_csv(file_path=metadata_CSV_file_path):
                         else:
                             logger.warning(f"Failed to load results: {result.get('error')}")
                     
-                    logger.info(f"--- Complete setup for: {row['ID']}{row['name']}  ---")
+                    success_count += 1
+                    logger.info(f"Completed setup for experiment {row.get('ID', index+1)}")
+                    
                 except Exception as e:
-                    logger.error(f"Failed to process experiment {row.get('ID', 'unknown')}{row.get('name', 'Unknown')}: {e}")
-                    continue  # Skip this experiment, continue with others
+                    logger.error(f"Failed to process experiment {row.get('name', 'Unknown')}: {e}")
+                    continue
             
-        logger.info("--- Database population completed ---")
+        logger.info(f"Database population completed: {success_count}/{len(metadata_df)} experiments processed")
         return True
         
     except Exception as e:
