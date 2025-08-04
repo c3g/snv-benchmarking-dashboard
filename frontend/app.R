@@ -2121,10 +2121,9 @@ server <- function(input, output, session) {
           "}"
         ),
         columnDefs = list(
-          list(targets = 0, orderable = FALSE, width = "30px", className = "dt-center"),
-          list(targets = 1, width = "30px", className = "dt-left"),
-          list(targets = 2, width =150, className = "dt-left"),
-          list(targets = c(3:10), className = "dt-center")
+          list(targets = 0, orderable = FALSE, width = "20px"),
+          list(targets = 1, width = "20px",className = "dt-center"),
+          list(targets = 2, width =150)
         )
       ),
       rownames = FALSE,
