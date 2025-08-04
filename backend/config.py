@@ -1,56 +1,100 @@
 import os
+import logging
+
+#logging
+logging.basicConfig(
+    level=logging.INFO, 
+    format='%(asctime)s - %(levelname)s: %(message)s',
+    datefmt='%H:%M:%S' 
+)
+logger = logging.getLogger(__name__)
 
 # ============================================================================
-# PROJECT PATHS
+# PATHS
 # ============================================================================
 
-# Get the absolute path to the project root (two levels up from this file)
-# PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) ---------------- Local path
-# PROJECT_ROOT = "/app"  ---------------------------------------------------------------- Container path
-
-# Folder containing all data files
-# DATA_FOLDER = os.path.join(PROJECT_ROOT, 'data', 'happy_files') -------------------- Local path
-# DATA_FOLDER = os.getenv('BENCHMARKING_DATA_LOCATION', '/data') -------------------- Container path
-
-#------------------------------------
-import os
-
-
-# container detection
+# Container detection 
 IS_CONTAINER = os.path.exists("/app") and os.path.exists("/app/backend")
 
 if IS_CONTAINER:
-    # Container: everything in mounted /data volume
     PROJECT_ROOT = "/app"
     DATA_FOLDER = "/data"
     
-    # Check if files are in happy_files subdirectory
-    happy_files_path = "/data/happy_files"
-    metadata_in_happy_files = os.path.join(happy_files_path, "000_benchmark_dashboard_default_metadata.csv")
-    
-    if os.path.exists(metadata_in_happy_files):
-        DATA_FOLDER = happy_files_path
-    
-    METADATA_CSV_PATH = os.path.join(DATA_FOLDER, "000_benchmark_dashboard_default_metadata.csv")
-    DATABASE_PATH = os.path.join(DATA_FOLDER, "benchmarking.db")
-else:
-    # Local development
+    # Check for happy_files subdirectory
+    if os.path.exists("/data/happy_files/000_benchmark_dashboard_default_metadata.csv"):
+        DATA_FOLDER = "/data/happy_files"
+        
+else: # local deployment (for testing)
     PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     DATA_FOLDER = os.path.join(PROJECT_ROOT, 'data', 'happy_files')
-    METADATA_CSV_PATH = os.path.join(DATA_FOLDER, '000_benchmark_dashboard_default_metadata.csv')
-    DATABASE_PATH = os.path.join(PROJECT_ROOT, 'data', 'benchmarking.db')
 
-# Ensure directories exist locally
-if not IS_CONTAINER:
-    os.makedirs(DATA_FOLDER, exist_ok=True)
-    os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
+# Paths
+METADATA_CSV_PATH = os.path.join(DATA_FOLDER, "000_benchmark_dashboard_default_metadata.csv")
+DATABASE_PATH = os.path.join(DATA_FOLDER if IS_CONTAINER else os.path.join(PROJECT_ROOT, 'data'), "benchmarking.db")
+
+# ============================================================================
+# VALIDATION & SETUP
+# ============================================================================
+
+def setup_and_validate():
+    """Setup directories and validate access"""
+    
+    # Create directories
+    try:
+        os.makedirs(DATA_FOLDER, exist_ok=True)
+        os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
+        logger.info(f"Directories created: {DATA_FOLDER}")
+    except Exception as e:
+        logger.error(f"Failed to create directories: {e}")
+        return False
+    
+    # Validate directory access
+    if not os.path.exists(DATA_FOLDER):
+        logger.error(f"DATA_FOLDER does not exist: {DATA_FOLDER}")
+        return False
+    
+    if not os.access(DATA_FOLDER, os.R_OK | os.W_OK):
+        logger.error(f"Cannot read/write to DATA_FOLDER: {DATA_FOLDER}")
+        return False
+    
+    # Validate database directory access
+    db_dir = os.path.dirname(DATABASE_PATH)
+    if not os.path.exists(db_dir):
+        logger.error(f"Database directory does not exist: {db_dir}")
+        return False
+        
+    if not os.access(db_dir, os.R_OK | os.W_OK):
+        logger.error(f"Cannot read/write to database directory: {db_dir}")
+        return False
+    
+    # Check metadata CSV access
+    if os.path.exists(METADATA_CSV_PATH):
+        if os.access(METADATA_CSV_PATH, os.R_OK):
+            logger.info(f"Metadata CSV accessible: {METADATA_CSV_PATH}")
+        else:
+            logger.warning(f"Metadata CSV exists but not readable: {METADATA_CSV_PATH}")
+    else:
+        logger.info("Metadata CSV not found")
+    
+    logger.info("--- Configuration validation successful ---")
+    return True
+
+# ============================================================================
+# FUNCTIONS & CONSTANTS
+# ============================================================================
 
 def get_data_file_path(filename):
     return os.path.join(DATA_FOLDER, filename)
 
-# Debug info
-print(f"Container mode: {IS_CONTAINER}")
-print(f"DATA_FOLDER: {DATA_FOLDER}")
-print(f"METADATA_CSV exists: {os.path.exists(METADATA_CSV_PATH)}")
-
 METADATA_CSV_FILENAME = '000_benchmark_dashboard_default_metadata.csv'
+
+# ============================================================================
+# AUTO-SETUP
+# ============================================================================
+
+config_valid = setup_and_validate()
+
+# Debug info
+logger.info(f"Container mode: {IS_CONTAINER}")
+logger.info(f"DATA_FOLDER: {DATA_FOLDER}") 
+logger.info(f"DATABASE_PATH: {DATABASE_PATH}")
