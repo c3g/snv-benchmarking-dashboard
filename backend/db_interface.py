@@ -89,14 +89,14 @@ def get_experiments_overview(filters=None, experiment_ids_param=None):
                 data.append({ 
                     'id': exp.id,
                     'name': exp.name,
-                    'technology': exp.sequencing_technology.technology.value if exp.sequencing_technology else None,
-                    'platform': exp.sequencing_technology.platform_name if exp.sequencing_technology else None,
-                    'caller': exp.variant_caller.name.value if exp.variant_caller else None,
-                    'caller_version': exp.variant_caller.version if exp.variant_caller else None,
-                    'chemistry': exp.chemistry.name if exp.chemistry else None,
-                    'truth_set': exp.truth_set.name.value if exp.truth_set else None,
-                    'sample': exp.truth_set.sample.value if exp.truth_set else None,
-                    'created_at': exp.created_at.strftime('%Y-%m-%d') if exp.created_at else None
+                    'technology': exp.sequencing_technology.technology.value if exp.sequencing_technology else "N/A",
+                    'platform': exp.sequencing_technology.platform_name if (exp.sequencing_technology and exp.sequencing_technology.platform_name) else "N/A",
+                    'caller': exp.variant_caller.name.value if exp.variant_caller else "N/A",
+                    'caller_version': exp.variant_caller.version if (exp.variant_caller and exp.variant_caller.version) else "N/A",
+                    'chemistry': exp.chemistry.name if (exp.chemistry and exp.chemistry.name) else "N/A",  # <-- FIX THIS LINE
+                    'truth_set': exp.truth_set.name.value if exp.truth_set else "N/A",
+                    'sample': exp.truth_set.sample.value if exp.truth_set else "N/A",
+                    'created_at': exp.created_at.strftime('%Y-%m-%d') if exp.created_at else "N/A"
                 })
             
             return pd.DataFrame(data)
