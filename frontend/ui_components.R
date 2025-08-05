@@ -91,9 +91,6 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
     
     # Get experiment metadata with error handling
     tryCatch({
-      # Re-import db inside reactive to avoid session issues
-      db <- import("db_interface")
-      
       exp_id_json <- json_param(list(exp_id))
       metadata <- db$get_experiment_metadata(exp_id_json)
       
@@ -144,9 +141,6 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
     
     # Get experiment metadata 
     tryCatch({
-      # Re-import db inside reactive to avoid session issues
-      db <- import("db_interface")
-      
       exp_id_json <- json_param(list(exp_id))
       metadata <- db$get_experiment_metadata(exp_id_json)
       
