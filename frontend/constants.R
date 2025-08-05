@@ -1,0 +1,236 @@
+# ============================================================================
+# constants.R
+# ============================================================================
+"
+Configuration constants and static values for SNV Benchmarking Dashboard.
+
+Main components:
+- CSS styling definitions
+- Metric label mappings
+- UI configuration constants
+- Application-wide settings
+"
+
+# ============================================================================
+# CSS STYLING CONSTANTS
+# ============================================================================
+
+# Main application CSS styles
+APP_CSS_STYLES <- "
+    .sidebar {
+      position: fixed !important;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      width: 330px;
+      background-color: #f8f9fa;
+      border-right: 1px solid #dee2e6;
+      overflow-y: auto;
+      z-index: 1000;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    .sidebar-header {
+      position: sticky;
+      top: 0;
+      background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+      color: white;
+      padding: 15px 20px;
+      border-bottom: 1px solid #dee2e6;
+      z-index: 1002;
+    }
+    
+    .sidebar-content {
+      padding: 20px;
+      height: calc(100vh - 80px);
+      overflow-y: auto;
+    }
+    
+    .main-content {
+      margin-left: 350px;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    /* Table styling */
+    .dataTables_wrapper tbody td {
+      text-transform: capitalize !important;
+    }
+
+    .dataTables_wrapper tbody td:nth-child(1) {
+      text-transform: none !important;
+    }
+
+    /* Plot column constraints */
+    .plotly-container {
+      width: 100% !important;
+      max-width: 100% !important;
+      overflow: hidden !important;
+    }
+    
+    .plot-column .plotly {
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    
+    .col-sm-5 {
+      max-width: 41.66667% !important;
+      flex: 0 0 41.66667% !important;
+    }
+    
+    .col-sm-2 {
+      max-width: 16.66667% !important;
+      flex: 0 0 16.66667% !important;
+    }
+    
+    .row {
+      flex-wrap: nowrap !important;
+    }
+"
+
+# Row expansion and metadata styling
+METADATA_CSS_STYLES <- "
+    /* Table expand buttons */
+    .details-toggle {
+      background: none;
+      border: none;
+      color: #6c757d;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-size: 12px;
+      margin: 0;
+    }
+    .details-toggle:hover {
+      background: #e9ecef;
+    }
+    
+    /* Row expansion container */
+    .detail-content {
+      background: #f8f9fa;
+      padding: 15px;
+      border-left: 3px solid #007bff;
+      font-size: 12px;
+    }
+    
+    /* Row expansion 3-column grid */
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+    }
+    
+    /* Metadata cards for visualization tab */
+    .metadata-grid-4col {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-top: 15px;
+    }
+    
+    .metadata-card {
+      background: #ffffff;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      transition: box-shadow 0.3s ease;
+    }
+    .metadata-card:hover {
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+"
+
+# ============================================================================
+# METRIC AND LABEL MAPPINGS
+# ============================================================================
+
+# Metric display labels for UI
+METRIC_LABELS <- list(
+  "f1_score" = "F1 Score",
+  "precision" = "Precision", 
+  "recall" = "Recall"
+)
+
+# Tab information constants
+TAB_INFO_MESSAGES <- list(
+  experiments = "This table displays all available benchmarking experiments with their key metadata.",
+  performance = "This table shows detailed performance metrics for each experiment.",
+  visualizations = "These plots display precision vs recall performance for each experiment.",
+  stratified = "Analyze F1 scores across different genomic regions for the selected experiments."
+)
+
+# ============================================================================
+# UI CONFIGURATION CONSTANTS
+# ============================================================================
+
+# Filter type options for sidebar
+FILTER_TYPES <- list(
+  "Show All" = "none",
+  "Technology" = "tech", 
+  "Variant Caller" = "caller"
+)
+
+# Technology options
+TECHNOLOGY_OPTIONS <- c("ILLUMINA", "PACBIO", "ONT", "MGI")
+
+# Caller options  
+CALLER_OPTIONS <- c("DEEPVARIANT", "GATK", "CLAIR3")
+
+# Variant types for analysis
+VARIANT_TYPES <- c('SNP', 'INDEL')
+
+# ============================================================================
+# DATATABLE CONFIGURATION
+# ============================================================================
+
+# Standard DataTable options
+STANDARD_DT_OPTIONS <- list(
+  pageLength = 15,
+  scrollX = TRUE,
+  responsive = TRUE,
+  autoWidth = FALSE
+)
+
+# Performance table specific options
+PERFORMANCE_DT_OPTIONS <- list(
+  pageLength = 15,
+  scrollX = TRUE,
+  columnDefs = list(
+    list(targets = 0, className = "dt-center", width = "50px"),
+    list(targets = c(8, 9, 10), className = "dt-center"),
+    list(targets = 6, className = "dt-center"),
+    list(targets = "_all", className = "dt-body-nowrap")
+  )
+)
+
+# ============================================================================
+# PLOT CONFIGURATION
+# ============================================================================
+
+# Standard plot dimensions
+PLOT_DIMENSIONS <- list(
+  width = 12,
+  height = 6,
+  dpi = 300
+)
+
+# Stratified plot height calculation
+STRATIFIED_PLOT_CONFIG <- list(
+  base_height = 75,
+  height_per_region = 40,
+  height_per_experiment = 16
+)
+
+# ============================================================================
+# APPLICATION METADATA
+# ============================================================================
+
+# Application information
+APP_INFO <- list(
+  title = "SNV Benchmarking Dashboard",
+  version = "1.0.0",
+  description = "Interactive dashboard for analyzing SNV variant calling performance"
+)
