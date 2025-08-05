@@ -1861,21 +1861,21 @@ server <- function(input, output, session) {
   })
   
   # 4.11 Calculate all metrics once when data loads
-  # 4.11 Calculate all metrics once when data loads
   stratified_processed_data <- reactive({
     if (!stratified_triggered() || nrow(stratified_raw_data()) == 0) {
       return(data.frame())
     }
     
     raw_data <- stratified_raw_data()
-    
     # Process data once - keep original column names
     processed_data <- raw_data %>%
       filter(!is.na(f1_score) & !is.na(precision) & !is.na(recall)) %>% 
       mutate(
+        # Build label with optional chemistry
         exp_label = paste0("ID:", experiment_id, " (", 
                            coalesce(technology, "Unknown"), "-", 
-                           coalesce(caller, "Unknown"), ")")
+                           coalesce(caller, "Unknown"), "-",
+                           coalesce(chemistry_name, ""), ")")
       ) %>%
       arrange(subset, variant_type, desc(experiment_id))
     
@@ -2620,16 +2620,20 @@ server <- function(input, output, session) {
     
     # Format the data showing all metrics
     display_data <- filtered_data %>%
-      select(experiment_id, experiment_name, technology, caller, subset, 
+      select(experiment_id, experiment_name, technology, caller, chemistry_name, subset, 
              f1_score, precision, recall) %>%
       mutate(
-        across(c(recall, precision, f1_score), ~ round(.x * 100, 2))
+        across(c(recall, precision, f1_score), ~ round(.x * 100, 2)),
+              # Clean up chemistry display
+        chemistry_name = ifelse(is.na(chemistry_name) | chemistry_name == "" | chemistry_name == "NULL", 
+                              "N/A", chemistry_name)
       ) %>%
       rename(
         "ID" = experiment_id,
         "Experiment" = experiment_name,
         "Technology" = technology,
         "Caller" = caller,
+        "Chemistry" = chemistry_name,
         "Region" = subset,
         "F1 Score %" = f1_score,
         "Precision %" = precision,
@@ -2652,9 +2656,8 @@ server <- function(input, output, session) {
                           scrollX = TRUE,
                           dom = 'frtip',
                           columnDefs = list(
-                            list(targets = 0, className = "dt-center", width = "50px"),        # ID column
-                            list(targets = c(5, 6, 7), className = "dt-right"),               # Metric columns
-                            list(targets = "_all", className = "dt-body-nowrap")               # No wrapping
+                            list(targets = 0, className = "dt-center"),         # ID column          
+                            list(targets = "_all", className = "dt-left")   
                           )
                         ),
                         rownames = FALSE,
