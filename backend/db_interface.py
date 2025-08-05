@@ -443,7 +443,8 @@ def get_stratified_performance_by_regions(experiment_ids_param, variant_types=['
         with get_db_session() as session:
             query = session.query(BenchmarkResult).options(
                 joinedload(BenchmarkResult.experiment).joinedload(Experiment.sequencing_technology),
-                joinedload(BenchmarkResult.experiment).joinedload(Experiment.variant_caller)
+                joinedload(BenchmarkResult.experiment).joinedload(Experiment.variant_caller),
+                joinedload(BenchmarkResult.experiment).joinedload(Experiment.chemistry)
             ).filter(
                 BenchmarkResult.experiment_id.in_(experiment_ids),
                 BenchmarkResult.variant_type.in_(variant_types)
@@ -477,6 +478,7 @@ def get_stratified_performance_by_regions(experiment_ids_param, variant_types=['
                     'caller': result.experiment.variant_caller.name.value if (result.experiment and result.experiment.variant_caller) else 'Unknown',
                     'subset': result.subset.value,
                     'filter_type': result.filter_type,
+                    'chemistry_name': result.experiment.chemistry.name if (result.experiment and result.experiment.chemistry and result.experiment.chemistry.name) else None,
                     
                     # Performance metrics
                     'recall': result.metric_recall,
