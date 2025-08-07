@@ -11,7 +11,6 @@ Main components:
 - Experiment metadata handling
 - Data transformation and enhancement functions
 "
-
 # ============================================================================
 # SETUP FUNCTION - CREATES ALL REACTIVE VALUES AND DATA PROCESSING
 # ============================================================================
@@ -114,6 +113,13 @@ setup_data_reactives <- function(input, output, session) {
     tryCatch({
       ids_json <- json_param(ids)
       enhanced_data <- db$get_experiments_with_performance(ids_json, c('SNP', 'INDEL'))
+      
+      # Additional validation
+      if (nrow(enhanced_data) == 0) {
+        cat("No performance data found for experiments:", paste(ids, collapse = ", "), "\n")
+        return(data.frame())
+      }
+      
       return(enhanced_data %>% filter(!is.na(recall) & !is.na(precision) & !is.na(f1_score)))
     }, error = function(e) {
       cat("Error in viz_performance_data:", e$message, "\n")
