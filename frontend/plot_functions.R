@@ -37,12 +37,15 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
       
       contour <- create_f1_contour()
       
-      # Create tooltip text
+      # Create enhanced tooltip text with tech, platform, caller, and chemistry
       snp_data$tooltip_text <- paste(
         "<b>ID:", snp_data$experiment_id," - ",
         "<b>", ifelse(is.na(snp_data$experiment_name) | is.null(snp_data$experiment_name), "Unknown", snp_data$experiment_name), "</b>",
-        "<br><b>Technology:</b>", snp_data$technology,
-        "<br><b>Caller:</b>", snp_data$caller,
+        "<b>",
+        "<br>• Technology:", snp_data$technology,
+        "<br>• Platform:", ifelse(is.na(snp_data$platform_name) | is.null(snp_data$platform_name), "N/A", snp_data$platform_name),
+        "<br>• Caller:", snp_data$caller,
+        "<br>• Chemistry:", ifelse(is.na(snp_data$chemistry_name) | is.null(snp_data$chemistry_name), "N/A", snp_data$chemistry_name),
         "<br><br><b>Performance:</b>",
         "<br>• Precision:", paste0(round(as.numeric(snp_data$precision)*100, 2), "%"),
         "<br>• Recall:", paste0(round(as.numeric(snp_data$recall)*100, 2), "%"),
@@ -127,13 +130,15 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
       
       contour <- create_f1_contour()
       
-      # Create tooltip text
+      # Create enhanced tooltip text with tech, platform, caller, and chemistry
       indel_data$tooltip_text <- paste(
         "<b>ID:", indel_data$experiment_id," - ",
         "<b>", ifelse(is.na(indel_data$experiment_name) | is.null(indel_data$experiment_name), "Unknown", indel_data$experiment_name), "</b>",
-        "<br><b>Technology:</b>", ifelse(is.na(indel_data$technology) | is.null(indel_data$technology), "N/A", indel_data$technology),
-        "<br><b>Technology:</b>", indel_data$technology,
-        "<br><b>Caller:</b>", indel_data$caller,
+        "<br><br><b>Setup:</b>",
+        "<br>• Technology:", indel_data$technology,
+        "<br>• Platform:", ifelse(is.na(indel_data$platform_name) | is.null(indel_data$platform_name), "N/A", indel_data$platform_name),
+        "<br>• Caller:", indel_data$caller,
+        "<br>• Chemistry:", ifelse(is.na(indel_data$chemistry_name) | is.null(indel_data$chemistry_name), "N/A", indel_data$chemistry_name),
         "<br><br><b>Performance:</b>",
         "<br>• Precision:", paste0(round(as.numeric(indel_data$precision)*100, 2), "%"),
         "<br>• Recall:", paste0(round(as.numeric(indel_data$recall)*100, 2), "%"),
@@ -217,9 +222,9 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
     n_regions <- length(unique(data$subset))
     n_experiments <- length(unique(data$experiment_id))
     
-    base_height <- STRATIFIED_PLOT_CONFIG$base_height
-    height_per_region <- STRATIFIED_PLOT_CONFIG$height_per_region + 
-                        (n_experiments * STRATIFIED_PLOT_CONFIG$height_per_experiment)
+    # Use original calculation method
+    base_height <- max(8, n_regions * 2 + n_experiments * 0.5)
+    height_per_region <- 40 + (n_experiments * 16)
     
     return(base_height + (n_regions * height_per_region))
   })
@@ -235,9 +240,9 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
     n_regions <- length(unique(data$subset))
     n_experiments <- length(unique(data$experiment_id))
     
-    base_height <- STRATIFIED_PLOT_CONFIG$base_height
-    height_per_region <- STRATIFIED_PLOT_CONFIG$height_per_region + 
-                        (n_experiments * STRATIFIED_PLOT_CONFIG$height_per_experiment)
+    # Use original calculation method
+    base_height <- max(8, n_regions * 2 + n_experiments * 0.5)
+    height_per_region <- 40 + (n_experiments * 16)
     
     return(base_height + (n_regions * height_per_region))
   })
