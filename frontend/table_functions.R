@@ -45,7 +45,8 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
     df <- df[, c("expand_button", setdiff(names(df), "expand_button"))]
     
     # Configure table selection based on current mode
-    if (data_reactives$current_mode() == "manual_selection") {
+    current_mode <- data_reactives$current_mode()
+    if (current_mode == "manual_selection") {
       selection_config <- list(mode = 'multiple')
     } else {
       selection_config <- 'none'
