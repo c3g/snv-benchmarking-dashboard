@@ -11,6 +11,7 @@ Main components:
 - Comparison submission logic
 - Experiment details expansion
 - Stratified analysis update handlers
+- Upload functionality and file processing
 "
 
 # ============================================================================
@@ -229,7 +230,7 @@ setup_observers <- function(input, output, session, data_reactives) {
         
         # Platform Details
         '<div class="detail-section">',
-        '<h6>Platform Details</h6>',
+        '<h6 style="color: #007bff; font-weight: 700; font-size: 13px; border-bottom: 2px solid #007bff; padding-bottom: 4px; margin-bottom: 8px;">Platform Details</h6>',
         '<div class="detail-item"><strong>Platform:</strong> ', meta$platform_name %||% "N/A", '</div>',
         '<div class="detail-item"><strong>Version:</strong> ', meta$platform_version %||% "N/A", '</div>',
         '<div class="detail-item"><strong>Type:</strong> ', meta$platform_type %||% "N/A", '</div>',
@@ -239,7 +240,7 @@ setup_observers <- function(input, output, session, data_reactives) {
         
         # Analysis Details  
         '<div class="detail-section">',
-        '<h6>Analysis Details</h6>',
+        '<h6 style="color: #007bff; font-weight: 700; font-size: 13px; border-bottom: 2px solid #007bff; padding-bottom: 4px; margin-bottom: 8px;">Analysis Details</h6>',
         '<div class="detail-item"><strong>Caller Type:</strong> ', meta$caller_type %||% "N/A", '</div>',
         '<div class="detail-item"><strong>Caller Model:</strong> ', meta$caller_model %||% "N/A", '</div>',
         '<div class="detail-item"><strong>Aligner:</strong> ', paste(meta$aligner_name %||% "N/A", meta$aligner_version %||% ""), '</div>',
@@ -249,7 +250,7 @@ setup_observers <- function(input, output, session, data_reactives) {
         
         # Quality & Truth
         '<div class="detail-section">',
-        '<h6>Quality & Benchmarking</h6>',
+        '<h6 style="color: #007bff; font-weight: 700; font-size: 13px; border-bottom: 2px solid #007bff; padding-bottom: 4px; margin-bottom: 8px;">Quality & Benchmarking</h6>',
         '<div class="detail-item"><strong>Coverage:</strong> ', ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x")), '</div>',
         '<div class="detail-item"><strong>Read Length:</strong> ', ifelse(is.na(meta$read_length), "N/A", paste0(meta$read_length, " bp")), '</div>',
         '<div class="detail-item"><strong>Truth Set:</strong> ', meta$truth_set_name %||% "N/A", '</div>',
@@ -324,6 +325,16 @@ setup_observers <- function(input, output, session, data_reactives) {
         selected_regions
       )
       
+      # Debug information
+      cat("📊 Stratified Query Results:\n")
+      cat("- Experiments requested:", length(current_exp_ids), "\n")
+      cat("- Regions requested:", length(selected_regions), "\n")
+      cat("- Results returned:", nrow(enhanced_data), "\n")
+      if (nrow(enhanced_data) > 0) {
+        cat("- Unique experiments in results:", length(unique(enhanced_data$experiment_id)), "\n")
+        cat("- Unique regions in results:", length(unique(enhanced_data$subset)), "\n")
+      }
+      
       # Get metadata if we have results
       if (nrow(enhanced_data) > 0) {
         
@@ -352,6 +363,211 @@ setup_observers <- function(input, output, session, data_reactives) {
       data_reactives$stratified_raw_data(data.frame())
       data_reactives$stratified_triggered(FALSE)
       showNotification(paste("Error loading stratified data:", e$message), type = "error", duration = 6)
+    })
+  })
+  
+  # ====================================================================
+  # UPLOAD FUNCTIONALITY OBSERVERS
+  # ====================================================================
+  
+  # Import the Python upload handler
+  upload_handler <- import("upload_handler")
+  
+  # Helper functions for safe input handling
+  safe_input <- function(input_value, default = "") {
+    if (is.null(input_value) || is.na(input_value) || input_value == "") {
+      return(default)
+    }
+    return(as.character(input_value))
+  }
+  
+  safe_numeric <- function(input_value) {
+    if (is.null(input_value) || is.na(input_value)) {
+      return("")
+    }
+    return(as.character(input_value))
+  }
+  
+  # File validation with real-time feedback
+  observe({
+    if (!is.null(input$upload_file)) {
+      file_info <- input$upload_file
+      
+      # Basic file validation
+      if (!grepl("\\.csv$", file_info$name, ignore.case = TRUE)) {
+        output$file_status <- renderUI({
+          div(class = "alert alert-danger", style = "padding: 8px; margin: 5px 0;",
+              "Please upload a CSV file")
+        })
+      } else if (file_info$size == 0) {
+        output$file_status <- renderUI({
+          div(class = "alert alert-danger", style = "padding: 8px; margin: 5px 0;",
+              "File appears to be empty")
+        })
+      } else if (file_info$size > 100 * 1024 * 1024) {  # 100MB limit
+        output$file_status <- renderUI({
+          div(class = "alert alert-warning", style = "padding: 8px; margin: 5px 0;",
+              "⚠️ Large file detected. Upload may take some time.")
+        })
+      } else {
+        output$file_status <- renderUI({
+          div(class = "alert alert-success", style = "padding: 8px; margin: 5px 0;",
+              paste("File ready:", file_info$name, 
+                    paste0("(", round(file_info$size / 1024, 1), " KB)")))
+        })
+      }
+    } else {
+      output$file_status <- renderUI({ NULL })
+    }
+  })
+  
+  # Main upload submission observer
+  observeEvent(input$submit_upload, {
+    
+    # Basic validation checks
+    if (is.null(input$upload_file)) {
+      showNotification("Please select a file to upload", type = "error", duration = 5)
+      return()
+    }
+    
+    # Check required fields
+    required_fields <- list(
+      exp_name = input$exp_name,
+      technology = input$technology,
+      platform_name = input$platform_name,
+      caller_name = input$caller_name
+    )
+    
+    missing_fields <- names(required_fields)[sapply(required_fields, function(x) is.null(x) || x == "")]
+    
+    if (length(missing_fields) > 0) {
+      showNotification(
+        paste("Please fill required fields:", paste(missing_fields, collapse = ", ")), 
+        type = "error", 
+        duration = 6
+      )
+      return()
+    }
+    
+    # Show loading notification
+    loading_id <- showNotification(
+      "🔄 Processing upload... Please wait", 
+      type = "message", 
+      duration = NULL,
+      closeButton = FALSE
+    )
+    
+    # Prepare complete metadata JSON
+    tryCatch({
+      
+      metadata_json <- jsonlite::toJSON(list(
+        # REQUIRED FIELDS
+        exp_name = safe_input(input$exp_name),
+        technology = safe_input(input$technology),
+        platform_name = safe_input(input$platform_name),
+        caller_name = safe_input(input$caller_name),
+        
+        # BASIC INFO
+        description = safe_input(input$description),
+        target = safe_input(input$target, "wgs"),
+        
+        # SEQUENCING PLATFORM
+        platform_type = safe_input(input$platform_type),
+        platform_version = safe_input(input$platform_version),
+        
+        # CHEMISTRY
+        chemistry_name = safe_input(input$chemistry_name),
+        chemistry_version = safe_input(input$chemistry_version),
+        
+        # VARIANT CALLER
+        caller_type = safe_input(input$caller_type),
+        caller_version = safe_input(input$caller_version),
+        caller_model = safe_input(input$caller_model),
+        
+        # ALIGNER
+        aligner_name = safe_input(input$aligner_name),
+        aligner_version = safe_input(input$aligner_version),
+        
+        # TRUTH SET
+        truth_set_name = safe_input(input$truth_set_name, "giab"),
+        truth_set_sample = safe_input(input$truth_set_sample, "hg002"),
+        truth_set_version = safe_input(input$truth_set_version, "4.2.1"),
+        truth_set_reference = safe_input(input$truth_set_reference, "grch38"),
+        
+        # VARIANT INFO
+        variant_type = safe_input(input$variant_type, "snp+indel"),
+        variant_size = safe_input(input$variant_size, "small"),
+        variant_origin = safe_input(input$variant_origin, "germline"),
+        is_phased = safe_input(input$is_phased, "false"),
+        
+        # BENCHMARK TOOL
+        benchmark_tool_name = safe_input(input$benchmark_tool_name, "hap.py"),
+        benchmark_tool_version = safe_input(input$benchmark_tool_version, "0.3.12"),
+        
+        # QUALITY METRICS
+        mean_coverage = safe_numeric(input$mean_coverage),
+        read_length = safe_numeric(input$read_length),
+        mean_insert_size = safe_numeric(input$mean_insert_size),
+        mean_read_length = safe_numeric(input$mean_read_length)
+        
+      ), auto_unbox = TRUE)
+      
+      # Print metadata for debugging
+      cat("📋 Metadata JSON:\n", metadata_json, "\n")
+      
+      # Call Python upload handler
+      result <- upload_handler$upload_experiment(
+        file_path = input$upload_file$datapath,
+        metadata_json = metadata_json
+      )
+      
+      # Remove loading notification
+      removeNotification(loading_id)
+      
+      # Handle result
+      if (result$success) {
+        # Success notification
+        showNotification(
+          HTML(paste("✅ Upload Successful!<br>", result$message)), 
+          type = "message", 
+          duration = 8
+        )
+        
+        # Close modal
+        toggleModal(session, "upload_modal", toggle = "close")
+        
+        # Refresh data tables by triggering reactive invalidation
+        session$sendCustomMessage("refreshData", list(timestamp = Sys.time()))
+        
+        return(TRUE)
+        
+      } else {
+        # Error notification
+        showNotification(
+          HTML(paste("❌ Upload Failed<br>", result$message)), 
+          type = "error", 
+          duration = 12
+        )
+        
+        return(FALSE)
+      }
+      
+    }, error = function(e) {
+      # Remove loading notification
+      removeNotification(loading_id)
+      
+      # Show error
+      showNotification(
+        paste("Upload Error:", e$message), 
+        type = "error", 
+        duration = 10
+      )
+      
+      # Print error details for debugging
+      cat("Upload Error Details:\n")
+      print(e)
+      
+      return(FALSE)
     })
   })
 }
