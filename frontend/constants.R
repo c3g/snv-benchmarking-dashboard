@@ -12,18 +12,6 @@ Main components:
 "
 
 # ============================================================================
-# constants.R
-# ============================================================================
-#
-# Configuration constants and static values for SNV Benchmarking Dashboard.
-#
-# Main components:
-# - CSS styling definitions
-# - Metric label mappings
-# - UI configuration constants
-# - Application-wide settings
-
-# ============================================================================
 # CSS STYLING CONSTANTS
 # ============================================================================
 
