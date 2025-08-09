@@ -12,6 +12,18 @@ Main components:
 "
 
 # ============================================================================
+# constants.R
+# ============================================================================
+#
+# Configuration constants and static values for SNV Benchmarking Dashboard.
+#
+# Main components:
+# - CSS styling definitions
+# - Metric label mappings
+# - UI configuration constants
+# - Application-wide settings
+
+# ============================================================================
 # CSS STYLING CONSTANTS
 # ============================================================================
 
@@ -88,6 +100,23 @@ APP_CSS_STYLES <- "
     .row {
       flex-wrap: nowrap !important;
     }
+    
+    /* Metric selection pills */
+    .metric-pill {
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 11px;
+      transition: all 0.2s ease;
+      text-align: center;
+      display: inline-block;
+    }
+    
+    /* Force legend removal for stratified plots */
+    .ggplot .legend {
+      display: none !important;
+    }
 "
 
 # Row expansion and metadata styling
@@ -158,7 +187,7 @@ METRIC_LABELS <- list(
 TAB_INFO_MESSAGES <- list(
   experiments = "This table displays all available benchmarking experiments with their key metadata.",
   performance = "This table shows detailed performance metrics for each experiment.",
-  visualizations = "These plots display precision vs recall performance for each experiment.",
+  visualizations = "These scatter plots display precision vs recall performance for each experiment.",
   stratified = "Analyze F1 scores across different genomic regions for the selected experiments."
 )
 
@@ -217,11 +246,11 @@ PLOT_DIMENSIONS <- list(
   dpi = 300
 )
 
-# Stratified plot height calculation
+# Stratified plot height calculation (matching original)
 STRATIFIED_PLOT_CONFIG <- list(
-  base_height = 75,
-  height_per_region = 40,
-  height_per_experiment = 16
+  base_height = 8,
+  region_multiplier = 2,
+  experiment_multiplier = 0.5
 )
 
 # ============================================================================
