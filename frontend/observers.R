@@ -146,8 +146,6 @@ setup_observers <- function(input, output, session, data_reactives) {
   
   # Technology comparison submission
   observeEvent(input$submit_tech_comparison, {
-    # Re-import db inside observer to avoid session issues
-    db <- import("db_interface")
     
     # Get all experiment IDs for selected technologies
     all_ids <- c()
@@ -173,8 +171,7 @@ setup_observers <- function(input, output, session, data_reactives) {
   
   # Caller comparison submission
   observeEvent(input$submit_caller_comparison, {
-    # Re-import db inside observer to avoid session issues
-    db <- import("db_interface")
+
     
     # Get all experiment IDs for selected callers
     all_ids <- c()
@@ -209,8 +206,7 @@ setup_observers <- function(input, output, session, data_reactives) {
   # ====================================================================
   
   observeEvent(input$expand_experiment_details, {
-    # Re-import db inside observer to avoid session issues
-    db <- import("db_interface")
+
     
     exp_id <- input$expand_experiment_details$id
     
@@ -311,8 +307,6 @@ setup_observers <- function(input, output, session, data_reactives) {
     
     # Query database with region filtering
     tryCatch({
-      # Re-import db inside observer to avoid session issues
-      db <- import("db_interface")
       
       showNotification("Loading stratified data...", type = "message", duration = 2)
       
@@ -513,7 +507,7 @@ setup_observers <- function(input, output, session, data_reactives) {
       ), auto_unbox = TRUE)
       
       # Print metadata for debugging
-      cat("📋 Metadata JSON:\n", metadata_json, "\n")
+      cat("Metadata JSON:\n", metadata_json, "\n")
       
       # Call Python upload handler
       result <- upload_handler$upload_experiment(
@@ -528,7 +522,7 @@ setup_observers <- function(input, output, session, data_reactives) {
       if (result$success) {
         # Success notification
         showNotification(
-          HTML(paste("✅ Upload Successful!<br>", result$message)), 
+          HTML(paste("Upload Successful!<br>", result$message)), 
           type = "message", 
           duration = 8
         )
@@ -544,7 +538,7 @@ setup_observers <- function(input, output, session, data_reactives) {
       } else {
         # Error notification
         showNotification(
-          HTML(paste("❌ Upload Failed<br>", result$message)), 
+          HTML(paste("Upload Failed<br>", result$message)), 
           type = "error", 
           duration = 12
         )

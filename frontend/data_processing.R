@@ -39,8 +39,6 @@ setup_data_reactives <- function(input, output, session) {
   
   # Get experiment IDs based on current filter settings
   experiment_ids <- reactive({
-    # Re-import db inside reactive to avoid session issues
-    db <- import("db_interface")
     
     if (length(display_experiment_ids()) > 0) {
       return(display_experiment_ids())
@@ -58,9 +56,7 @@ setup_data_reactives <- function(input, output, session) {
   
   # Get overview metadata for selected experiments
   experiments_data <- reactive({
-    # Re-import db inside reactive to avoid session issues
-    db <- import("db_interface")
-    
+
     if (comparison_submitted() && length(comparison_results()) > 0) {
       exp_ids_json <- json_param(comparison_results())
       return(db$get_experiments_overview(NULL, exp_ids_json))
@@ -104,8 +100,7 @@ setup_data_reactives <- function(input, output, session) {
   
   # Complete metadata and performance results for visualization
   viz_performance_data <- reactive({
-    # Re-import db inside reactive to avoid session issues
-    db <- import("db_interface")
+
     
     ids <- performance_experiment_ids()
     if (length(ids) == 0) return(data.frame())
