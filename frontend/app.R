@@ -738,7 +738,7 @@ ui <- fluidPage(
           ),
           div(
             style = "margin-left: 20px; padding-top: 5px;",
-            upload_button_ui(),# from upload_ui
+           # upload_button_ui(),# from upload_ui
             
             downloadButton(
               "export_html_report", 
@@ -1224,7 +1224,7 @@ ui <- fluidPage(
         ), # End of tabset panel
         
         # upload modal from upload_ui.R
-        upload_modal_ui()
+        #upload_modal_ui()
         
     ) # End of main content
   ) # End of sidebar layout
