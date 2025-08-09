@@ -45,10 +45,12 @@ library(shinyBS)
 # PYTHON BACKEND INTERFACE
 # ============================================================================
 
-# Initialize Python environment (db will be imported inside reactive functions)
+# Initialize Python environment
 py_run_string("import sys")
 py_run_string("sys.path.append('../backend')")
 
+db <<- import("db_interface") #global
+upload_handler <- import("upload_handler")
 # ============================================================================
 # R MODULE IMPORTS
 # ============================================================================
