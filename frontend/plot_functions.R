@@ -7,9 +7,149 @@ Plot generation functions for SNV Benchmarking Dashboard.
 Main components:
 - SNP and INDEL performance scatter plots with F1 contours
 - Stratified analysis bar plots with technology-caller gradients
+- F1 contour calculation for performance plots
+- HTML legend generation for plot displays
 - Plot height calculations for dynamic sizing
 - Interactive plot configurations for Plotly integration
 "
+
+# ============================================================================
+# F1 CONTOUR CALCULATION
+# ============================================================================
+
+# Calculate F1 score contour data for performance plots
+create_f1_contour <- function() {
+  # F1 calculation function
+  f1_contour_function <- function(p, r) {
+    result <- 2 * (p * r) / (p + r)
+    result[!is.finite(result)] <- NA
+    return(result)
+  }
+  
+  # Create precision and recall sequences
+  p_seq <- seq(0.01, 0.99, length.out = 100)
+  r_seq <- seq(0.01, 0.99, length.out = 100)
+  
+  # Generate contour grid
+  contour_data <- expand.grid(p = p_seq, r = r_seq) %>%
+    mutate(f1 = f1_contour_function(p, r)) %>%
+    filter(!is.na(f1) & is.finite(f1))
+  
+  return(contour_data)
+}
+
+# ============================================================================
+# STRATIFIED PLOT FUNCTIONS
+# ============================================================================
+
+# Create stratified performance plots with technology-caller gradients
+create_stratified_grouped_plot <- function(data, variant_type, metric_name = "f1_score") {
+  # Filter for variant type
+  plot_data <- data %>%
+    filter(variant_type == !!variant_type)
+  
+  if (nrow(plot_data) == 0) {
+    return(ggplot() + 
+             annotate("text", x = 0.5, y = 0.5, 
+                      label = paste("No", variant_type, "data for selected regions"), 
+                      size = 6) +
+             xlim(0, 1) + ylim(0, 1) +
+             theme_bw())
+  }
+  
+  # Dynamic metric labels
+  metric_labels <- list(
+    "f1_score" = "F1 Score",
+    "precision" = "Precision", 
+    "recall" = "Recall"
+  )
+  
+  metric_label <- metric_labels[[metric_name]] %||% "Metric"
+  
+  # Create technology-caller combination key
+  plot_data <- plot_data %>%
+    mutate(tech_caller = paste(technology, caller, sep = "-"))
+  
+  # Create the gradient plot
+  plot <- ggplot(plot_data, aes(x = metric_value, y = exp_label)) + 
+    geom_col(aes(fill = tech_caller), alpha = 0.85, width = 0.7) + 
+    geom_text(
+      aes(label = paste0(round(metric_value * 100, 2), "%")), 
+      hjust = -0.1, size = 3.5, color = "black"
+    ) +
+    scale_fill_manual(values = tech_caller_colors, na.value = "gray70") +
+    scale_x_continuous(limits = c(0, 1.1), labels = scales::percent_format()) +
+    facet_wrap(~ subset, scales = "free_y", ncol = 1) +
+    labs(x = metric_label, y = "", fill = "Technology + Caller") +  # REMOVED "Experiment" label
+    theme_bw() +
+    theme(
+      strip.background = element_rect(fill = "#f8f9fa", color = "#dee2e6"),
+      strip.text = element_text(face = "bold", size = 12),
+      axis.text.y = element_text(face = "bold", size = 9),
+      axis.text.x = element_text(face = "bold", size = 9),
+      legend.position = "bottom",
+      legend.text = element_text(size = 8),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor = element_blank()
+    ) +
+    guides(fill = guide_legend(ncol = 4, byrow = TRUE))
+  
+  return(plot)
+}
+
+# ============================================================================
+# HTML LEGEND GENERATION FOR PLOTS
+# ============================================================================
+
+# Create technology legend for visualization tab
+create_technology_legend <- function() {
+  legend_items <- ""
+  
+  for (tech in names(technology_colors)) {
+    if (tech != "Unknown") {
+      color <- technology_colors[tech]
+      legend_items <- paste0(legend_items, 
+                             '<div style="display: flex; align-items: center; margin-bottom: 5px;">',
+                             '<div style="width: 12px; height: 12px; background-color: ', color, 
+                             '; border-radius: 50%; margin-right: 8px; border: 1px solid #333;"></div>',
+                             '<span style="font-size: 12px;">', tech, '</span>',
+                             '</div>')
+    }
+  }
+  
+  return(paste0(
+    '<div style="background: white; padding: 10px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px;">',
+    '<div style="font-weight: bold; margin-bottom: 8px; font-size: 13px;">Sequencing Technology</div>',
+    legend_items,
+    '</div>'
+  ))
+}
+
+# Create caller legend for visualization tab
+create_caller_legend <- function() {
+  legend_items <- ""
+  
+  for (caller in names(caller_shapes)) {
+    if (caller != "Unknown") {
+      shape_code <- as.character(caller_shapes[caller])
+      symbol <- shape_symbols[shape_code]
+      
+      legend_items <- paste0(legend_items,
+                             '<div style="display: flex; align-items: center; margin-bottom: 5px;">',
+                             '<span style="font-size: 14px; margin-right: 8px; width: 12px; text-align: center; color: #333;">', 
+                             symbol, '</span>',
+                             '<span style="font-size: 12px;">', caller, '</span>',
+                             '</div>')
+    }
+  }
+  
+  return(paste0(
+    '<div style="background: white; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">',
+    '<div style="font-weight: bold; margin-bottom: 8px; font-size: 13px;">Variant Caller</div>',
+    legend_items,
+    '</div>'
+  ))
+}
 
 # ============================================================================
 # PLOT OUTPUT SETUP FUNCTION
@@ -41,7 +181,7 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
       snp_data$tooltip_text <- paste(
         "<b>ID:", snp_data$experiment_id," - ",
         "<b>", ifelse(is.na(snp_data$experiment_name) | is.null(snp_data$experiment_name), "Unknown", snp_data$experiment_name), "</b>",
-        "<b>",
+        "<br>",
         "<br>• Technology:", snp_data$technology,
         "<br>• Platform:", ifelse(is.na(snp_data$platform_name) | is.null(snp_data$platform_name), "N/A", snp_data$platform_name),
         "<br>• Caller:", snp_data$caller,
@@ -134,7 +274,7 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
       indel_data$tooltip_text <- paste(
         "<b>ID:", indel_data$experiment_id," - ",
         "<b>", ifelse(is.na(indel_data$experiment_name) | is.null(indel_data$experiment_name), "Unknown", indel_data$experiment_name), "</b>",
-        "<br><br><b>Setup:</b>",
+        "</br>",
         "<br>• Technology:", indel_data$technology,
         "<br>• Platform:", ifelse(is.na(indel_data$platform_name) | is.null(indel_data$platform_name), "N/A", indel_data$platform_name),
         "<br>• Caller:", indel_data$caller,

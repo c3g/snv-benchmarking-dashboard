@@ -9,8 +9,99 @@ Main components:
 - Performance results table with conditional formatting
 - Stratified analysis tables (SNP and INDEL)
 - Selected experiments compact table
-- Table styling and interaction handlers
+- Data processing functions for table formatting
 "
+
+# ============================================================================
+# DATA PROCESSING FOR TABLES
+# ============================================================================
+
+# Create F1 score tables for stratified analysis
+create_f1_table <- function(data) {
+  if (nrow(data) == 0) {
+    return(data.frame(Message = "No data available"))
+  }
+  
+  # Create pivot table: experiments as rows, regions as columns
+  table_data <- data %>%
+    select(experiment_id, experiment_name, variant_type, subset, f1_score) %>%
+    mutate(exp_label = paste0("ID:", experiment_id, " (", variant_type, ")")) %>%
+    select(-experiment_id, -experiment_name, -variant_type) %>%
+    pivot_wider(names_from = subset, values_from = f1_score, names_sort = TRUE) %>%
+    mutate(across(where(is.numeric), ~ round(.x * 100, 2)))
+  
+  # Rename first column
+  colnames(table_data)[1] <- "Experiment"
+  
+  return(table_data)
+}
+
+# Create metric tables for stratified analysis with highlighting
+create_metric_table <- function(stratified_data, variant_filter, selected_metric) {
+  # Filter for specific variant type
+  filtered_data <- stratified_data %>%
+    filter(variant_type == variant_filter)
+  
+  if(nrow(filtered_data) == 0) {
+    return(data.frame(Message = paste("No", variant_filter, "data available for selected regions")))
+  }
+  
+  # Format the data showing all metrics
+  display_data <- filtered_data %>%
+    select(experiment_id, experiment_name, technology, caller, chemistry_name, subset, 
+           f1_score, precision, recall) %>%
+    mutate(
+      across(c(recall, precision, f1_score), ~ round(.x * 100, 2)),
+      chemistry_name = ifelse(is.na(chemistry_name) | chemistry_name == "" | chemistry_name == "NULL", 
+                              "N/A", chemistry_name)
+    ) %>%
+    rename(
+      "ID" = experiment_id,
+      "Experiment" = experiment_name,
+      "Technology" = technology,
+      "Caller" = caller,
+      "Chemistry" = chemistry_name,
+      "Region" = subset,
+      "F1 Score %" = f1_score,
+      "Precision %" = precision,
+      "Recall %" = recall
+    )
+  
+  # Get column index of selected metric for highlighting
+  metric_col_idx <- switch(selected_metric,
+                           "f1_score" = which(names(display_data) == "F1 Score %"),    
+                           "precision" = which(names(display_data) == "Precision %"),   
+                           "recall" = which(names(display_data) == "Recall %"),         
+                           which(names(display_data) == "F1 Score %")  # default
+  )
+  
+  # Create the data table with highlighting
+  dt <- DT::datatable(display_data,
+                      options = list(
+                        pageLength = 10,
+                        scrollX = TRUE,
+                        dom = 'frtip',
+                        columnDefs = list(
+                          list(targets = 0, className = "dt-center"),
+                          list(targets = "_all", className = "dt-left")   
+                        )
+                      ),
+                      rownames = FALSE,
+                      class = 'cell-border stripe hover compact'
+  )
+  
+  # Apply highlighting to selected metric
+  if(length(metric_col_idx) > 0) {
+    dt <- dt %>%
+      DT::formatStyle(
+        columns = metric_col_idx,
+        backgroundColor = "#e3f2fd",
+        fontWeight = "bold"
+      )
+  }
+  
+  return(dt)
+}
 
 # ============================================================================
 # TABLE OUTPUT SETUP FUNCTION
