@@ -1,5 +1,5 @@
 # ============================================================================
-# app.R - SNV Benchmarking Dashboard (Modular Version)
+# app.R - SNV Benchmarking Dashboard
 # ============================================================================
 "
 Main Shiny application for SNV Benchmarking Dashboard.
@@ -15,6 +15,7 @@ Architecture:
 - Database: SQLite for experiment metadata and results storage
 - Modular Structure: Separated into functional components for maintainability
 "
+
 
 # ============================================================================
 # LIBRARIES AND DEPENDENCIES
@@ -52,7 +53,7 @@ py_run_string("sys.path.append('../backend')")
 # R MODULE IMPORTS
 # ============================================================================
 
-# Import core modules (order matters!)
+# Import core modules
 source("constants.R")
 source("utils.R")
 source("data_processing.R")
@@ -63,8 +64,6 @@ source("ui_components.R")
 
 # Import specialized modules
 source("html_export.R")    # HTML report generation
-source("upload_ui.R")      # File upload interface
-source("upload_server.R")  # File upload processing
 
 # Set global ggplot theme
 theme_set(theme_bw())
@@ -334,7 +333,7 @@ ui <- fluidPage(
             upload_button_ui(),
             downloadButton(
               "export_html_report", 
-              label = tagList(icon("download"), "Download Report"),
+              label = tagList("Download Report"),
               class = "btn-primary btn-sm",
               style = "font-size: 14px; padding: 6px 12px; white-space: nowrap;"
             )
@@ -396,7 +395,7 @@ ui <- fluidPage(
               column(12,
                      div(
                        class = "alert alert-info",
-                       h5("🎯 Performance Visualizations"),
+                       h5("Performance Visualizations"),
                        p("These scatter plots display precision vs recall performance for each experiment, with ", 
                          strong("F1 contour lines"), " showing performance benchmarks. "),
                        p(strong("Click points"), " and scroll down to view experiment details below, or ", strong("hover"), " for quick metrics"),
@@ -479,7 +478,7 @@ ui <- fluidPage(
                            
                            # Main Regions
                            div(
-                             h6("📍 Main Regions", 
+                             h6("Main Regions", 
                                 style = "margin-bottom: 10px; color: #495057; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
                              checkboxGroupInput(
                                "core_regions",
@@ -796,9 +795,6 @@ server <- function(input, output, session) {
   # INITIALIZE MODULES
   # ====================================================================
   
-  # Setup upload functionality
-  upload_components <- upload_server(input, output, session)
-  
   # Setup core data processing (returns reactive values)
   data_reactives <- setup_data_reactives(input, output, session)
   
@@ -821,7 +817,7 @@ server <- function(input, output, session) {
       # Get main visualization data
       viz_data <- data_reactives$viz_performance_data()
       
-      # Get stratified data
+      # Get stratified data if available
       stratified_data <- NULL
       current_metric <- input$selected_metric %||% "f1_score"
       
@@ -830,7 +826,7 @@ server <- function(input, output, session) {
         stratified_data <- data_reactives$stratified_filtered_data()
       }
       
-      # Generate report
+      # Generate report using html_export.R functions
       html_content <- create_html_report(viz_data, stratified_data, current_metric)
       writeLines(html_content, file)
     }
