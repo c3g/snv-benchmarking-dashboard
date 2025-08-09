@@ -2,7 +2,7 @@
 # ui_components.R
 # ============================================================================
 "
-Reusable UI components and output functions for SNV Benchmarking Dashboard.
+UI components and output functions for SNV Benchmarking Dashboard.
 
 Main components:
 - Status and info output functions
@@ -10,7 +10,6 @@ Main components:
 - UI state management outputs
 - Reusable alert and notification components
 "
-
 # ============================================================================
 # UI OUTPUT SETUP FUNCTION
 # ============================================================================
@@ -152,7 +151,7 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       meta <- metadata[1, ]
       
       div(
-        h6(strong(meta$name), style = "color: #007bff; margin-bottom: 10px;"),
+        h6(strong("ID: ",exp_id, "-", meta$name), style = "color: #007bff; margin-bottom: 10px;"),
         div(
           class = "row",
           div(class = "col-md-3",
@@ -204,14 +203,25 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       
       meta <- metadata[1, ]
       
+      # Get performance data for this specific experiment
+      tryCatch({
+        db <- import("db_interface")
+        performance_data <- db$get_experiments_with_performance(exp_id_json, c('SNP', 'INDEL'))
+        snp_perf <- performance_data %>% filter(variant_type == "SNP")
+        indel_perf <- performance_data %>% filter(variant_type == "INDEL")
+      }, error = function(e) {
+        snp_perf <- data.frame()
+        indel_perf <- data.frame()
+      })
+      
       div(
-        h5("Complete Experiment Details"),
+        h5(paste("Complete Experiment Details - ID:", exp_id, "-", meta$name), style = "color: #007bff; font-weight: 700; margin-bottom: 20px;"),
         div(
           class = "metadata-grid-4col",
           
           # SEQUENCING PLATFORM CARD
           div(class = "metadata-card",
-              h6("Sequencing Platform"),
+              h6("Sequencing Platform", style = "color: #007bff; font-weight: 700; font-size: 16px; border-bottom: 2px solid #007bff; padding-bottom: 8px; margin-bottom: 15px;"),
               p(strong("Technology: "), meta$technology %||% "N/A"),
               p(strong("Platform: "), meta$platform_name %||% "N/A"),
               p(strong("Platform Type: "), meta$platform_type %||% "N/A"),
@@ -222,7 +232,7 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
           
           # ANALYSIS PIPELINE CARD
           div(class = "metadata-card",
-              h6("Analysis Pipeline"),
+              h6("Analysis Pipeline", style = "color: #007bff; font-weight: 700; font-size: 16px; border-bottom: 2px solid #007bff; padding-bottom: 8px; margin-bottom: 15px;"),
               p(strong("Variant Caller: "), meta$caller %||% "N/A"),
               p(strong("Caller Version: "), meta$caller_version %||% "N/A"),
               p(strong("Caller Type: "), meta$caller_type %||% "N/A"),
@@ -233,7 +243,7 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
           
           # QUALITY METRICS CARD
           div(class = "metadata-card",
-              h6("Quality Metrics"),
+              h6("Quality Metrics", style = "color: #007bff; font-weight: 700; font-size: 16px; border-bottom: 2px solid #007bff; padding-bottom: 8px; margin-bottom: 15px;"),
               p(strong("Mean Coverage: "), ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x"))),
               p(strong("Read Length: "), 
                 ifelse(is.na(meta$read_length), 
@@ -245,7 +255,7 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
           
           # VARIANTS & TRUTH SET CARD
           div(class = "metadata-card",
-              h6("Variants & Truth Set"),
+              h6("Variants & Truth Set", style = "color: #007bff; font-weight: 700; font-size: 16px; border-bottom: 2px solid #007bff; padding-bottom: 8px; margin-bottom: 15px;"),
               p(strong("Variant Type: "), meta$variant_type %||% "N/A"),
               p(strong("Variant Origin: "), meta$variant_origin %||% "N/A"),
               p(strong("Variant Size: "), meta$variant_size %||% "N/A"),
@@ -253,6 +263,40 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
               p(strong("Truth Set: "), paste(meta$truth_set_name %||% "N/A", meta$truth_set_version %||% "")),
               p(strong("Sample: "), meta$truth_set_sample %||% "N/A"),
               p(strong("Reference: "), meta$truth_set_reference %||% "N/A")
+          ),
+          
+          # SNP PERFORMANCE CARD
+          div(class = "metadata-card",
+              h6("SNP Performance", style = "color: #007bff; font-weight: 700; font-size: 16px; border-bottom: 2px solid #007bff; padding-bottom: 8px; margin-bottom: 15px;"),
+              if (nrow(snp_perf) > 0) {
+                tagList(
+                  p(strong("F1 Score: "), paste0(round(snp_perf$f1_score * 100, 2), "%")),
+                  p(strong("Precision: "), paste0(round(snp_perf$precision * 100, 2), "%")),
+                  p(strong("Recall: "), paste0(round(snp_perf$recall * 100, 2), "%")),
+                  p(strong("True Positives: "), format(snp_perf$truth_tp, big.mark = ",")),
+                  p(strong("False Negatives: "), format(snp_perf$truth_fn, big.mark = ",")),
+                  p(strong("False Positives: "), format(snp_perf$query_fp, big.mark = ","))
+                )
+              } else {
+                p("No SNP performance data available", style = "color: #6c757d; font-style: italic;")
+              }
+          ),
+          
+          # INDEL PERFORMANCE CARD
+          div(class = "metadata-card",
+              h6("INDEL Performance", style = "color: #007bff; font-weight: 700; font-size: 16px; border-bottom: 2px solid #007bff; padding-bottom: 8px; margin-bottom: 15px;"),
+              if (nrow(indel_perf) > 0) {
+                tagList(
+                  p(strong("F1 Score: "), paste0(round(indel_perf$f1_score * 100, 2), "%")),
+                  p(strong("Precision: "), paste0(round(indel_perf$precision * 100, 2), "%")),
+                  p(strong("Recall: "), paste0(round(indel_perf$recall * 100, 2), "%")),
+                  p(strong("True Positives: "), format(indel_perf$truth_tp, big.mark = ",")),
+                  p(strong("False Negatives: "), format(indel_perf$truth_fn, big.mark = ",")),
+                  p(strong("False Positives: "), format(indel_perf$query_fp, big.mark = ","))
+                )
+              } else {
+                p("No INDEL performance data available", style = "color: #6c757d; font-style: italic;")
+              }
           )
         )
       )
