@@ -11,7 +11,7 @@ Main components:
 - Connection testing and verification
 """
 
-from database import create_tables, test_connection, validate_environment
+from database import drop_all_data, create_tables, test_connection, validate_environment
 from models import *
 from populate_metadata import *
 import sys
@@ -32,7 +32,14 @@ def main():
     if not test_connection():
         logger.error("Cannot connect to database")
         sys.exit(1)
-    
+        # Drop all existing data first
+    try:
+        drop_all_data()
+        logger.info("---- Dropped all existing data ----")
+    except Exception as e:
+        logger.error(f"Failed to drop existing data: {e}")
+        sys.exit(1)
+        
     # Create tables
     try:
         create_tables()

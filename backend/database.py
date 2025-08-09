@@ -117,3 +117,12 @@ def validate_environment():
     
     logger.info("Environment validation successful")
     return True
+
+# Drop all data and recreate empty structure
+def drop_all_data():
+    """Drop all tables and data, then recreate empty structure"""
+    logger.info("Dropping all existing data...")
+    Base.metadata.drop_all(bind=engine)
+    logger.info("Recreating empty table structure...")
+    Base.metadata.create_all(bind=engine)
+    logger.info("All data dropped and tables recreated")
