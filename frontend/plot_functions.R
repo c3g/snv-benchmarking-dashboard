@@ -3,18 +3,18 @@
 # ============================================================================
 "
 Plot generation functions for SNV Benchmarking Dashboard.
+Converts processed data into interactive ggplot/plotly visualizations.
 
-Main components:
-- SNP and INDEL performance scatter plots with F1 contours
-- Stratified analysis bar plots with technology-caller gradients
-- F1 contour calculation for performance plots
-- HTML legend generation for plot displays
-- Plot height calculations for dynamic sizing
-- Interactive plot configurations for Plotly integration
+Contains:
+- Core plot functions (F1 contours, stratified bar charts)
+- Visual elements (HTML legends for technology/caller symbols)  
+- Output handlers (SNP/INDEL scatter plots with interactive features)
+- Plot utilities (dynamic height calculations, tooltips, styling)
+
 "
 
 # ============================================================================
-# F1 CONTOUR CALCULATION
+# CORE PLOT FUNCTIONS
 # ============================================================================
 
 # Calculate F1 score contour data for performance plots
@@ -37,10 +37,6 @@ create_f1_contour <- function() {
   
   return(contour_data)
 }
-
-# ============================================================================
-# STRATIFIED PLOT FUNCTIONS
-# ============================================================================
 
 # Create stratified performance plots with technology-caller gradients
 create_stratified_grouped_plot <- function(data, variant_type, metric_name = "f1_score") {
@@ -80,7 +76,7 @@ create_stratified_grouped_plot <- function(data, variant_type, metric_name = "f1
     scale_fill_manual(values = tech_caller_colors, na.value = "gray70") +
     scale_x_continuous(limits = c(0, 1.1), labels = scales::percent_format()) +
     facet_wrap(~ subset, scales = "free_y", ncol = 1) +
-    labs(x = metric_label, y = "", fill = "Technology + Caller") +  # REMOVED "Experiment" label
+    labs(x = metric_label, y = "") +
     theme_bw() +
     theme(
       strip.background = element_rect(fill = "#f8f9fa", color = "#dee2e6"),
@@ -92,16 +88,16 @@ create_stratified_grouped_plot <- function(data, variant_type, metric_name = "f1
       panel.grid.major.y = element_blank(),
       panel.grid.minor = element_blank()
     ) +
-    guides(fill = guide_legend(ncol = 4, byrow = TRUE))
+    guides(fill = guide_legend(ncol = 3, byrow = TRUE))
   
   return(plot)
 }
 
 # ============================================================================
-# HTML LEGEND GENERATION FOR PLOTS
+# VISUAL ELEMENTS & LEGENDS
 # ============================================================================
 
-# Create technology legend for visualization tab
+# technology legend for Tab 3
 create_technology_legend <- function() {
   legend_items <- ""
   
@@ -125,7 +121,7 @@ create_technology_legend <- function() {
   ))
 }
 
-# Create caller legend for visualization tab
+# caller legend for tab 3
 create_caller_legend <- function() {
   legend_items <- ""
   
@@ -152,7 +148,7 @@ create_caller_legend <- function() {
 }
 
 # ============================================================================
-# PLOT OUTPUT SETUP FUNCTION
+# PLOT OUTPUT HANDLERS
 # ============================================================================
 
 setup_plot_outputs <- function(input, output, session, data_reactives) {
