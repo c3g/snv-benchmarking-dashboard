@@ -6,9 +6,7 @@ Configuration constants and static values for SNV Benchmarking Dashboard.
 
 Main components:
 - CSS styling definitions
-- Metric label mappings
-- UI configuration constants
-- Application-wide settings
+- UI configuration constants, UI dropdowns (metric labels, technology/caller options, etc)
 "
 
 # ============================================================================
@@ -161,7 +159,7 @@ METADATA_CSS_STYLES <- "
 "
 
 # ============================================================================
-# METRIC AND LABEL MAPPINGS
+# UI CONFIGURATION CONSTANTS
 # ============================================================================
 
 # Metric display labels for UI
@@ -171,18 +169,6 @@ METRIC_LABELS <- list(
   "recall" = "Recall"
 )
 
-# Tab information constants
-TAB_INFO_MESSAGES <- list(
-  experiments = "This table displays all available benchmarking experiments with their key metadata.",
-  performance = "This table shows detailed performance metrics for each experiment.",
-  visualizations = "These scatter plots display precision vs recall performance for each experiment.",
-  stratified = "Analyze F1 scores across different genomic regions for the selected experiments."
-)
-
-# ============================================================================
-# UI CONFIGURATION CONSTANTS
-# ============================================================================
-
 # Filter type options for sidebar
 FILTER_TYPES <- list(
   "Show All" = "none",
@@ -190,64 +176,9 @@ FILTER_TYPES <- list(
   "Variant Caller" = "caller"
 )
 
-# Technology options
+# Available options for dropdowns
 TECHNOLOGY_OPTIONS <- c("ILLUMINA", "PACBIO", "ONT", "MGI")
-
-# Caller options  
 CALLER_OPTIONS <- c("DEEPVARIANT", "GATK", "CLAIR3")
+VARIANT_TYPES <- c("SNP", "INDEL")
 
-# Variant types for analysis
-VARIANT_TYPES <- c('SNP', 'INDEL')
 
-# ============================================================================
-# DATATABLE CONFIGURATION
-# ============================================================================
-
-# Standard DataTable options
-STANDARD_DT_OPTIONS <- list(
-  pageLength = 15,
-  scrollX = TRUE,
-  responsive = TRUE,
-  autoWidth = FALSE
-)
-
-# Performance table specific options
-PERFORMANCE_DT_OPTIONS <- list(
-  pageLength = 15,
-  scrollX = TRUE,
-  columnDefs = list(
-    list(targets = 0, className = "dt-center", width = "50px"),
-    list(targets = c(8, 9, 10), className = "dt-center"),
-    list(targets = 6, className = "dt-center"),
-    list(targets = "_all", className = "dt-body-nowrap")
-  )
-)
-
-# ============================================================================
-# PLOT CONFIGURATION
-# ============================================================================
-
-# Standard plot dimensions
-PLOT_DIMENSIONS <- list(
-  width = 12,
-  height = 6,
-  dpi = 300
-)
-
-# Stratified plot height calculation (matching original)
-STRATIFIED_PLOT_CONFIG <- list(
-  base_height = 8,
-  region_multiplier = 2,
-  experiment_multiplier = 0.5
-)
-
-# ============================================================================
-# APPLICATION METADATA
-# ============================================================================
-
-# Application information
-APP_INFO <- list(
-  title = "SNV Benchmarking Dashboard",
-  version = "1.0.0",
-  description = "Interactive dashboard for analyzing SNV variant calling performance"
-)
