@@ -3,14 +3,16 @@
 # ============================================================================
 "
 Reactive data processing functions for SNV Benchmarking Dashboard.
+Turns user interactions into database queries and prepares data for outputs.
 
 Main components:
-- Core data retrieval and filtering
-- Performance data processing for tables and plots
-- Stratified analysis data preparation
-- Experiment metadata handling
-- Data transformation and enhancement functions
+- State tracking (current mode/ selection, etc)
+- Data fetching (get experiments from database based on filters/selections)
+- Data formatting (convert raw data into table/plot-ready format)
+- Mode handling (simple filtering vs technology comparisons vs manual selection)
+
 "
+
 # ============================================================================
 # SETUP FUNCTION - CREATES ALL REACTIVE VALUES AND DATA PROCESSING
 # ============================================================================
@@ -21,16 +23,37 @@ setup_data_reactives <- function(input, output, session) {
   # REACTIVE VALUES FOR STATE MANAGEMENT
   # ====================================================================
   
+  # Current app mode: "filter", "tech_comparison", "caller_comparison", "manual_selection"
   current_mode <- reactiveVal("filter")
+  
+  # experiments to show in main table (overrides filters)
   display_experiment_ids <- reactiveVal(numeric(0))
+  
+  # User-selected experiments from table clicks
   table_selected_ids <- reactiveVal(numeric(0))
+  
+  # Clicked experiment from plots
   plot_clicked_id <- reactiveVal(NULL)
+  
+  # Has user submitted a comparison 
   comparison_submitted <- reactiveVal(FALSE)
+  
+  # What type of comparison: "technology" or "caller"
   comparison_type <- reactiveVal(NULL)
+  
+  # Results from submitted comparisons
   comparison_results <- reactiveVal(numeric(0))
+  
+  # Which table rows are expanded 
   expanded_rows <- reactiveVal(character(0))
+  
+  # Raw stratified data from database
   stratified_raw_data <- reactiveVal(data.frame())
+  
+  # Processed stratified data for display
   stratified_filtered_data <- reactiveVal(data.frame())
+  
+  # Has stratified analysis been run (shows/hides Tab 4)
   stratified_triggered <- reactiveVal(FALSE)
   
   # ====================================================================
@@ -142,7 +165,7 @@ setup_data_reactives <- function(input, output, session) {
       mutate(plot_id = paste0("indel_", experiment_id))
   })
   
-  # Performance data for tables with formatting
+  # Performance data for tables 
   performance_data <- reactive({
     viz_data <- viz_performance_data()
     
