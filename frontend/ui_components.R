@@ -2,13 +2,22 @@
 # ui_components.R
 # ============================================================================
 "
-UI components and output functions for SNV Benchmarking Dashboard.
+UI components and dynamic outputs for SNV Benchmarking Dashboard.
+Creates interface elements that respond automatically to user actions.
 
-Main components:
-- Status and info output functions
-- Metadata display components
-- UI state management outputs
-- Reusable alert and notification components
+Main sections:
+1. setup_ui_outputs() - Creates state signals and dynamic content
+   - State signals (show/hide UI panels automatically)
+   - Sidebar status text (experiment counts, selection feedback)
+   - Experiment metadata displays (plot click details)
+   - Stratified analysis summaries
+
+2. upload_modal_ui() - Complete form for adding new experiments
+   - Multi-step upload process (file → metadata → submit)
+   - Organized metadata sections (technology, caller, truth set, etc.)
+   - Validation and filename preview
+
+3. upload_button_ui() - Simple trigger button for upload modal
 "
 # ============================================================================
 # UI OUTPUT SETUP FUNCTION
@@ -20,25 +29,25 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
   # STATE MANAGEMENT OUTPUTS
   # ====================================================================
   
-  # Comparison mode indicator
+  # Comparison mode
   output$comparison_mode <- reactive({
     data_reactives$current_mode()
   })
   outputOptions(output, "comparison_mode", suspendWhenHidden = FALSE)
   
-  # Selected experiments check
+  # Selected experiments (tab 1)
   output$has_selected_experiments <- reactive({
     data_reactives$current_mode() == "manual_selection" && length(data_reactives$table_selected_ids()) > 0
   })
   outputOptions(output, "has_selected_experiments", suspendWhenHidden = FALSE)
   
-  # Selected point check
+  # Selected point (tab 3)
   output$has_selected_point <- reactive({
     !is.null(data_reactives$plot_clicked_id())
   })
   outputOptions(output, "has_selected_point", suspendWhenHidden = FALSE)
   
-  # Stratified data availability check
+  # Stratified data (tab 4)
   output$has_stratified_data <- reactive({
     data_reactives$stratified_triggered() && nrow(data_reactives$stratified_filtered_data()) > 0
   })
@@ -69,53 +78,6 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
     length(data_reactives$table_selected_ids())
   })
   
-  # ====================================================================
-  # UPLOAD FILENAME PREVIEW
-  # ====================================================================
-  
-  # Generate filename preview for upload modal
-  output$filename_preview <- renderText({
-    if (!is.null(input$exp_name) && input$exp_name != "" &&
-        !is.null(input$technology) && input$technology != "" &&
-        !is.null(input$platform_name) && input$platform_name != "" &&
-        !is.null(input$caller_name) && input$caller_name != "" &&
-        !is.null(input$truth_set_name) && input$truth_set_name != "") {
-      
-      # Helper function to clean values
-      strip_value <- function(value) {
-        if (is.null(value) || is.na(value) || value == "") {
-          return("")
-        }
-        return(trimws(as.character(value)))
-      }
-      
-      tryCatch({
-        # Get next experiment ID placeholder
-        preview_id <- "XXX"  # Placeholder since we can't predict the exact ID
-        
-        # Extract sample name
-        sample <- strsplit(strip_value(input$exp_name), "_")[[1]][1]
-        if (is.na(sample) || sample == "") sample <- "UNKNOWN"
-        
-        # Clean all metadata components
-        technology <- tolower(strip_value(input$technology))
-        platform <- tolower(strip_value(input$platform_name))
-        caller <- tolower(strip_value(input$caller_name))
-        truthset <- tolower(strip_value(input$truth_set_name))
-        
-        # Build filename matching Python format
-        filename <- paste0(preview_id, "_", sample, "_", technology, "_", platform, "_", caller, "_", truthset, ".csv")
-        
-        return(paste("Preview:", filename))
-        
-      }, error = function(e) {
-        return("Error generating preview")
-      })
-      
-    } else {
-      return("Fill required fields (*) to see filename preview")
-    }
-  })
   
   # ====================================================================
   # EXPERIMENT METADATA OUTPUTS (TAB 3)
@@ -129,17 +91,13 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
     if (is.null(exp_id) || is.na(exp_id) || length(exp_id) == 0) {
       return(NULL)
     }
-    
-    # Ensure exp_id is numeric and valid
     exp_id <- as.numeric(exp_id)
     if (is.na(exp_id) || exp_id <= 0) {
       return(p("Invalid experiment ID"))
     }
     
-    # Get experiment metadata with error handling
+    # Get experiment metadata
     tryCatch({
-      # Re-import db inside reactive to avoid session issues
-      db <- import("db_interface")
       
       exp_id_json <- json_param(list(exp_id))
       metadata <- db$get_experiment_metadata(exp_id_json)
@@ -191,8 +149,6 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
     
     # Get experiment metadata 
     tryCatch({
-      # Re-import db inside reactive to avoid session issues
-      db <- import("db_interface")
       
       exp_id_json <- json_param(list(exp_id))
       metadata <- db$get_experiment_metadata(exp_id_json)
@@ -205,8 +161,7 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       
       # Get performance data for this specific experiment
       tryCatch({
-        db <- import("db_interface")
-        performance_data <- db$get_experiments_with_performance(exp_id_json, c('SNP', 'INDEL'))
+        performance_data <- db$get_experiments_with_performance(exp_id_json, VARIANT_TYPES)
         snp_perf <- performance_data %>% filter(variant_type == "SNP")
         indel_perf <- performance_data %>% filter(variant_type == "INDEL")
       }, error = function(e) {
@@ -325,11 +280,71 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       n_results, " total results"
     ))
   })
+  
+  # ====================================================================
+  # UPLOAD FILENAME PREVIEW
+  # ====================================================================
+  
+  # filename preview
+  output$filename_preview <- renderText({
+    if (!is.null(input$exp_name) && input$exp_name != "" &&
+        !is.null(input$technology) && input$technology != "" &&
+        !is.null(input$platform_name) && input$platform_name != "" &&
+        !is.null(input$caller_name) && input$caller_name != "" &&
+        !is.null(input$truth_set_name) && input$truth_set_name != "") {
+      
+      # Helper function to clean values
+      strip_value <- function(value) {
+        if (is.null(value) || is.na(value) || value == "") {
+          return("")
+        }
+        return(trimws(as.character(value)))
+      }
+      
+      tryCatch({
+        # Get next experiment ID 
+        overview <- db$get_experiments_overview()
+        next_id <- nrow(overview) + 1
+        preview_id <- sprintf("%03d", next_id)  # Format with 3 digits
+        
+        # Extract sample name
+        sample <- strsplit(strip_value(input$exp_name), "_")[[1]][1]
+        if (is.na(sample) || sample == "") sample <- "UNKNOWN"
+        
+        # Clean metadata components
+        technology <- tolower(strip_value(input$technology))
+        platform <- tolower(strip_value(input$platform_name))
+        caller <- tolower(strip_value(input$caller_name))
+        truthset <- tolower(strip_value(input$truth_set_name))
+        
+        # Build filename
+        filename <- paste0(preview_id, "_", sample, "_", technology, "_", platform, "_", caller, "_", truthset, ".csv")
+        
+        return(paste("Preview:", filename))
+        
+      }, error = function(e) {
+        return("Error generating preview")
+      })
+      
+    } else {
+      return("Fill required fields (*) to see filename preview")
+    }
+  })
 }
 
 # ============================================================================
 # UPLOAD UI COMPONENTS
 # ============================================================================
+
+# Upload button for main UI
+upload_button_ui <- function() {
+  actionButton(
+    "show_upload_modal", 
+    label = tagList(icon("upload"), "Upload Dataset"),
+    class = "btn-success btn-sm",
+    style = "font-size: 14px; padding: 6px 12px; white-space: nowrap;"
+  )
+}
 
 # Upload Modal UI
 upload_modal_ui <- function() {
@@ -339,7 +354,7 @@ upload_modal_ui <- function() {
     "show_upload_modal", 
     size = "large",
     
-    # Step 1: File Upload
+    # 1: File Upload
     wellPanel(
       style = "background-color: #f8f9fa; margin-bottom: 20px;",
       fluidRow(
@@ -357,11 +372,11 @@ upload_modal_ui <- function() {
       )
     ),
     
-    # Step 2: Metadata Form
+    # 2: Metadata Form
     wellPanel(
       h4("2. Experiment Metadata"),
       
-      # Row 1: Experiment Info
+      # Experiment Info
       fluidRow(
         column(4,
                textInput("exp_name", "Experiment Name*", 
@@ -378,7 +393,7 @@ upload_modal_ui <- function() {
         )
       ),
       
-      # Row 2: Sequencing Technology
+      # Sequencing Technology
       h5("Sequencing Technology", style = "color: #007bff; margin-top: 20px;"),
       fluidRow(
         column(3,
@@ -398,7 +413,7 @@ upload_modal_ui <- function() {
         )
       ),
       
-      # Row 3: Chemistry
+      # Chemistry
       fluidRow(
         column(6,
                textInput("chemistry_name", "Chemistry",
@@ -410,7 +425,7 @@ upload_modal_ui <- function() {
         )
       ),
       
-      # Row 4: Variant Caller
+      # Variant Caller
       h5("Variant Caller", style = "color: #007bff; margin-top: 20px;"),
       fluidRow(
         column(3,
@@ -431,7 +446,7 @@ upload_modal_ui <- function() {
         )
       ),
       
-      # Row 5: Aligner
+      # Aligner
       h5("Aligner", style = "color: #007bff; margin-top: 20px;"),
       fluidRow(
         column(6,
@@ -444,7 +459,7 @@ upload_modal_ui <- function() {
         )
       ),
       
-      # Row 6: Truth Set
+      # Truth Set
       h5("Truth Set", style = "color: #007bff; margin-top: 20px;"),
       fluidRow(
         column(3,
@@ -468,7 +483,7 @@ upload_modal_ui <- function() {
         )
       ),
       
-      # Row 7: Variant Info
+      # Variant Info
       h5("Variant Information", style = "color: #007bff; margin-top: 20px;"),
       fluidRow(
         column(3,
@@ -493,7 +508,7 @@ upload_modal_ui <- function() {
         )
       ),
       
-      # Row 8: Benchmark Tool
+      # Benchmark Tool
       h5("Benchmark Tool", style = "color: #007bff; margin-top: 20px;"),
       fluidRow(
         column(6,
@@ -507,7 +522,7 @@ upload_modal_ui <- function() {
         )
       ),
       
-      # Row 9: Quality Metrics
+      # Quality Metrics
       h5("Quality Metrics", style = "color: #007bff; margin-top: 20px;"),
       fluidRow(
         column(2,
@@ -529,7 +544,7 @@ upload_modal_ui <- function() {
       )
     ),
     
-    # Step 3: Preview & Submit
+    # 3: Preview & Submit
     wellPanel(
       h4("3. Review & Submit"),
       fluidRow(
@@ -554,12 +569,3 @@ upload_modal_ui <- function() {
   )
 }
 
-# Upload button for main UI
-upload_button_ui <- function() {
-  actionButton(
-    "show_upload_modal", 
-    label = tagList(icon("upload"), "Upload Dataset"),
-    class = "btn-success btn-sm",
-    style = "font-size: 14px; padding: 6px 12px; white-space: nowrap;"
-  )
-}
