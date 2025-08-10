@@ -315,7 +315,7 @@ setup_observers <- function(input, output, session, data_reactives) {
       # Pass regions to database query for SQL filtering
       enhanced_data <- db$get_stratified_performance_by_regions(
         ids_json, 
-        c('SNP', 'INDEL'),
+        VARIANT_TYPES,
         selected_regions
       )
       

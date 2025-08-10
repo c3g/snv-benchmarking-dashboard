@@ -255,7 +255,7 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
     
     stratified_data <- db$get_stratified_performance_by_regions(
       experiment_ids_param = toJSON(data_reactives$performance_experiment_ids()),
-      variant_types = list("SNP", "INDEL"),
+      variant_types = VARIANT_TYPES,
       regions = all_selected_regions
     )
     

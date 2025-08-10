@@ -107,7 +107,7 @@ setup_data_reactives <- function(input, output, session) {
     
     tryCatch({
       ids_json <- json_param(ids)
-      enhanced_data <- db$get_experiments_with_performance(ids_json, c('SNP', 'INDEL'))
+      enhanced_data <- db$get_experiments_with_performance(ids_json, VARIANT_TYPES)
       
       # Additional validation
       if (nrow(enhanced_data) == 0) {
