@@ -2,19 +2,18 @@
 # utils.R
 # ============================================================================
 "
-Core utility functions for SNV Benchmarking Dashboard.
+Core color/shape mappings and utility functions for SNV Benchmarking Dashboard.
 
 Main components:
-- Color and shape mappings for consistent visualization
+- Color and shape mappings for visualizations
 - Helper functions for data processing and JSON parameter handling
-- Null coalescing operator and safe value handling
 "
 
 # ============================================================================
 # COLOR AND SHAPE MAPPINGS
 # ============================================================================
 
-# Technology color scheme for consistent visualization
+# Technology color scheme
 technology_colors <- c(
   "ILLUMINA" = "#F8766D",    # Red
   "PACBIO" = "#C77CFF",      # Purple
@@ -61,7 +60,7 @@ tech_caller_colors <- c(
 # HELPER FUNCTIONS
 # ============================================================================
 
-# Null coalescing operator (safe value handling)
+# Null coalescing operator ( for safe value handling)
 `%||%` <- function(x, y) {
   if (is.null(x) || is.na(x) || x == "") y else x
 }
