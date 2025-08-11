@@ -86,7 +86,7 @@ create_zoomed_performance_plot <- function(data, variant_type) {
              labs(title = variant_type, x = "Precision", y = "Recall") +
              theme_bw())
   }
-
+  
   
   contour <- create_f1_contour()
   zoom_limits <- calculate_zoom_limits(data)
@@ -397,7 +397,7 @@ add_stratified_section <- function(stratified_data, selected_metric = "f1_score"
         </div>
     </div>')
   
-
+  
   # Add the data table at the bottom
   html_content <- paste0(html_content, create_stratified_table(stratified_data, selected_metric))
   
@@ -414,6 +414,9 @@ process_variant_data <- function(viz_data, variant_type) {
     filter(!is.na(f1_numeric)) %>%
     arrange(desc(f1_numeric))
 }
+# =============================================================================
+# HTML CODE
+# =============================================================================
 
 generate_html_header <- function() {
   '<!DOCTYPE html>
@@ -477,7 +480,7 @@ generate_html_header <- function() {
             border-radius: 5px;
             border-left: 4px solid #007bff;
         }
-        .metadata-grid-4col {
+        .metadata-grid-6col {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 20px;
@@ -517,7 +520,6 @@ generate_html_header <- function() {
     <div class="container">
         <h1>SNV Benchmarking Report</h1>'
 }
-
 generate_summary_section <- function(viz_data, experiment_ids) {
   technologies <- unique(viz_data$technology[!is.na(viz_data$technology)])
   callers <- unique(viz_data$caller[!is.na(viz_data$caller)])
@@ -587,6 +589,10 @@ generate_performance_table <- function(data, variant_type) {
         </table>')
 }
 
+# =============================================================================
+# ENHANCED METADATA GENERATION WITH 6 CARDS
+# =============================================================================
+
 generate_metadata_section <- function(viz_data, experiment_ids) {
   html_metadata <- '<h2>Experiment Metadata</h2>'
   
@@ -595,23 +601,31 @@ generate_metadata_section <- function(viz_data, experiment_ids) {
     if (nrow(exp_data) > 0) {
       exp_data <- exp_data[1, ]
       
+      # Get performance data for this specific experiment (SNP and INDEL)
+      snp_perf <- viz_data %>% filter(experiment_id == exp_id, variant_type == "SNP")
+      indel_perf <- viz_data %>% filter(experiment_id == exp_id, variant_type == "INDEL")
+      
       html_metadata <- paste0(html_metadata, '
         <div class="metadata-section">
             <h3>Experiment ', exp_id, ': ', safe_value(exp_data$experiment_name), '</h3>
             
-            <div class="metadata-grid-4col">
+            <div class="metadata-grid-6col">
+                
+                <!-- CARD 1: Sequencing Technology & Platform -->
                 <div class="metadata-card">
-                    <h4>Sequencing Platform</h4>
+                    <h4>🧬 Sequencing Technology</h4>
                     <div class="metadata-item"><strong>Technology:</strong> ', safe_value(exp_data$technology), '</div>
                     <div class="metadata-item"><strong>Platform:</strong> ', safe_value(exp_data$platform_name), '</div>
-                    <div class="metadata-item"><strong>Version:</strong> ', safe_value(exp_data$platform_version), '</div>
-                    <div class="metadata-item"><strong>Type:</strong> ', safe_value(exp_data$platform_type), '</div>
+                    <div class="metadata-item"><strong>Platform Type:</strong> ', safe_value(exp_data$platform_type), '</div>
+                    <div class="metadata-item"><strong>Platform Version:</strong> ', safe_value(exp_data$platform_version), '</div>
                     <div class="metadata-item"><strong>Target:</strong> ', safe_value(exp_data$target), '</div>
                     <div class="metadata-item"><strong>Chemistry:</strong> ', safe_value(exp_data$chemistry_name), '</div>
+                    <div class="metadata-item"><strong>Chemistry Version:</strong> ', safe_value(exp_data$chemistry_version), '</div>
                 </div>
                 
+                <!-- CARD 2: Analysis Pipeline -->
                 <div class="metadata-card">
-                    <h4>Analysis Pipeline</h4>
+                    <h4>⚙️ Analysis Pipeline</h4>
                     <div class="metadata-item"><strong>Variant Caller:</strong> ', safe_value(exp_data$caller), '</div>
                     <div class="metadata-item"><strong>Caller Version:</strong> ', safe_value(exp_data$caller_version), '</div>
                     <div class="metadata-item"><strong>Caller Type:</strong> ', safe_value(exp_data$caller_type), '</div>
@@ -620,22 +634,24 @@ generate_metadata_section <- function(viz_data, experiment_ids) {
                     <div class="metadata-item"><strong>Benchmark Tool:</strong> ', safe_value(exp_data$benchmark_tool_name), ' ', safe_value(exp_data$benchmark_tool_version), '</div>
                 </div>
                 
+                <!-- CARD 3: Quality Metrics -->
                 <div class="metadata-card">
-                    <h4>Quality Metrics</h4>
+                    <h4>📊 Quality Metrics</h4>
                     <div class="metadata-item"><strong>Mean Coverage:</strong> ', safe_coverage(exp_data$mean_coverage), '</div>
                     <div class="metadata-item"><strong>Read Length:</strong> ', 
                               ifelse(is.na(exp_data$read_length), 
-                                     ifelse(is.na(exp_data$mean_read_length), "N/A", paste0(exp_data$mean_read_length, " bp (mean)")), 
-                                     paste0(exp_data$read_length, " bp")), '</div>
+                                     ifelse(is.na(exp_data$mean_read_length), "N/A", paste0(safe_value(exp_data$mean_read_length), " bp (mean)")), 
+                                     paste0(safe_value(exp_data$read_length), " bp")), '</div>
                     <div class="metadata-item"><strong>Insert Size:</strong> ', 
-                              ifelse(is.na(exp_data$mean_insert_size), "N/A", paste0(exp_data$mean_insert_size, " bp")), '</div>
-                    <div class="metadata-item"><strong>Created:</strong> ', 
-                              ifelse(is.na(exp_data$created_at), "N/A", format(as.POSIXct(exp_data$created_at), "%Y-%m-%d")), '</div>
+                              ifelse(is.na(exp_data$mean_insert_size), "N/A", paste0(safe_value(exp_data$mean_insert_size), " bp")), '</div>
+                    <div class="metadata-item"><strong>Quality Score:</strong> ', safe_value(exp_data$read_quality, "N/A"), '</div>
+                    <div class="metadata-item"><strong>Max Aligned Read:</strong> ', safe_value(exp_data$max_aligned_read, "N/A"), '</div>
                 </div>
                 
+                <!-- CARD 4: Variants & Truth Set -->
                 <div class="metadata-card">
-                    <h4>Variants & Truth Set</h4>
-                    <div class="metadata-item"><strong>Variant Type:</strong> ', safe_value(exp_data$variant_type), '</div>
+                    <h4>🎯 Variants & Truth Set</h4>
+                    <div class="metadata-item"><strong>Variant Type:</strong> ', safe_value(exp_data$variant_type_detail), '</div>
                     <div class="metadata-item"><strong>Variant Origin:</strong> ', safe_value(exp_data$variant_origin), '</div>
                     <div class="metadata-item"><strong>Variant Size:</strong> ', safe_value(exp_data$variant_size), '</div>
                     <div class="metadata-item"><strong>Is Phased:</strong> ', 
@@ -644,8 +660,51 @@ generate_metadata_section <- function(viz_data, experiment_ids) {
                     <div class="metadata-item"><strong>Sample:</strong> ', safe_value(exp_data$truth_set_sample), '</div>
                     <div class="metadata-item"><strong>Reference:</strong> ', safe_value(exp_data$truth_set_reference), '</div>
                 </div>
-            </div>
-        </div>')
+                
+                <!-- CARD 5: SNP Performance Summary -->
+                <div class="metadata-card">
+                    <h4>🔴 SNP Performance</h4>')
+      
+      if (nrow(snp_perf) > 0) {
+        html_metadata <- paste0(html_metadata, '
+                    <div class="metadata-item"><strong>F1 Score:</strong> <span class="metric-highlight">', safe_percent(snp_perf$f1_score[1]), '</span></div>
+                    <div class="metadata-item"><strong>Precision:</strong> ', safe_percent(snp_perf$precision[1]), '</div>
+                    <div class="metadata-item"><strong>Recall:</strong> ', safe_percent(snp_perf$recall[1]), '</div>
+                    <div class="metadata-item"><strong>True Positives:</strong> ', format(snp_perf$truth_tp[1], big.mark = ","), '</div>
+                    <div class="metadata-item"><strong>False Negatives:</strong> ', format(snp_perf$truth_fn[1], big.mark = ","), '</div>
+                    <div class="metadata-item"><strong>False Positives:</strong> ', format(snp_perf$query_fp[1], big.mark = ","), '</div>
+                    <div class="metadata-item"><strong>Total Truth:</strong> ', format(snp_perf$truth_total[1], big.mark = ","), '</div>')
+      } else {
+        html_metadata <- paste0(html_metadata, '
+                    <div class="metadata-item" style="color: #6c757d; font-style: italic;">No SNP performance data available</div>')
+      }
+      
+      html_metadata <- paste0(html_metadata, '
+                </div>
+                
+                <!-- CARD 6: INDEL Performance Summary -->
+                <div class="metadata-card">
+                    <h4>🔵 INDEL Performance</h4>')
+      
+      if (nrow(indel_perf) > 0) {
+        html_metadata <- paste0(html_metadata, '
+                    <div class="metadata-item"><strong>F1 Score:</strong> <span class="metric-highlight">', safe_percent(indel_perf$f1_score[1]), '</span></div>
+                    <div class="metadata-item"><strong>Precision:</strong> ', safe_percent(indel_perf$precision[1]), '</div>
+                    <div class="metadata-item"><strong>Recall:</strong> ', safe_percent(indel_perf$recall[1]), '</div>
+                    <div class="metadata-item"><strong>True Positives:</strong> ', format(indel_perf$truth_tp[1], big.mark = ","), '</div>
+                    <div class="metadata-item"><strong>False Negatives:</strong> ', format(indel_perf$truth_fn[1], big.mark = ","), '</div>
+                    <div class="metadata-item"><strong>False Positives:</strong> ', format(indel_perf$query_fp[1], big.mark = ","), '</div>
+                    <div class="metadata-item"><strong>Total Truth:</strong> ', format(indel_perf$truth_total[1], big.mark = ","), '</div>')
+      } else {
+        html_metadata <- paste0(html_metadata, '
+                    <div class="metadata-item" style="color: #6c757d; font-style: italic;">No INDEL performance data available</div>')
+      }
+      
+      html_metadata <- paste0(html_metadata, '
+                </div>
+                
+            </div> <!-- End metadata-grid-6col -->
+        </div> <!-- End metadata-section -->')
     }
   }
   
