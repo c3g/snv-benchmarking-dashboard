@@ -3,13 +3,19 @@
 # ============================================================================
 "
 Table generation and rendering functions for SNV Benchmarking Dashboard.
+Converts processed data into interactive DataTables for dashboard display.
 
-Main components:
-- Experiments overview table with row expansion
-- Performance results table with conditional formatting
-- Stratified analysis tables (SNP and INDEL)
-- Selected experiments compact table
-- Data processing functions for table formatting
+Main tables:
+- Experiments overview (Tab 1: main table with row expansion for metadata)
+- Performance results (Tab 2: formatted metrics as percentages)  
+- Stratified analysis (Tab 4: SNP/INDEL tables with metric highlighting)
+- Selected experiments (Sidebar: compact table for comparisons)
+
+Helper functions:
+- create_metric_table() (formats stratified data with highlighting)
+- create_f1_table() (creates pivot tables for regions)
+- setup_table_outputs() (creates all table outputs)
+
 "
 
 # ============================================================================
@@ -239,57 +245,33 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
   # SNP Metrics Table
   output$snp_metrics_table <- DT::renderDataTable({
     req(input$update_stratified)
-    req(input$selected_metric)  
+    req(input$selected_metric)
     
-    # Re-import db inside reactive to avoid session issues
-    db <- import("db_interface")
+    # Use data that's already processed and available
+    stratified_data <- data_reactives$stratified_filtered_data()
     
-    # Get stratified data
-    all_selected_regions <- c(input$core_regions, input$functional_regions, 
-                              input$homopolymer_regions, input$gc_low, 
-                              input$gc_normal, input$gc_high, input$complex_regions)
-    
-    if(length(all_selected_regions) == 0) {
-      return(data.frame(Message = "Please select at least one region"))
+    if(nrow(stratified_data) == 0) {
+      return(data.frame(Message = "Please select at least one region and update analysis"))
     }
-    
-    stratified_data <- db$get_stratified_performance_by_regions(
-      experiment_ids_param = toJSON(data_reactives$performance_experiment_ids()),
-      variant_types = VARIANT_TYPES,
-      regions = all_selected_regions
-    )
     
     # Create SNP table with metric highlighting
     create_metric_table(stratified_data, "SNP", input$selected_metric)
-    
   }, server = FALSE)
   
   # INDEL Metrics Table
   output$indel_metrics_table <- DT::renderDataTable({
     req(input$update_stratified)
-    req(input$selected_metric)  
+    req(input$selected_metric)
     
-    # Re-import db inside reactive to avoid session issues
-    db <- import("db_interface")
+    # Use data that's already processed and available
+    stratified_data <- data_reactives$stratified_filtered_data()
     
-    # Get stratified data
-    all_selected_regions <- c(input$core_regions, input$functional_regions, 
-                              input$homopolymer_regions, input$gc_low, 
-                              input$gc_normal, input$gc_high, input$complex_regions)
-    
-    if(length(all_selected_regions) == 0) {
-      return(data.frame(Message = "Please select at least one region"))
+    if(nrow(stratified_data) == 0) {
+      return(data.frame(Message = "Please select at least one region and update analysis"))
     }
-    
-    stratified_data <- db$get_stratified_performance_by_regions(
-      experiment_ids_param = toJSON(data_reactives$performance_experiment_ids()),
-      variant_types = list("SNP", "INDEL"),
-      regions = all_selected_regions
-    )
     
     # Create INDEL table with metric highlighting
     create_metric_table(stratified_data, "INDEL", input$selected_metric)
-    
   }, server = FALSE)
   
   # ====================================================================

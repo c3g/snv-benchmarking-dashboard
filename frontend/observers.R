@@ -5,13 +5,16 @@
 Event observers and reactive handlers for SNV Benchmarking Dashboard.
 
 Main components:
-- Button click handlers for comparison modes
-- Table row selection observers
-- Plot interaction handlers (clicks)
-- Comparison submission logic
-- Experiment details expansion
-- Stratified analysis update handlers
-- Upload functionality and file processing
+- Comparison mode buttons (Sidebar: tech/caller/manual comparison switching)
+- Table selections (Tab 1: row clicking for experiment selection)
+- Plot interactions (Tab 3: point clicking for experiment details)
+- Stratified analysis (Tab 4: region selection and update triggers)
+- File upload (Modal: validation, processing, database integration)
+
+Observer functions:
+- Button handlers (mode switching, submission, clearing)
+- Table/plot event handlers (selection tracking, click detection)
+- Upload processing (file validation, metadata handling)
 "
 
 # ============================================================================
@@ -319,15 +322,6 @@ setup_observers <- function(input, output, session, data_reactives) {
         selected_regions
       )
       
-      # Debug information
-      cat("📊 Stratified Query Results:\n")
-      cat("- Experiments requested:", length(current_exp_ids), "\n")
-      cat("- Regions requested:", length(selected_regions), "\n")
-      cat("- Results returned:", nrow(enhanced_data), "\n")
-      if (nrow(enhanced_data) > 0) {
-        cat("- Unique experiments in results:", length(unique(enhanced_data$experiment_id)), "\n")
-        cat("- Unique regions in results:", length(unique(enhanced_data$subset)), "\n")
-      }
       
       # Get metadata if we have results
       if (nrow(enhanced_data) > 0) {

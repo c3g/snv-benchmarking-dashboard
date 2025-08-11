@@ -5,11 +5,16 @@
 Plot generation functions for SNV Benchmarking Dashboard.
 Converts processed data into interactive ggplot/plotly visualizations.
 
-Contains:
-- Core plot functions (F1 contours, stratified bar charts)
-- Visual elements (HTML legends for technology/caller symbols)  
-- Output handlers (SNP/INDEL scatter plots with interactive features)
-- Plot utilities (dynamic height calculations, tooltips, styling)
+Main plots:
+- Performance scatter plots (Tab 3: SNP/INDEL precision vs recall with F1 contours)
+- Stratified bar charts (Tab 4: performance across genomic regions)
+- Plot legends (Tab 3: technology colors and caller shapes)
+
+Helper functions:
+- create_f1_contour() (calculates F1 benchmark lines for scatter plots)
+- create_stratified_grouped_plot() (creates regional performance bar charts)
+- create_technology_legend() / create_caller_legend() (HTML legend builders)
+- setup_plot_outputs() (creates all plot outputs with interactivity)
 
 "
 

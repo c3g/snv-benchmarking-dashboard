@@ -2,26 +2,46 @@
 # app.R - SNV Benchmarking Dashboard
 # ============================================================================
 "
-Main Shiny application for SNV Benchmarking Dashboard.
-
-This application provides an interactive interface for analyzing variant calling
-performance metrics across different sequencing technologies, platforms, and 
-genomic regions. Features include experiment comparison, performance visualization,
-and stratified analysis.
+Interactive web application for comparing variant calling performance across
+different sequencing technologies (Illumina, PacBio, ONT, MGI) and variant 
+calling algorithms (DeepVariant, GATK, Clair3). Analyzes hap.py benchmarking
+results with stratified performance metrics across genomic regions.
 
 Architecture:
-- Backend: Python (SQLAlchemy, pandas) for data processing
 - Frontend: R Shiny for interactive visualization  
+- Backend: Python for data processing and database queries
 - Database: SQLite for experiment metadata and results storage
 - Modular Structure: Separated into functional components for maintainability
-"
 
+Features:
+- Experiment browsing with technology/caller filtering
+- Interactive precision-recall plots with F1 contours
+- Stratified analysis across genomic regions
+- Upload interface for new hap.py results
+- HTML report export functionality
+
+Main Components:
+- Tab 1: Experiment Overview (browse and select experiments)
+- Tab 2: Performance Results (tabular metrics)
+- Tab 3: Visualizations (interactive plots)
+- Tab 4: Stratified Analysis (regional performance)
+- Sidebar: Filter controls and comparison modes
+
+Module Files:
+- constants.R: UI styling, JavaScript, dropdown options
+- data_processing.R: Reactive data management and state handling
+- plot_functions.R: Interactive visualization generation
+- table_functions.R: Data table rendering and formatting
+- observers.R: Event handling and user interaction logic
+- ui_components.R: Dynamic UI elements and upload modal
+- utils.R: Color schemes, helper functions, backend interface
+"
 
 # ============================================================================
 # LIBRARIES AND DEPENDENCIES
 # ============================================================================
 
-# Core Shiny and data manipulation
+# core and data manipulation
 library(reticulate)
 library(shiny)
 library(DT)
@@ -29,14 +49,12 @@ library(dplyr)
 library(tidyr)
 library(jsonlite)
 
-# Visualization libraries
+# Visualization and UI
 library(ggplot2)
 library(plotly)
 library(ggsci)
 library(patchwork)
 library(geomtextpath)
-
-# UI enhancement libraries
 library(htmltools)
 library(htmlwidgets)
 library(shinyBS)
@@ -55,7 +73,7 @@ upload_handler <- import("upload_handler")
 # R MODULE IMPORTS
 # ============================================================================
 
-# Import core modules
+# Import R modules
 source("constants.R")
 source("utils.R")
 source("data_processing.R")
@@ -63,11 +81,9 @@ source("plot_functions.R")
 source("table_functions.R")
 source("observers.R")
 source("ui_components.R")
+source("html_export.R") 
 
-# Import specialized modules
-source("html_export.R")    # HTML report generation
-
-# Set global ggplot theme
+# global theme
 theme_set(theme_bw())
 
 # ============================================================================
@@ -77,126 +93,19 @@ theme_set(theme_bw())
 ui <- fluidPage(
   
   # ====================================================================
-  # HEAD SECTION - CSS STYLES AND SCRIPTS
+  # HEAD SECTION - CSS and JavaScript
   # ====================================================================
   
   tags$head(
-    # Main application styles
+    # CSS styles
     tags$style(HTML(APP_CSS_STYLES)),
     tags$style(HTML(METADATA_CSS_STYLES)),
     
-    # JavaScript for table row expansion
-    tags$script(HTML("
-      var expandedRows = {};
-      
-      function toggleDetails(experimentId) {
-        var button = event.target;
-        var row = button.closest('tr');
-        var nextRow = row.nextElementSibling;
-        
-        if (nextRow && nextRow.classList.contains('detail-row-' + experimentId)) {
-          if (nextRow.style.display === 'none') {
-            nextRow.style.display = '';
-            button.innerHTML = '▼';
-            expandedRows[experimentId] = true;
-          } else {
-            nextRow.style.display = 'none';
-            button.innerHTML = '▶';
-            expandedRows[experimentId] = false;
-          }
-        } else {
-          button.innerHTML = '▼';
-          expandedRows[experimentId] = true;
-          Shiny.setInputValue('expand_experiment_details', {
-            id: experimentId,
-            timestamp: new Date().getTime()
-          });
-        }
-      }
-    ")),
-    
-    # Custom message handler for metadata insertion
-    tags$script(HTML("
-      Shiny.addCustomMessageHandler('insertDetailsRow', function(data) {
-        var experimentId = data.experimentId;
-        var html = data.html;
-        
-        var table = document.querySelector('#experiments_table table tbody');
-        var rows = table.querySelectorAll('tr');
-        
-        for (var i = 0; i < rows.length; i++) {
-          var button = rows[i].querySelector('.details-toggle');
-          if (button && button.getAttribute('onclick').includes(experimentId)) {
-            rows[i].insertAdjacentHTML('afterend', html);
-            break;
-          }
-        }
-      });
-    ")),
-    
-    # Collapsible section handlers
-    tags$script(HTML("
-      $(document).on('click', '[data-toggle=\"collapse\"]', function() {
-        var triangle = $(this).find('h6');
-        if (triangle.text().startsWith('▶')) {
-          triangle.text(triangle.text().replace('▶', '▼'));
-        } else {
-          triangle.text(triangle.text().replace('▼', '▶'));
-        }
-      });
-    ")),
-    
-    # Metric selection pill handlers
-    tags$script(HTML("
-      $(document).ready(function() {
-        $('.metric-pill').click(function() {
-          var value = $(this).data('value');
-          
-          // Remove active styling from all pills
-          $('.metric-pill').each(function() {
-            $(this).css({
-              'background': 'white',
-              'color': '#495057',
-              'border': '1px solid #dee2e6',
-              'box-shadow': '0 3px 8px rgba(0,0,0,0.15)',
-              'transform': 'translateY(0px)'
-            });
-          });
-          
-          // Add active styling to clicked pill
-          $(this).css({
-            'background': '#007bff',
-            'color': 'white',
-            'border': 'none',
-            'box-shadow': '0 4px 12px rgba(0,123,255,0.4)',
-            'transform': 'translateY(-1px)'
-          });
-          
-          // Update the hidden radio button
-          $('input[name=\"selected_metric\"][value=\"' + value + '\"]').prop('checked', true).trigger('change');
-        });
-        
-        // Enhanced hover effects
-        $('.metric-pill').hover(
-          function() {
-            if ($(this).css('background-color') !== 'rgb(0, 123, 255)') {
-              $(this).css({
-                'transform': 'translateY(-2px)',
-                'box-shadow': '0 6px 16px rgba(0,123,255,0.25)'
-              });
-            }
-          },
-          function() {
-            if ($(this).css('background-color') !== 'rgb(0, 123, 255)') {
-              $(this).css({
-                'transform': 'translateY(0px)',
-                'box-shadow': '0 3px 8px rgba(0,0,0,0.15)'
-              });
-            }
-          }
-        );
-      });
-    "))
+    # JavaScript functionality  
+    tags$script(HTML(TABLE_INTERACTION_JS)),
+    tags$script(HTML(CUSTOM_MESSAGE_HANDLERS_JS)),
+    tags$script(HTML(COLLAPSIBLE_HANDLERS_JS)),
+    tags$script(HTML(METRIC_SELECTION_JS))
   ),
   
   # ====================================================================
@@ -819,11 +728,11 @@ server <- function(input, output, session) {
       # Get main visualization data
       viz_data <- data_reactives$viz_performance_data()
       
-      # Get stratified data if available
+      # Get stratified data 
       stratified_data <- NULL
       current_metric <- input$selected_metric %||% "f1_score"
       
-      # Use tab 4 data if available
+      # Use tab 4 data 
       if (data_reactives$stratified_triggered() && nrow(data_reactives$stratified_filtered_data()) > 0) {
         stratified_data <- data_reactives$stratified_filtered_data()
       }
