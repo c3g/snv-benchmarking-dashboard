@@ -7,9 +7,9 @@ File upload processing and validation for SNV Benchmarking Dashboard.
 Main components:
 - Hap.py CSV file validation
 - Metadata validation and processing
-- Safe filename generation and file handling
+- Filename generation and file handling
 - Database integration after upload
-- Comprehensive error handling and cleanup
+
 """
 
 import json
@@ -26,8 +26,11 @@ from populate_metadata import populate_database_from_csv
 
 logger = logging.getLogger(__name__)
 
+
 # required metadata fields for upload
-REQUIRED_METADATA = ['exp_name', 'technology', 'platform_name', 'caller_name', 'truth_set_name']
+REQUIRED_METADATA = ['exp_name', 'technology', 'platform_name', 'caller_name', 'caller_version', 'mean_coverage', 'truth_set_name']
+# required happy columns 
+REQUIRED_COLS = ['Type', 'Subtype', 'Subset', 'METRIC.Recall', 'METRIC.Precision', 'METRIC.F1_Score']
 
 # ============================================================================
 # FILE VALIDATION
@@ -48,15 +51,12 @@ def validate_happy_file(file_path):
     """
     try:
         if not os.path.exists(file_path):
+            logger.error(f"File not found: {file_path}")
             return False, "File not found"
             
         df = pd.read_csv(file_path)
         
-        # Essential columns only
-        required_cols = ['Type', 'Subtype', 'Subset', 'Filter', 
-                        'METRIC.Recall', 'METRIC.Precision', 'METRIC.F1_Score']
-        
-        missing = [col for col in required_cols if col not in df.columns]
+        missing = [col for col in REQUIRED_COLS if col not in df.columns]
         if missing:
             return False, f"Missing columns: {', '.join(missing)}"
         
@@ -69,9 +69,11 @@ def validate_happy_file(file_path):
         if not any(t in ['SNP', 'INDEL'] for t in found_types):
             return False, f"No SNP/INDEL data found. Found: {list(found_types)}"
         
+        logger.info(f"File validation successful: {len(df)} rows found")
         return True, f"Valid hap.py file with {len(df)} rows"
         
     except Exception as e:
+        logger.error(f"File validation failed for {file_path}: {str(e)}")
         return False, f"Error reading file: {str(e)}"
 
 def validate_metadata(metadata):
@@ -91,15 +93,19 @@ def validate_metadata(metadata):
     for field in REQUIRED_METADATA:
         value = metadata.get(field, "")
         if not value or str(value).strip() == "":
+            logger.error(f"Metadata validation failed: missing required field '{field}'")
             return False, f"Required field '{field}' is missing"
     
     # Validate enums
     if metadata['technology'].upper() not in ['ILLUMINA', 'PACBIO', 'ONT', 'MGI']:
+        logger.error(f"Metadata validation failed: invalid technology '{metadata['technology']}'")
         return False, f"Invalid technology: {metadata['technology']}"
         
     if metadata['caller_name'].upper() not in ['DEEPVARIANT', 'GATK', 'CLAIR3']:
+        logger.error(f"Metadata validation failed: invalid caller '{metadata['caller_name']}'")
         return False, f"Invalid caller: {metadata['caller_name']}"
     
+    logger.info("Metadata validation successful")
     return True, "Metadata is valid"
 
 # ============================================================================
@@ -178,7 +184,7 @@ def create_metadata_entry(metadata, filename, experiment_id):
         dict: Formatted metadata entry for CSV insertion
     """
     
-    # Helper function for safe conversion
+     # Helper function for safe conversion
     def safe_float(value):
         try:
             return float(value) if value and str(value).strip() else None
@@ -188,30 +194,36 @@ def create_metadata_entry(metadata, filename, experiment_id):
     def safe_bool(value):
         return str(value).lower() == 'true'
     
+    def safe_upper(value):
+        """Safely convert to uppercase, handle empty values"""
+        if not value or str(value).strip() == '':
+            return ''
+        return str(value).strip().upper()
+    
     return {
         'ID': experiment_id,
         'name': metadata['exp_name'],
-        'technology': metadata['technology'],
-        'target': metadata.get('target', 'wgs'),
+        'technology': safe_upper(metadata['technology']),
+        'target': safe_upper(metadata.get('target', 'wgs')),
         'platform_name': metadata['platform_name'],
-        'platform_type': metadata.get('platform_type', ''),
+        'platform_type': safe_upper(metadata.get('platform_type', '')),
         'platform_version': metadata.get('platform_version', ''),
         'chemistry_name': metadata.get('chemistry_name', ''),
-        'caller_name': metadata['caller_name'],
-        'caller_type': metadata.get('caller_type', ''),
+        'caller_name': safe_upper(metadata['caller_name']),
+        'caller_type': safe_upper(metadata.get('caller_type', '')),
         'caller_version': metadata.get('caller_version', ''),
         'caller_model': metadata.get('caller_model', ''),
         'aligner_name': metadata.get('aligner_name', ''),
         'aligner_version': metadata.get('aligner_version', ''),
-        'truth_set_name': metadata.get('truth_set_name', ''),
-        'truth_set_sample': metadata.get('truth_set_sample', 'hg002'),
+        'truth_set_name': safe_upper(metadata.get('truth_set_name', '')),
+        'truth_set_sample': safe_upper(metadata.get('truth_set_sample', 'hg002')),
         'truth_set_version': metadata.get('truth_set_version', ''),
-        'truth_set_reference': metadata.get('truth_set_reference', ''),
-        'variant_type': metadata.get('variant_type', 'snp+indel'),
-        'variant_size': metadata.get('variant_size', ''),
-        'variant_origin': metadata.get('variant_origin', ''),
+        'truth_set_reference': safe_upper(metadata.get('truth_set_reference', '')),
+        'variant_type': safe_upper(metadata.get('variant_type', 'snp+indel')),
+        'variant_size': safe_upper(metadata.get('variant_size', '')),
+        'variant_origin': safe_upper(metadata.get('variant_origin', '')),
         'is_phased': safe_bool(metadata.get('is_phased', 'false')),
-        'benchmark_tool_name': metadata.get('benchmark_tool_name', 'hap.py'),
+        'benchmark_tool_name': safe_upper(metadata.get('benchmark_tool_name', 'hap.py')),
         'benchmark_tool_version': metadata.get('benchmark_tool_version', ''),
         'mean_coverage': safe_float(metadata.get('mean_coverage')),
         'read_length': safe_float(metadata.get('read_length')),
@@ -221,7 +233,6 @@ def create_metadata_entry(metadata, filename, experiment_id):
         'file_path': None,
         'upload_date': datetime.now().strftime('%Y-%m-%d'),
     }
-
 # ============================================================================
 # MAIN UPLOAD PROCESSING
 # ============================================================================
@@ -315,10 +326,10 @@ def process_upload(temp_file_path, metadata_json_string):
         # Move file to final location
         final_file_path = os.path.join(DATA_FOLDER, filename)
         shutil.move(temp_file_copy, final_file_path)
-        
+        logger.info(f"File successfully moved to: {final_file_path}")
+
         # Update metadata CSV
         updated_df.to_csv(METADATA_CSV_PATH, index=False)
-        
         logger.info("Files added/edited successfully")
         
         # STEP 7: Update database
