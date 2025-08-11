@@ -99,8 +99,12 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
     # Get experiment metadata
     tryCatch({
       
-      exp_id_json <- json_param(list(exp_id))
-      metadata <- db$get_experiment_metadata(exp_id_json)
+      metadata <- tryCatch({
+        exp_id_json <- json_param(list(exp_id))
+        db$get_experiment_metadata(exp_id_json)
+      }, error = function(e) {
+        data.frame(name = "Error loading metadata")
+      })
       
       if (nrow(metadata) == 0) {
         return(p("No metadata found for experiment ID:", exp_id))
@@ -437,8 +441,8 @@ upload_modal_ui <- function() {
                            choices = c("","ML" = "ml", "Traditional" = "traditional"))
         ),
         column(3,
-               textInput("caller_version", "Caller Version",
-                         placeholder = "Optional")
+               textInput("caller_version", "Caller Version*",
+                         placeholder = "Required")
         ),
         column(3,
                textInput("caller_model", "Caller Model",
@@ -526,7 +530,7 @@ upload_modal_ui <- function() {
       h5("Quality Metrics", style = "color: #007bff; margin-top: 20px;"),
       fluidRow(
         column(2,
-               numericInput("mean_coverage", "Mean Coverage", 
+               numericInput("mean_coverage", "Mean Coverage*", 
                             value = NA, min = 1, max = 200, step = 0.1)
         ),
         column(3,

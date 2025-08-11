@@ -316,11 +316,16 @@ setup_observers <- function(input, output, session, data_reactives) {
       ids_json <- json_param(current_exp_ids)
       
       # Pass regions to database query for SQL filtering
-      enhanced_data <- db$get_stratified_performance_by_regions(
-        ids_json, 
-        VARIANT_TYPES,
-        selected_regions
-      )
+      enhanced_data <- tryCatch({
+        db$get_stratified_performance_by_regions(
+          ids_json, 
+          VARIANT_TYPES,
+          selected_regions
+        )
+      }, error = function(e) {
+        showNotification(paste("Database error:", e$message), type = "error", duration = 8)
+        data.frame()  # Return empty data frame
+      })
       
       
       # Get metadata if we have results
@@ -504,10 +509,16 @@ setup_observers <- function(input, output, session, data_reactives) {
       cat("Metadata JSON:\n", metadata_json, "\n")
       
       # Call Python upload handler
-      result <- upload_handler$upload_experiment(
-        file_path = input$upload_file$datapath,
-        metadata_json = metadata_json
-      )
+      result <- tryCatch({
+        upload_handler$upload_experiment(
+          file_path = input$upload_file$datapath,
+          metadata_json = metadata_json
+        )
+      }, error = function(e) {
+        removeNotification(loading_id)
+        showNotification(paste("Upload failed:", e$message), type = "error", duration = 10)
+        return(list(success = FALSE, message = paste("System error:", e$message)))
+      })
       
       # Remove loading notification
       removeNotification(loading_id)

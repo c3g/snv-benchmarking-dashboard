@@ -62,19 +62,24 @@ setup_data_reactives <- function(input, output, session) {
   
   # Get experiment IDs based on current filter settings
   experiment_ids <- reactive({
-    
-    if (length(display_experiment_ids()) > 0) {
-      return(display_experiment_ids())
-    }
-    
-    if (input$filter_type == "tech") {
-      return(db$get_experiments_by_technology(input$filter_technology))
-    } else if (input$filter_type == "caller") {
-      return(db$get_experiments_by_caller(input$filter_caller))
-    } else {
-      overview <- db$get_experiments_overview()
-      return(overview$id)
-    }
+    tryCatch({
+      if (length(display_experiment_ids()) > 0) {
+        return(display_experiment_ids())
+      }
+      
+      if (input$filter_type == "tech") {
+        return(db$get_experiments_by_technology(input$filter_technology))
+      } else if (input$filter_type == "caller") {
+        return(db$get_experiments_by_caller(input$filter_caller))
+      } else {
+        overview <- db$get_experiments_overview()
+        return(overview$id)
+      }
+    }, error = function(e) {
+      showNotification("Database connection error. Please refresh the page.", 
+                       type = "error", duration = 10)
+      return(numeric(0))
+    })
   })
   
   # Get overview metadata for selected experiments
