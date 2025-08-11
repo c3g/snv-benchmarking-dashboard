@@ -247,7 +247,7 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
     req(input$update_stratified)
     req(input$selected_metric)
     
-    # Use data that's already processed and available
+    # Use data that's already processed
     stratified_data <- data_reactives$stratified_filtered_data()
     
     if(nrow(stratified_data) == 0) {
@@ -263,7 +263,7 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
     req(input$update_stratified)
     req(input$selected_metric)
     
-    # Use data that's already processed and available
+    # Use data that's already processed
     stratified_data <- data_reactives$stratified_filtered_data()
     
     if(nrow(stratified_data) == 0) {

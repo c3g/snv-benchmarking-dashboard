@@ -11,7 +11,6 @@ Architecture:
 - Frontend: R Shiny for interactive visualization  
 - Backend: Python for data processing and database queries
 - Database: SQLite for experiment metadata and results storage
-- Modular Structure: Separated into functional components for maintainability
 
 Features:
 - Experiment browsing with technology/caller filtering
