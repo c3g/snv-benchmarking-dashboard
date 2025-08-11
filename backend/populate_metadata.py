@@ -211,7 +211,9 @@ def add_record_if_not_exists(session, model_class, filter_fields, all_fields, re
                 
     except Exception as e:
         logger.error(f"Error adding {record_name}: {e}")
-        return None
+        session.rollback()
+        raise
+    
 
 def add_sequencing_tech(session, row):
     """Create SequencingTechnology record from CSV row"""

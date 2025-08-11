@@ -254,6 +254,10 @@ def get_experiments_with_performance(experiment_ids_param, variant_types=['SNP',
     # Parse JSON IDs
     experiment_ids = parse_experiment_ids(experiment_ids_param)
 
+    if not experiment_ids:
+        logger.warning("No valid experiment IDs provided to get_experiments_with_performance")
+        return pd.DataFrame()
+
     try:
         with get_db_session() as session:
             query = session.query(
@@ -344,6 +348,10 @@ def get_experiments_with_performance(experiment_ids_param, variant_types=['SNP',
             )
             
             results = query.all()
+            
+            if not results:
+                logger.info(f"No performance data found for experiment IDs: {experiment_ids}")
+                return pd.DataFrame()
             
             # Convert to DataFrame 
             data = []

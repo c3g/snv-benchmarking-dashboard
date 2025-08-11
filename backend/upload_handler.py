@@ -51,6 +51,7 @@ def validate_happy_file(file_path):
     """
     try:
         if not os.path.exists(file_path):
+            logger.error(f"File not found: {file_path}")
             return False, "File not found"
             
         df = pd.read_csv(file_path)
@@ -68,9 +69,11 @@ def validate_happy_file(file_path):
         if not any(t in ['SNP', 'INDEL'] for t in found_types):
             return False, f"No SNP/INDEL data found. Found: {list(found_types)}"
         
+        logger.info(f"File validation successful: {len(df)} rows found")
         return True, f"Valid hap.py file with {len(df)} rows"
         
     except Exception as e:
+        logger.error(f"File validation failed for {file_path}: {str(e)}")
         return False, f"Error reading file: {str(e)}"
 
 def validate_metadata(metadata):
@@ -90,15 +93,19 @@ def validate_metadata(metadata):
     for field in REQUIRED_METADATA:
         value = metadata.get(field, "")
         if not value or str(value).strip() == "":
+            logger.error(f"Metadata validation failed: missing required field '{field}'")
             return False, f"Required field '{field}' is missing"
     
     # Validate enums
     if metadata['technology'].upper() not in ['ILLUMINA', 'PACBIO', 'ONT', 'MGI']:
+        logger.error(f"Metadata validation failed: invalid technology '{metadata['technology']}'")
         return False, f"Invalid technology: {metadata['technology']}"
         
     if metadata['caller_name'].upper() not in ['DEEPVARIANT', 'GATK', 'CLAIR3']:
+        logger.error(f"Metadata validation failed: invalid caller '{metadata['caller_name']}'")
         return False, f"Invalid caller: {metadata['caller_name']}"
     
+    logger.info("Metadata validation successful")
     return True, "Metadata is valid"
 
 # ============================================================================
@@ -319,10 +326,10 @@ def process_upload(temp_file_path, metadata_json_string):
         # Move file to final location
         final_file_path = os.path.join(DATA_FOLDER, filename)
         shutil.move(temp_file_copy, final_file_path)
-        
+        logger.info(f"File successfully moved to: {final_file_path}")
+
         # Update metadata CSV
         updated_df.to_csv(METADATA_CSV_PATH, index=False)
-        
         logger.info("Files added/edited successfully")
         
         # STEP 7: Update database
