@@ -5,9 +5,34 @@
 Configuration constants and static values for SNV Benchmarking Dashboard.
 
 Main components:
-- CSS styling definitions
 - UI configuration constants, UI dropdowns (metric labels, technology/caller options, etc)
+- CSS styling definitions
+- JavaScript interaction handlers
 "
+
+# ============================================================================
+# UI CONFIGURATION CONSTANTS
+# ============================================================================
+
+# Metric display labels for UI
+METRIC_LABELS <- list(
+  "f1_score" = "F1 Score",
+  "precision" = "Precision", 
+  "recall" = "Recall"
+)
+
+# Filter type options for sidebar
+FILTER_TYPES <- list(
+  "Show All" = "none",
+  "Technology" = "tech", 
+  "Variant Caller" = "caller"
+)
+
+# Available options for dropdowns
+TECHNOLOGY_OPTIONS <- c("ILLUMINA", "PACBIO", "ONT", "MGI")
+CALLER_OPTIONS <- c("DEEPVARIANT", "GATK", "CLAIR3")
+VARIANT_TYPES <- c("SNP", "INDEL")
+
 
 # ============================================================================
 # CSS STYLING CONSTANTS
@@ -157,28 +182,121 @@ METADATA_CSS_STYLES <- "
       box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
 "
-
 # ============================================================================
-# UI CONFIGURATION CONSTANTS
+# JAVASCRIPT INTERACTION HANDLERS
 # ============================================================================
 
-# Metric display labels for UI
-METRIC_LABELS <- list(
-  "f1_score" = "F1 Score",
-  "precision" = "Precision", 
-  "recall" = "Recall"
-)
+# Table row expansion functionality
+TABLE_INTERACTION_JS <- "
+    var expandedRows = {};
+    
+    function toggleDetails(experimentId) {
+      var button = event.target;
+      var row = button.closest('tr');
+      var nextRow = row.nextElementSibling;
+      
+      if (nextRow && nextRow.classList.contains('detail-row-' + experimentId)) {
+        if (nextRow.style.display === 'none') {
+          nextRow.style.display = '';
+          button.innerHTML = '▼';
+          expandedRows[experimentId] = true;
+        } else {
+          nextRow.style.display = 'none';
+          button.innerHTML = '▶';
+          expandedRows[experimentId] = false;
+        }
+      } else {
+        button.innerHTML = '▼';
+        expandedRows[experimentId] = true;
+        Shiny.setInputValue('expand_experiment_details', {
+          id: experimentId,
+          timestamp: new Date().getTime()
+        });
+      }
+    }
+"
 
-# Filter type options for sidebar
-FILTER_TYPES <- list(
-  "Show All" = "none",
-  "Technology" = "tech", 
-  "Variant Caller" = "caller"
-)
+# Custom message handlers for dynamic content insertion
+CUSTOM_MESSAGE_HANDLERS_JS <- "
+    Shiny.addCustomMessageHandler('insertDetailsRow', function(data) {
+      var experimentId = data.experimentId;
+      var html = data.html;
+      
+      var table = document.querySelector('#experiments_table table tbody');
+      var rows = table.querySelectorAll('tr');
+      
+      for (var i = 0; i < rows.length; i++) {
+        var button = rows[i].querySelector('.details-toggle');
+        if (button && button.getAttribute('onclick').includes(experimentId)) {
+          rows[i].insertAdjacentHTML('afterend', html);
+          break;
+        }
+      }
+    });
+"
 
-# Available options for dropdowns
-TECHNOLOGY_OPTIONS <- c("ILLUMINA", "PACBIO", "ONT", "MGI")
-CALLER_OPTIONS <- c("DEEPVARIANT", "GATK", "CLAIR3")
-VARIANT_TYPES <- c("SNP", "INDEL")
+# Collapsible section handlers for region selection
+COLLAPSIBLE_HANDLERS_JS <- "
+    $(document).on('click', '[data-toggle=\"collapse\"]', function() {
+      var triangle = $(this).find('h6');
+      if (triangle.text().startsWith('▶')) {
+        triangle.text(triangle.text().replace('▶', '▼'));
+      } else {
+        triangle.text(triangle.text().replace('▼', '▶'));
+      }
+    });
+"
+
+# Metric selection pill interactive functionality
+METRIC_SELECTION_JS <- "
+    $(document).ready(function() {
+      $('.metric-pill').click(function() {
+        var value = $(this).data('value');
+        
+        // Remove active styling from all pills
+        $('.metric-pill').each(function() {
+          $(this).css({
+            'background': 'white',
+            'color': '#495057',
+            'border': '1px solid #dee2e6',
+            'box-shadow': '0 3px 8px rgba(0,0,0,0.15)',
+            'transform': 'translateY(0px)'
+          });
+        });
+        
+        // Add active styling to clicked pill
+        $(this).css({
+          'background': '#007bff',
+          'color': 'white',
+          'border': 'none',
+          'box-shadow': '0 4px 12px rgba(0,123,255,0.4)',
+          'transform': 'translateY(-1px)'
+        });
+        
+        // Update the hidden radio button
+        $('input[name=\"selected_metric\"][value=\"' + value + '\"]').prop('checked', true).trigger('change');
+      });
+      
+      // Enhanced hover effects
+      $('.metric-pill').hover(
+        function() {
+          if ($(this).css('background-color') !== 'rgb(0, 123, 255)') {
+            $(this).css({
+              'transform': 'translateY(-2px)',
+              'box-shadow': '0 6px 16px rgba(0,123,255,0.25)'
+            });
+          }
+        },
+        function() {
+          if ($(this).css('background-color') !== 'rgb(0, 123, 255)') {
+            $(this).css({
+              'transform': 'translateY(0px)',
+              'box-shadow': '0 3px 8px rgba(0,0,0,0.15)'
+            });
+          }
+        }
+      );
+    });
+"
 
 
