@@ -84,16 +84,14 @@ create_stratified_grouped_plot <- function(data, variant_type, metric_name = "f1
     labs(x = metric_label, y = "") +
     theme_bw() +
     theme(
-      strip.background = element_rect(fill = "#f8f9fa", color = "#dee2e6"),
+      strip.background = element_rect(fill = "#e9ecef", color = "#dee2e6"),
       strip.text = element_text(face = "bold", size = 12),
       axis.text.y = element_text(face = "bold", size = 9),
       axis.text.x = element_text(face = "bold", size = 9),
-      legend.position = "bottom",
-      legend.text = element_text(size = 8),
+      legend.position = "none",
       panel.grid.major.y = element_blank(),
       panel.grid.minor = element_blank()
-    ) +
-    guides(fill = guide_legend(ncol = 3, byrow = TRUE))
+    )
   
   return(plot)
 }
