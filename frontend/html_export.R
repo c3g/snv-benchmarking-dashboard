@@ -8,6 +8,9 @@ library(base64enc)
 library(ggforce)
 library(geomtextpath) 
 
+source("constants.R")
+source("utils.R")
+
 # =============================================================================
 # 1. HELPER FUNCTIONS
 # =============================================================================
@@ -83,14 +86,7 @@ create_zoomed_performance_plot <- function(data, variant_type) {
              labs(title = variant_type, x = "Precision", y = "Recall") +
              theme_bw())
   }
-  
-  technology_colors <- c(
-    "ILLUMINA" = "#F8766D", "PACBIO" = "#C77CFF", 
-    "ONT" = "#00BFC4", "MGI" = "#7CAE00", "Unknown" = "#E76BF3"
-  )
-  caller_shapes <- c(
-    "DEEPVARIANT" = 16, "GATK" = 17, "CLAIR3" = 15, "Unknown" = 4
-  )
+
   
   contour <- create_f1_contour()
   zoom_limits <- calculate_zoom_limits(data)
@@ -213,15 +209,7 @@ generate_stratified_plots <- function(stratified_data, selected_metric = "f1_sco
     return(list(snp = NULL, indel = NULL))
   }
   
-  tech_caller_colors <- c(
-    "ILLUMINA-DEEPVARIANT" = "#F8766D", "ILLUMINA-GATK" = "#E55A5A", "ILLUMINA-CLAIR3" = "#FF9999",
-    "PACBIO-DEEPVARIANT" = "#C77CFF", "PACBIO-GATK" = "#B366FF", "PACBIO-CLAIR3" = "#D999FF",
-    "ONT-DEEPVARIANT" = "#00BFC4", "ONT-GATK" = "#00A5A8", "ONT-CLAIR3" = "#33CCCC",
-    "MGI-DEEPVARIANT" = "#7CAE00", "MGI-GATK" = "#6B9500", "MGI-CLAIR3" = "#99CC33"
-  )
-  
-  metric_labels <- list("f1_score" = "F1 Score", "precision" = "Precision", "recall" = "Recall")
-  metric_label <- metric_labels[[selected_metric]] %||% "Metric"
+  metric_label <- METRIC_LABELS[[selected_metric]] %||% "Metric"
   
   create_variant_plot <- function(variant_type) {
     plot_data <- stratified_data %>%
@@ -373,7 +361,6 @@ add_stratified_section <- function(stratified_data, selected_metric = "f1_score"
   
   plots <- generate_stratified_plots(stratified_data, selected_metric)
   
-  # Two-column layout for plots (like Tab 4)
   html_content <- paste0(html_content, '
     <div style="display: flex; gap: 20px; margin-bottom: 40px; align-items: flex-start;">
         <div style="flex: 1;">
