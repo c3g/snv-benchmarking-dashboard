@@ -178,7 +178,7 @@ def create_metadata_entry(metadata, filename, experiment_id):
         dict: Formatted metadata entry for CSV insertion
     """
     
-    # Helper function for safe conversion
+     # Helper function for safe conversion
     def safe_float(value):
         try:
             return float(value) if value and str(value).strip() else None
@@ -188,30 +188,36 @@ def create_metadata_entry(metadata, filename, experiment_id):
     def safe_bool(value):
         return str(value).lower() == 'true'
     
+    def safe_upper(value):
+        """Safely convert to uppercase, handle empty values"""
+        if not value or str(value).strip() == '':
+            return ''
+        return str(value).strip().upper()
+    
     return {
         'ID': experiment_id,
         'name': metadata['exp_name'],
-        'technology': metadata['technology'],
-        'target': metadata.get('target', 'wgs'),
+        'technology': safe_upper(metadata['technology']),
+        'target': safe_upper(metadata.get('target', 'wgs')),
         'platform_name': metadata['platform_name'],
-        'platform_type': metadata.get('platform_type', ''),
+        'platform_type': safe_upper(metadata.get('platform_type', '')),
         'platform_version': metadata.get('platform_version', ''),
         'chemistry_name': metadata.get('chemistry_name', ''),
-        'caller_name': metadata['caller_name'],
-        'caller_type': metadata.get('caller_type', ''),
+        'caller_name': safe_upper(metadata['caller_name']),
+        'caller_type': safe_upper(metadata.get('caller_type', '')),
         'caller_version': metadata.get('caller_version', ''),
         'caller_model': metadata.get('caller_model', ''),
         'aligner_name': metadata.get('aligner_name', ''),
         'aligner_version': metadata.get('aligner_version', ''),
-        'truth_set_name': metadata.get('truth_set_name', ''),
-        'truth_set_sample': metadata.get('truth_set_sample', 'hg002'),
+        'truth_set_name': safe_upper(metadata.get('truth_set_name', '')),
+        'truth_set_sample': safe_upper(metadata.get('truth_set_sample', 'hg002')),
         'truth_set_version': metadata.get('truth_set_version', ''),
-        'truth_set_reference': metadata.get('truth_set_reference', ''),
-        'variant_type': metadata.get('variant_type', 'snp+indel'),
-        'variant_size': metadata.get('variant_size', ''),
-        'variant_origin': metadata.get('variant_origin', ''),
+        'truth_set_reference': safe_upper(metadata.get('truth_set_reference', '')),
+        'variant_type': safe_upper(metadata.get('variant_type', 'snp+indel')),
+        'variant_size': safe_upper(metadata.get('variant_size', '')),
+        'variant_origin': safe_upper(metadata.get('variant_origin', '')),
         'is_phased': safe_bool(metadata.get('is_phased', 'false')),
-        'benchmark_tool_name': metadata.get('benchmark_tool_name', 'hap.py'),
+        'benchmark_tool_name': safe_upper(metadata.get('benchmark_tool_name', 'hap.py')),
         'benchmark_tool_version': metadata.get('benchmark_tool_version', ''),
         'mean_coverage': safe_float(metadata.get('mean_coverage')),
         'read_length': safe_float(metadata.get('read_length')),
@@ -221,7 +227,6 @@ def create_metadata_entry(metadata, filename, experiment_id):
         'file_path': None,
         'upload_date': datetime.now().strftime('%Y-%m-%d'),
     }
-
 # ============================================================================
 # MAIN UPLOAD PROCESSING
 # ============================================================================
