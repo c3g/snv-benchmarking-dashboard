@@ -7,9 +7,9 @@ File upload processing and validation for SNV Benchmarking Dashboard.
 Main components:
 - Hap.py CSV file validation
 - Metadata validation and processing
-- Safe filename generation and file handling
+- Filename generation and file handling
 - Database integration after upload
-- Comprehensive error handling and cleanup
+
 """
 
 import json
@@ -26,8 +26,11 @@ from populate_metadata import populate_database_from_csv
 
 logger = logging.getLogger(__name__)
 
+
 # required metadata fields for upload
-REQUIRED_METADATA = ['exp_name', 'technology', 'platform_name', 'caller_name', 'truth_set_name']
+REQUIRED_METADATA = ['exp_name', 'technology', 'platform_name', 'caller_name', 'caller_version', 'mean_coverage', 'truth_set_name']
+# required happy columns 
+REQUIRED_COLS = ['Type', 'Subtype', 'Subset', 'METRIC.Recall', 'METRIC.Precision', 'METRIC.F1_Score']
 
 # ============================================================================
 # FILE VALIDATION
@@ -52,11 +55,7 @@ def validate_happy_file(file_path):
             
         df = pd.read_csv(file_path)
         
-        # Essential columns only
-        required_cols = ['Type', 'Subtype', 'Subset', 'Filter', 
-                        'METRIC.Recall', 'METRIC.Precision', 'METRIC.F1_Score']
-        
-        missing = [col for col in required_cols if col not in df.columns]
+        missing = [col for col in REQUIRED_COLS if col not in df.columns]
         if missing:
             return False, f"Missing columns: {', '.join(missing)}"
         
