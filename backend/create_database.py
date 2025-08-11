@@ -32,14 +32,15 @@ def main():
     if not test_connection():
         logger.error("Cannot connect to database")
         sys.exit(1)
-        # Drop all existing data first
-    try:
-        drop_all_data()
-        logger.info("---- Dropped all existing data ----")
-    except Exception as e:
-        logger.error(f"Failed to drop existing data: {e}")
-        sys.exit(1)
-        
+
+    # Code to Drop all existing data - commented out/ only run if needed
+    # try:
+    #    drop_all_data()
+    #    logger.info("---- Dropped all existing data ----")
+    # except Exception as e:
+    #    logger.error(f"Failed to drop existing data: {e}")
+    #    sys.exit(1)
+    
     # Create tables
     try:
         create_tables()
