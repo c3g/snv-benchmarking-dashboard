@@ -322,22 +322,53 @@ ui <- fluidPage(
               style = "background-color: #ffffff; padding: 25px; margin-bottom: 20px;",
               fluidRow(
                 column(4, class = "plot-column",
-                       h4("SNP Performance", style = "color: #d73027; font-weight: bold; text-align: center;"),
+                       # SNP Plot title
+                       div(
+                         style = "background: linear-gradient(135deg, #fefafa 0%, #fdf5f5 100%); 
+                         border: 1px solid #ef9a9a; border-radius: 8px; 
+                         padding: 10px 16px; margin-bottom: 18px; text-align: center;
+                         box-shadow: 0 1px 2px rgba(239, 154, 154, 0.1);",
+                         h4("SNP Performance", 
+                            style = "color: #d32f2f; font-weight: 600; margin: 0; 
+                          font-size: 17px; letter-spacing: 0.3px;")
+                       ),
                        br(),
                        plotlyOutput("snp_plot", height = "500px")
                 ),
                 column(4, class = "plot-column",
-                       h4("INDEL Performance", style = "color: #4575b4; font-weight: bold; text-align: center;"),
+                       # INDEL plot title
+                       div(
+                         style = "background: linear-gradient(135deg, #fafbfd 0%, #f5f7fc 100%); 
+                         border: 1px solid #9fa8da; border-radius: 6px; 
+                         padding: 10px 16px; margin-bottom: 18px; text-align: center;
+                         box-shadow: 0 1px 2px rgba(159, 168, 218, 0.1);",
+                         h4("INDEL Performance", 
+                            style = "color: #1976d2; font-weight: 500; margin: 0; 
+                           font-size: 17px; letter-spacing: 0.3px;")
+                       ),
                        br(),
                        plotlyOutput("indel_plot", height = "500px")
                 ),
                 column(4,
-                       div(style = "margin-top: 160px;", 
+                       div(
+                           # Simple header
+                           div(
+                             style = "background: linear-gradient(135deg, #fdfaff 0%, #fbf5ff 100%); 
+                             border: 1px solid #c4a1d6; border-radius: 8px; 
+                             padding: 10px 16px; margin-bottom: 18px; text-align: center;
+                             box-shadow: 0 1px 2px rgba(196, 161, 214, 0.1);",
+                             h4("Chart Reference", 
+                                style = "color: #7b2d8e; font-weight: 600; margin: 0; 
+                              font-size: 17px; letter-spacing: 0.3px;")
+                           ),
+                           br(), br(),
                            htmlOutput("technology_legend"),
                            br(),
                            htmlOutput("caller_legend")
                        )
                 )
+                           
+              
               )
             ),
             # Selected experiment details
@@ -655,12 +686,30 @@ ui <- fluidPage(
                            style = "background-color: #ffffff; padding: 25px; margin-bottom: 20px;",
                            fluidRow(
                              column(6,
-                                    h4("SNP Performance by Region", style = "color: #d73027; font-weight: bold; text-align: center;"),
+                                    #SNV title card
+                                    div(
+                                      style = "background: linear-gradient(135deg, #fefafa 0%, #fdf5f5 100%); 
+                                       border: 1px solid #ef9a9a; border-radius: 8px; 
+                                       padding: 10px 16px; margin-bottom: 18px; text-align: center;
+                                       box-shadow: 0 1px 2px rgba(239, 154, 154, 0.1);",
+                                      h4("SNP Performance by Region", 
+                                         style = "color: #d32f2f; font-weight: 600; margin: 0; 
+                                        font-size: 17px; letter-spacing: 0.3px;")
+                                    ),
                                     br(),
                                     plotOutput("stratified_snp_plot", height = "600px")
                              ),
                              column(6,
-                                    h4("INDEL Performance by Region", style = "color: #4575b4; font-weight: bold; text-align: center;"),
+                                    # INDEL title card
+                                    div(
+                                      style = "background: linear-gradient(135deg, #fafbfd 0%, #f5f7fc 100%); 
+                                       border: 1px solid #9fa8da; border-radius: 8px; 
+                                       padding: 10px 16px; margin-bottom: 18px; text-align: center;
+                                       box-shadow: 0 1px 2px rgba(159, 168, 218, 0.1);",
+                                      h4("INDEL Performance by Region", 
+                                         style = "color: #1976d2; font-weight: 600; margin: 0; 
+                                        font-size: 17px; letter-spacing: 0.3px;")
+                                    ),
                                     br(),
                                     plotOutput("stratified_indel_plot", height = "600px")
                              )
@@ -671,7 +720,15 @@ ui <- fluidPage(
                 tabPanel("📋 Data Tables",
                          br(),
                          div(
-                           h4("SNP Performance by Region", style = "color: #d73027; font-weight: bold; margin-bottom: 15px;"),
+                           div(
+                             style = "background: linear-gradient(135deg, #fefafa 0%, #fdf5f5 100%); 
+                             border: 1px solid #ef9a9a; border-radius: 8px; 
+                             padding: 10px 16px; margin-bottom: 18px; text-align: center;
+                             box-shadow: 0 1px 2px rgba(239, 154, 154, 0.1);",
+                             h4("SNP Performance by Region", 
+                                style = "color: #d32f2f; font-weight: 600; margin: 0; 
+                                 font-size: 17px; letter-spacing: 0.3px;")
+                           ),
                            DT::dataTableOutput("snp_metrics_table"),
                            style = "margin-bottom: 40px;"
                          ),
@@ -679,7 +736,15 @@ ui <- fluidPage(
                          hr(style = "border-top: 2px solid #dee2e6; margin: 30px 0;"),
                          
                          div(
-                           h4("INDEL Performance by Region", style = "color: #4575b4; font-weight: bold; margin-bottom: 15px;"),
+                           div(
+                             style = "background: linear-gradient(135deg, #fafbfd 0%, #f5f7fc 100%); 
+                                       border: 1px solid #9fa8da; border-radius: 8px; 
+                                       padding: 10px 16px; margin-bottom: 18px; text-align: center;
+                                       box-shadow: 0 1px 2px rgba(159, 168, 218, 0.1);",
+                             h4("INDEL Performance by Region", 
+                                style = "color: #1976d2; font-weight: 600; margin: 0; 
+                              font-size: 17px; letter-spacing: 0.3px;")
+                           ),
                            DT::dataTableOutput("indel_metrics_table")
                          )
                 ) 
