@@ -113,22 +113,26 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       meta <- metadata[1, ]
       
       div(
-        h6(strong("ID: ",exp_id, "-", meta$name), style = "color: #007bff; margin-bottom: 10px;"),
+        h6(strong("ID: ",exp_id, "-", meta$name), 
+           style = "color: #4472ca; margin-bottom: 10px; font-size: 16px; font-weight: 600;"),
         div(
           class = "row",
           div(class = "col-md-3",
-              p(strong("Technology: "), meta$technology %||% "N/A", style = "margin-bottom: 5px;")
+              p(strong("Technology: "), meta$technology %||% "N/A", 
+                style = "margin-bottom: 5px; font-size: 14px; line-height: 1.4;")
           ),
           div(class = "col-md-3",
-              p(strong("Platform: "), meta$platform_name %||% "N/A", style = "margin-bottom: 5px;")
+              p(strong("Platform: "), meta$platform_name %||% "N/A", 
+                style = "margin-bottom: 5px; font-size: 14px; line-height: 1.4;")
           ),
           div(class = "col-md-3",
-              p(strong("Caller: "), paste(meta$caller %||% "N/A", meta$caller_version %||% ""), style = "margin-bottom: 5px;")
+              p(strong("Caller: "), paste(meta$caller %||% "N/A", meta$caller_version %||% ""), 
+                style = "margin-bottom: 5px; font-size: 14px; line-height: 1.4;")
           ),
           div(class = "col-md-3",
               p(strong("Coverage: "), 
                 ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x")), 
-                style = "margin-bottom: 5px;")
+                style = "margin-bottom: 5px; font-size: 14px; line-height: 1.4;")
           )
         )
       )
@@ -174,87 +178,131 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       })
       
       div(
-        h5(paste("Complete Experiment Details - ID:", exp_id, "-", meta$name), style = "color: #007bff; font-weight: 700; margin-bottom: 20px;"),
+        h5(paste("Complete Experiment Details"), 
+           style = "color: #4a148c ; font-weight: 600; margin-bottom: 20px; font-size: 17px;"),
         div(
           class = "metadata-grid-4col",
           
           # SEQUENCING PLATFORM CARD
           div(class = "metadata-card",
-              h6("Sequencing Platform", style = "color: #007bff; font-weight: 700; font-size: 16px; border-bottom: 2px solid #007bff; padding-bottom: 8px; margin-bottom: 15px;"),
-              p(strong("Technology: "), meta$technology %||% "N/A"),
-              p(strong("Platform: "), meta$platform_name %||% "N/A"),
-              p(strong("Platform Type: "), meta$platform_type %||% "N/A"),
-              p(strong("Platform Version: "), meta$platform_version %||% "N/A"),
-              p(strong("Target: "), meta$target %||% "N/A"),
-              p(strong("Chemistry: "), meta$chemistry_name %||% "N/A")
+              h6("Sequencing Platform", 
+                 style = "color: #4472ca; font-weight: 600; font-size: 15px; border-bottom: 2px solid #4472ca; padding-bottom: 8px; margin-bottom: 15px;"),
+              p(strong("Technology: "), meta$technology %||% "N/A", 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+              p(strong("Platform: "), meta$platform_name %||% "N/A", 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+              p(strong("Platform Type: "), meta$platform_type %||% "N/A", 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+              p(strong("Platform Version: "), meta$platform_version %||% "N/A", 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+              p(strong("Target: "), meta$target %||% "N/A", 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+              p(strong("Chemistry: "), meta$chemistry_name %||% "N/A", 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;")
           ),
           
           # ANALYSIS PIPELINE CARD
           div(class = "metadata-card",
-              h6("Analysis Pipeline", style = "color: #007bff; font-weight: 700; font-size: 16px; border-bottom: 2px solid #007bff; padding-bottom: 8px; margin-bottom: 15px;"),
-              p(strong("Variant Caller: "), meta$caller %||% "N/A"),
-              p(strong("Caller Version: "), meta$caller_version %||% "N/A"),
-              p(strong("Caller Type: "), meta$caller_type %||% "N/A"),
-              p(strong("Caller Model: "), meta$caller_model %||% "N/A"),
-              p(strong("Aligner: "), paste(meta$aligner_name %||% "N/A", meta$aligner_version %||% "")),
-              p(strong("Benchmark Tool: "), paste(meta$benchmark_tool_name %||% "N/A", meta$benchmark_tool_version %||% ""))
+              h6("Analysis Pipeline", 
+                 style = "color: #4472ca; font-weight: 600; font-size: 15px; border-bottom: 2px solid #4472ca; padding-bottom: 8px; margin-bottom: 15px;"),
+              p(strong("Variant Caller: "), meta$caller %||% "N/A", 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+              p(strong("Caller Version: "), meta$caller_version %||% "N/A", 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+              p(strong("Caller Type: "), meta$caller_type %||% "N/A", 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+              p(strong("Caller Model: "), meta$caller_model %||% "N/A", 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+              p(strong("Aligner: "), paste(meta$aligner_name %||% "N/A", meta$aligner_version %||% ""), 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+              p(strong("Benchmark Tool: "), paste(meta$benchmark_tool_name %||% "N/A", meta$benchmark_tool_version %||% ""), 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;")
           ),
           
           # QUALITY METRICS CARD
           div(class = "metadata-card",
-              h6("Quality Metrics", style = "color: #007bff; font-weight: 700; font-size: 16px; border-bottom: 2px solid #007bff; padding-bottom: 8px; margin-bottom: 15px;"),
-              p(strong("Mean Coverage: "), ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x"))),
+              h6("Quality Metrics", 
+                 style = "color: #4472ca; font-weight: 600; font-size: 15px; border-bottom: 2px solid #4472ca; padding-bottom: 8px; margin-bottom: 15px;"),
+              p(strong("Mean Coverage: "), ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x")), 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
               p(strong("Read Length: "), 
                 ifelse(is.na(meta$read_length), 
                        ifelse(is.na(meta$mean_read_length), "N/A", paste0(meta$mean_read_length, " bp (mean)")), 
-                       paste0(meta$read_length, " bp"))),
-              p(strong("Mean Insert Size: "), ifelse(is.na(meta$mean_insert_size), "N/A", paste0(meta$mean_insert_size, " bp"))),
-              p(strong("Created: "), ifelse(is.na(meta$created_at), "N/A", format(as.POSIXct(meta$created_at), "%Y-%m-%d")))
+                       paste0(meta$read_length, " bp")), 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+              p(strong("Mean Insert Size: "), ifelse(is.na(meta$mean_insert_size), "N/A", paste0(meta$mean_insert_size, " bp")), 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+              p(strong("Created: "), ifelse(is.na(meta$created_at), "N/A", format(as.POSIXct(meta$created_at), "%Y-%m-%d")), 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;")
           ),
           
           # VARIANTS & TRUTH SET CARD
           div(class = "metadata-card",
-              h6("Variants & Truth Set", style = "color: #007bff; font-weight: 700; font-size: 16px; border-bottom: 2px solid #007bff; padding-bottom: 8px; margin-bottom: 15px;"),
-              p(strong("Variant Type: "), meta$variant_type %||% "N/A"),
-              p(strong("Variant Origin: "), meta$variant_origin %||% "N/A"),
-              p(strong("Variant Size: "), meta$variant_size %||% "N/A"),
-              p(strong("Is Phased: "), ifelse(is.na(meta$is_phased), "N/A", ifelse(meta$is_phased, "Yes", "No"))),
-              p(strong("Truth Set: "), paste(meta$truth_set_name %||% "N/A", meta$truth_set_version %||% "")),
-              p(strong("Sample: "), meta$truth_set_sample %||% "N/A"),
-              p(strong("Reference: "), meta$truth_set_reference %||% "N/A")
+              h6("Variants & Truth Set", 
+                 style = "color: #4472ca; font-weight: 600; font-size: 15px; border-bottom: 2px solid #4472ca; padding-bottom: 8px; margin-bottom: 15px;"),
+              p(strong("Variant Type: "), meta$variant_type %||% "N/A", 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+              p(strong("Variant Origin: "), meta$variant_origin %||% "N/A", 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+              p(strong("Variant Size: "), meta$variant_size %||% "N/A", 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+              p(strong("Is Phased: "), ifelse(is.na(meta$is_phased), "N/A", ifelse(meta$is_phased, "Yes", "No")), 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+              p(strong("Truth Set: "), paste(meta$truth_set_name %||% "N/A", meta$truth_set_version %||% ""), 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+              p(strong("Sample: "), meta$truth_set_sample %||% "N/A", 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+              p(strong("Reference: "), meta$truth_set_reference %||% "N/A", 
+                style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;")
           ),
           
           # SNP PERFORMANCE CARD
           div(class = "metadata-card",
-              h6("SNP Performance", style = "color: #007bff; font-weight: 700; font-size: 16px; border-bottom: 2px solid #007bff; padding-bottom: 8px; margin-bottom: 15px;"),
+              h6("SNP Performance", 
+                 style = "color: #4472ca; font-weight: 600; font-size: 15px; border-bottom: 2px solid #4472ca; padding-bottom: 8px; margin-bottom: 15px;"),
               if (nrow(snp_perf) > 0) {
                 tagList(
-                  p(strong("F1 Score: "), paste0(round(snp_perf$f1_score * 100, 2), "%")),
-                  p(strong("Precision: "), paste0(round(snp_perf$precision * 100, 2), "%")),
-                  p(strong("Recall: "), paste0(round(snp_perf$recall * 100, 2), "%")),
-                  p(strong("True Positives: "), format(snp_perf$truth_tp, big.mark = ",")),
-                  p(strong("False Negatives: "), format(snp_perf$truth_fn, big.mark = ",")),
-                  p(strong("False Positives: "), format(snp_perf$query_fp, big.mark = ","))
+                  p(strong("F1 Score: "), paste0(round(snp_perf$f1_score * 100, 2), "%"), 
+                    style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+                  p(strong("Precision: "), paste0(round(snp_perf$precision * 100, 2), "%"), 
+                    style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+                  p(strong("Recall: "), paste0(round(snp_perf$recall * 100, 2), "%"), 
+                    style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+                  p(strong("True Positives: "), format(snp_perf$truth_tp, big.mark = ","), 
+                    style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+                  p(strong("False Negatives: "), format(snp_perf$truth_fn, big.mark = ","), 
+                    style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+                  p(strong("False Positives: "), format(snp_perf$query_fp, big.mark = ","), 
+                    style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;")
                 )
               } else {
-                p("No SNP performance data available", style = "color: #6c757d; font-style: italic;")
+                p("No SNP performance data available", 
+                  style = "color: #6c757d; font-style: italic; margin-bottom: 8px; font-size: 14px; line-height: 1.4;")
               }
           ),
           
           # INDEL PERFORMANCE CARD
           div(class = "metadata-card",
-              h6("INDEL Performance", style = "color: #007bff; font-weight: 700; font-size: 16px; border-bottom: 2px solid #007bff; padding-bottom: 8px; margin-bottom: 15px;"),
+              h6("INDEL Performance", 
+                 style = "color: #4472ca; font-weight: 600; font-size: 15px; border-bottom: 2px solid #4472ca; padding-bottom: 8px; margin-bottom: 15px;"),
               if (nrow(indel_perf) > 0) {
                 tagList(
-                  p(strong("F1 Score: "), paste0(round(indel_perf$f1_score * 100, 2), "%")),
-                  p(strong("Precision: "), paste0(round(indel_perf$precision * 100, 2), "%")),
-                  p(strong("Recall: "), paste0(round(indel_perf$recall * 100, 2), "%")),
-                  p(strong("True Positives: "), format(indel_perf$truth_tp, big.mark = ",")),
-                  p(strong("False Negatives: "), format(indel_perf$truth_fn, big.mark = ",")),
-                  p(strong("False Positives: "), format(indel_perf$query_fp, big.mark = ","))
+                  p(strong("F1 Score: "), paste0(round(indel_perf$f1_score * 100, 2), "%"), 
+                    style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+                  p(strong("Precision: "), paste0(round(indel_perf$precision * 100, 2), "%"), 
+                    style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+                  p(strong("Recall: "), paste0(round(indel_perf$recall * 100, 2), "%"), 
+                    style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+                  p(strong("True Positives: "), format(indel_perf$truth_tp, big.mark = ","), 
+                    style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+                  p(strong("False Negatives: "), format(indel_perf$truth_fn, big.mark = ","), 
+                    style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;"),
+                  p(strong("False Positives: "), format(indel_perf$query_fp, big.mark = ","), 
+                    style = "margin-bottom: 8px; font-size: 14px; line-height: 1.4;")
                 )
               } else {
-                p("No INDEL performance data available", style = "color: #6c757d; font-style: italic;")
+                p("No INDEL performance data available", 
+                  style = "color: #6c757d; font-style: italic; margin-bottom: 8px; font-size: 14px; line-height: 1.4;")
               }
           )
         )
@@ -398,7 +446,7 @@ upload_modal_ui <- function() {
       ),
       
       # Sequencing Technology
-      h5("Sequencing Technology", style = "color: #007bff; margin-top: 20px;"),
+      h5("Sequencing Technology", style = "color: #4472ca; margin-top: 20px; font-weight: 600;"),
       fluidRow(
         column(3,
                selectInput("technology", "Technology*",
@@ -430,7 +478,7 @@ upload_modal_ui <- function() {
       ),
       
       # Variant Caller
-      h5("Variant Caller", style = "color: #007bff; margin-top: 20px;"),
+      h5("Variant Caller", style = "color: #4472ca; margin-top: 20px; font-weight: 600;"),
       fluidRow(
         column(3,
                selectInput("caller_name", "Caller*",
@@ -451,7 +499,7 @@ upload_modal_ui <- function() {
       ),
       
       # Aligner
-      h5("Aligner", style = "color: #007bff; margin-top: 20px;"),
+      h5("Aligner", style = "color: #4472ca; margin-top: 20px; font-weight: 600;"),
       fluidRow(
         column(6,
                textInput("aligner_name", "Aligner",
@@ -464,7 +512,7 @@ upload_modal_ui <- function() {
       ),
       
       # Truth Set
-      h5("Truth Set", style = "color: #007bff; margin-top: 20px;"),
+      h5("Truth Set", style = "color: #4472ca; margin-top: 20px; font-weight: 600;"),
       fluidRow(
         column(3,
                selectInput("truth_set_name", "Truth Set",
@@ -488,7 +536,7 @@ upload_modal_ui <- function() {
       ),
       
       # Variant Info
-      h5("Variant Information", style = "color: #007bff; margin-top: 20px;"),
+      h5("Variant Information", style = "color: #4472ca; margin-top: 20px; font-weight: 600;"),
       fluidRow(
         column(3,
                selectInput("variant_type", "Variant Type",
@@ -513,7 +561,7 @@ upload_modal_ui <- function() {
       ),
       
       # Benchmark Tool
-      h5("Benchmark Tool", style = "color: #007bff; margin-top: 20px;"),
+      h5("Benchmark Tool", style = "color: #4472ca; margin-top: 20px; font-weight: 600;"),
       fluidRow(
         column(6,
                selectInput("benchmark_tool_name", "Benchmark Tool",
@@ -527,7 +575,7 @@ upload_modal_ui <- function() {
       ),
       
       # Quality Metrics
-      h5("Quality Metrics", style = "color: #007bff; margin-top: 20px;"),
+      h5("Quality Metrics", style = "color: #4472ca; margin-top: 20px; font-weight: 600;"),
       fluidRow(
         column(2,
                numericInput("mean_coverage", "Mean Coverage*", 
@@ -562,7 +610,7 @@ upload_modal_ui <- function() {
                div(style = "text-align: center; padding-top: 20px;",
                    actionButton("submit_upload", "Add to Database", 
                                 class = "btn-success btn-lg", 
-                                style = "min-width: 150px;")
+                                style = "min-width: 150px; background-color: #42a65c; border: none;")
                )
         )
       ),
@@ -572,4 +620,3 @@ upload_modal_ui <- function() {
     )
   )
 }
-

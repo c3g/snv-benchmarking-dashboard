@@ -469,12 +469,12 @@ METRIC_SELECTION_JS <- "
         
         // Remove active styling from all pills
         $('.metric-pill').each(function() {
-          $(this).css({
-            'background': 'white',
-            'color': '#495057',
-            'border': '1px solid #dee2e6',
-            'box-shadow': '0 3px 8px rgba(0,0,0,0.15)',
-            'transform': 'translateY(0px)'
+         $(this).css({
+            'background': '#5084d1',
+            'color': 'white', 
+            'border': 'none',
+            'box-shadow': '0 4px 12px rgba(80,132,209,0.4)',
+            'transform': 'translateY(-1px)'
           });
         });
         
@@ -483,7 +483,7 @@ METRIC_SELECTION_JS <- "
           'background': '#007bff',
           'color': 'white',
           'border': 'none',
-          'box-shadow': '0 4px 12px rgba(0,123,255,0.4)',
+          '0 6px 16px rgba(80,132,209,0.25)'
           'transform': 'translateY(-1px)'
         });
         
@@ -502,7 +502,7 @@ METRIC_SELECTION_JS <- "
           }
         },
         function() {
-          if ($(this).css('background-color') !== 'rgb(0, 123, 255)') {
+         if ($(this).css('background-color') !== 'rgb(80, 132, 209)') {
             $(this).css({
               'transform': 'translateY(0px)',
               'box-shadow': '0 3px 8px rgba(0,0,0,0.15)'

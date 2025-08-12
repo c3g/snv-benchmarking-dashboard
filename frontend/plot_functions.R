@@ -169,7 +169,7 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
         p <- ggplot() + 
           annotate("text", x = 0.5, y = 0.5, label = "No SNP data available", size = 6) +
           xlim(0, 1) + ylim(0, 1) +
-          labs(title = "SNP", x = "Precision", y = "Recall") +
+          labs(x = "Precision", y = "Recall") +
           theme_bw()
         return(ggplotly(p))
       }
@@ -224,7 +224,7 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
         scale_fill_manual(values = technology_colors) + 
         scale_shape_manual(values = caller_shapes) +       
         xlim(0, 1) + ylim(0, 1) +
-        labs(title = "SNP", x = "Precision", y = "Recall") +
+        labs(x = "Precision", y = "Recall") +
         theme_bw() +
         theme(
           plot.title = element_text(size = 12),
@@ -317,7 +317,7 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
         scale_fill_manual(values = technology_colors) +   
         scale_shape_manual(values = caller_shapes) +       
         xlim(0, 1) + ylim(0, 1) +
-        labs(title = "INDEL", x = "Precision", y = "Recall") +
+        labs( x = "Precision", y = "Recall") +
         theme_bw() +
         theme(
           plot.title = element_text(size = 12),
