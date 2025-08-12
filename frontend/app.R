@@ -317,26 +317,30 @@ ui <- fluidPage(
               )
             ),
             br(),
-            fluidRow(
-              column(4, class = "plot-column",
-                     h4("SNP Performance", style = "color: #d73027; font-weight: bold; text-align: center;"),
-                     br(),
-                     plotlyOutput("snp_plot", height = "500px")
-              ),
-              column(4, class = "plot-column",
-                     h4("INDEL Performance", style = "color: #4575b4; font-weight: bold; text-align: center;"),
-                     br(),
-                     plotlyOutput("indel_plot", height = "500px")
-              ),
-              column(3,
-                     div(style = "margin-top: 160px;", 
-                         htmlOutput("technology_legend"),
-                         br(),
-                         htmlOutput("caller_legend")
-                     )
-              ),
-              column(1, "")
+            # Performance plots
+            wellPanel(
+              style = "background-color: #ffffff; padding: 25px; margin-bottom: 20px;",
+              fluidRow(
+                column(4, class = "plot-column",
+                       h4("SNP Performance", style = "color: #d73027; font-weight: bold; text-align: center;"),
+                       br(),
+                       plotlyOutput("snp_plot", height = "500px")
+                ),
+                column(4, class = "plot-column",
+                       h4("INDEL Performance", style = "color: #4575b4; font-weight: bold; text-align: center;"),
+                       br(),
+                       plotlyOutput("indel_plot", height = "500px")
+                ),
+                column(4,
+                       div(style = "margin-top: 160px;", 
+                           htmlOutput("technology_legend"),
+                           br(),
+                           htmlOutput("caller_legend")
+                       )
+                )
+              )
             ),
+            # Selected experiment details
             br(),
             fluidRow(
               column(12,
@@ -647,16 +651,19 @@ ui <- fluidPage(
               tabsetPanel(
                 tabPanel("📊 Performance Plots",
                          br(),
-                         fluidRow(
-                           column(6,
-                                  h4("SNP Performance by Region", style = "color: #d73027; font-weight: bold; text-align: center;"),
-                                  br(),
-                                  plotOutput("stratified_snp_plot", height = "600px")
-                           ),
-                           column(6,
-                                  h4("INDEL Performance by Region", style = "color: #4575b4; font-weight: bold; text-align: center;"),
-                                  br(),
-                                  plotOutput("stratified_indel_plot", height = "600px")
+                         div(
+                           style = "background-color: #ffffff; padding: 25px; margin-bottom: 20px;",
+                           fluidRow(
+                             column(6,
+                                    h4("SNP Performance by Region", style = "color: #d73027; font-weight: bold; text-align: center;"),
+                                    br(),
+                                    plotOutput("stratified_snp_plot", height = "600px")
+                             ),
+                             column(6,
+                                    h4("INDEL Performance by Region", style = "color: #4575b4; font-weight: bold; text-align: center;"),
+                                    br(),
+                                    plotOutput("stratified_indel_plot", height = "600px")
+                             )
                            )
                          )
                 ),
