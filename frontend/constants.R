@@ -338,6 +338,11 @@ APP_CSS_STYLES <- "
       border-color: #5084d1;
       color: white;
     }
+    
+    .dt-body-wrap {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+}
 
   "
 METADATA_CSS_STYLES <- "

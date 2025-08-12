@@ -213,15 +213,16 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
         scrollX = TRUE,
         columnDefs = list(
           list(targets = 0, className = "dt-center", width = "50px"),     # ID column
-          list(targets = c(8, 9, 10), className = "dt-center"),          # Performance columns
-          list(targets = 6, className = "dt-center"),                    # Coverage column
-          list(targets = "_all", className = "dt-body-nowrap")           # Prevent text wrapping
+          list(targets = c(9, 10, 11), className = "dt-center"),         # Performance columns 
+          list(targets = 7, className = "dt-center"),                    # Coverage column 
+          list(targets = 5, className = "dt-body-wrap"),                 # Version column 
+          list(targets = "_all", className = "dt-body-nowrap")
         )
       ),
       rownames = FALSE,
       colnames = c(
-        "ID", "Experiment", "Technology", "Caller", 
-        "Platform", "Chemistry", "Coverage", "Variant Type", 
+        "ID", "Experiment", "Technology", "Platform",
+        "Caller", "Version", "Chemistry", "Coverage", "Variant Type", 
         "F1 Score (%)", "Precision (%)", "Recall (%)"
       )
     ) %>%

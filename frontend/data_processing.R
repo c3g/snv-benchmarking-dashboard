@@ -181,8 +181,8 @@ setup_data_reactives <- function(input, output, session) {
     enhanced_data <- viz_data %>%
       select(
         experiment_id, experiment_name, 
-        technology, caller,
-        platform_name, chemistry_name, mean_coverage,
+        technology, platform_name,
+        caller, caller_version, chemistry_name, mean_coverage,
         variant_type, recall, precision, f1_score
       ) %>%
       mutate(
@@ -201,8 +201,9 @@ setup_data_reactives <- function(input, output, session) {
         "ID" = experiment_id,
         "Experiment" = experiment_name,
         "Technology" = technology,
+        "Platform" = platform_name,        
         "Caller" = caller,
-        "Platform" = platform_name,
+        "Version" = caller_version,
         "Chemistry" = chemistry_name,
         "Coverage" = mean_coverage,
         "Variant" = variant_type,
