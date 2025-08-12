@@ -333,6 +333,7 @@ ui <- fluidPage(
                           font-size: 17px; letter-spacing: 0.3px;")
                        ),
                        br(),
+                       
                        plotlyOutput("snp_plot", height = "500px")
                 ),
                 column(4, class = "plot-column",
@@ -347,7 +348,18 @@ ui <- fluidPage(
                            font-size: 17px; letter-spacing: 0.3px;")
                        ),
                        br(),
-                       plotlyOutput("indel_plot", height = "500px")
+                       #loading spinner
+                       conditionalPanel(
+                         condition = "!output.indel_plot",
+                         
+                         div(
+                           style = "display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px;",
+                           div(class = "custom-spinner", style = "margin: 0 auto;"),
+                           p("Loading plots...", 
+                             style = "color: #6c757d; margin-top: 15px; font-size: 14px; text-align: center; margin-bottom: 0;")
+                         )
+                       ),
+                       plotlyOutput("indel_plot", height = "500px") 
                 ),
                 column(4,
                        div(
@@ -697,6 +709,16 @@ ui <- fluidPage(
                                         font-size: 17px; letter-spacing: 0.3px;")
                                     ),
                                     br(),
+                                    conditionalPanel(
+                                      condition = "!output.stratified_snp_plot",
+                                      
+                                      div(
+                                        style = "text-align: right; padding: 10px;",
+                                        div(class = "custom-spinner", style = "margin-left: auto; margin-right: 0;"),
+                                        p("Loading plots...", 
+                                          style = "color: #6c757d; margin-top: 15px; font-size: 14px; margin-bottom: 0;")
+                                      )
+                                    ),
                                     plotOutput("stratified_snp_plot", height = "600px")
                              ),
                              column(6,
