@@ -12,6 +12,7 @@ Main tables:
 - Selected experiments (Sidebar: compact table for comparisons)
 
 Helper functions:
+- create_experiment_details_html() (expand Tab 1 table rows)
 - create_metric_table() (formats stratified data with highlighting)
 - create_f1_table() (creates pivot tables for regions)
 - setup_table_outputs() (creates all table outputs)
@@ -21,7 +22,55 @@ Helper functions:
 # ============================================================================
 # DATA PROCESSING FOR TABLES
 # ============================================================================
-
+create_experiment_details_html <- function(metadata) {
+  if (nrow(metadata) == 0) return(NULL)
+  
+  meta <- metadata[1, ]
+  exp_id <- meta$id
+  
+  # Create compact HTML content for row expansion
+  details_html <- paste0(
+    '<tr class="detail-row-', exp_id, '">',
+    '<td colspan="11">',
+    '<div class="detail-content">',
+    '<div class="detail-grid">',
+    
+    # Platform Details
+    '<div class="detail-section">',
+    '<h6 style="color: #4472ca; font-weight: 700; font-size: 13px; border-bottom: 2px solid #4472ca; padding-bottom: 4px; margin-bottom: 8px;">Platform Details</h6>',
+    '<div class="detail-item"><strong>Platform:</strong> ', meta$platform_name %||% "N/A", '</div>',
+    '<div class="detail-item"><strong>Version:</strong> ', meta$platform_version %||% "N/A", '</div>',
+    '<div class="detail-item"><strong>Type:</strong> ', meta$platform_type %||% "N/A", '</div>',
+    '<div class="detail-item"><strong>Target:</strong> ', meta$target %||% "N/A", '</div>',
+    '<div class="detail-item"><strong>Chemistry:</strong> ', meta$chemistry_name %||% "N/A", '</div>',
+    '</div>',
+    
+    # Analysis Details  
+    '<div class="detail-section">',
+    '<h6 style="color: #4472ca; font-weight: 700; font-size: 13px; border-bottom: 2px solid #4472ca; padding-bottom: 4px; margin-bottom: 8px;">Analysis Details</h6>',
+    '<div class="detail-item"><strong>Caller Type:</strong> ', meta$caller_type %||% "N/A", '</div>',
+    '<div class="detail-item"><strong>Caller Model:</strong> ', meta$caller_model %||% "N/A", '</div>',
+    '<div class="detail-item"><strong>Aligner:</strong> ', paste(meta$aligner_name %||% "N/A", meta$aligner_version %||% ""), '</div>',
+    '<div class="detail-item"><strong>Variants:</strong> ', meta$variant_origin %||% "N/A", ' ', meta$variant_type %||% "", '</div>',
+    '<div class="detail-item"><strong>Phased:</strong> ', ifelse(is.na(meta$is_phased), "N/A", ifelse(meta$is_phased, "Yes", "No")), '</div>',
+    '</div>',
+    
+    # Quality & Truth
+    '<div class="detail-section">',
+    '<h6 style="color: #4472ca; font-weight: 700; font-size: 13px; border-bottom: 2px solid #4472ca; padding-bottom: 4px; margin-bottom: 8px;">Quality & Benchmarking</h6>',
+    '<div class="detail-item"><strong>Coverage:</strong> ', ifelse(is.na(meta$mean_coverage), "N/A", paste0(round(meta$mean_coverage, 1), "x")), '</div>',
+    '<div class="detail-item"><strong>Read Length:</strong> ', ifelse(is.na(meta$read_length), "N/A", paste0(meta$read_length, " bp")), '</div>',
+    '<div class="detail-item"><strong>Truth Set:</strong> ', meta$truth_set_name %||% "N/A", '</div>',
+    '<div class="detail-item"><strong>Reference:</strong> ', meta$truth_set_reference %||% "N/A", '</div>',
+    '<div class="detail-item"><strong>Sample:</strong> ', meta$truth_set_sample %||% "N/A", '</div>',
+    '</div>',
+    
+    '</div>', # Close detail-grid
+    '</div>', # Close detail-content
+    '</td>',
+    '</tr>'
+  )
+}
 # Create F1 score tables for stratified analysis
 create_f1_table <- function(data) {
   if (nrow(data) == 0) {
@@ -101,7 +150,7 @@ create_metric_table <- function(stratified_data, variant_filter, selected_metric
     dt <- dt %>%
       DT::formatStyle(
         columns = metric_col_idx,
-        backgroundColor = "#e3f2fd",
+        backgroundColor = "#d0dde8",
         fontWeight = "bold"
       )
   }
@@ -174,16 +223,7 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
       ),
       rownames = FALSE,
       colnames = c("", "ID", "Name", "Technology", "Platform", "Caller", "Version", "Chemistry", "Truth Set", "Sample", "Created")
-    ) %>%
-      # Technology-based row coloring
-      formatStyle(
-        "technology", 
-        target = "row",
-        backgroundColor = styleEqual(
-          c("ILLUMINA", "PACBIO", "ONT", "MGI"),  
-          c("#fef6f6", "#faf8ff", "#f0fcfd", "#f7fbf5") 
-        )
-      )
+    )
     
     return(dt)
   })
