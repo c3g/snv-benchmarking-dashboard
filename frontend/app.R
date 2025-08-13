@@ -103,11 +103,11 @@ ui <- fluidPage(
     tags$style(HTML(APP_CSS_STYLES)),
     tags$style(HTML(METADATA_CSS_STYLES)),
     
-    # JavaScript functionality  
+    # JavaScript 
     tags$script(HTML(TABLE_INTERACTION_JS)),
     tags$script(HTML(CUSTOM_MESSAGE_HANDLERS_JS)),
     tags$script(HTML(COLLAPSIBLE_HANDLERS_JS)),
-    tags$script(HTML(METRIC_SELECTION_JS))
+    tags$script(HTML(METRIC_SELECTION_JS)),
   ),
   
   # ====================================================================
@@ -266,15 +266,11 @@ ui <- fluidPage(
                 div(
                   class = "alert alert-info",
                   style = "margin-bottom: 20px;",
-                  h5("Experiment Overview"),
-                  p("This table displays all available benchmarking experiments with their key metadata. ", 
-                    "Use the sidebar to ", strong("filter by technology or variant caller"), 
-                    ", or choose from the comparison options to ", 
-                    strong("analyze multiple technologies"), ", ", 
-                    strong("compare variant callers"), ", or ", 
-                    strong("select specific experiments"), " for detailed analysis."),
-                  p(style = "font-size: 0.9em; margin-bottom: 0;",
-                    strong("Navigation:"), " Click the ▶ button in any row to expand detailed metadata, or switch to other tabs to view performance results and visualizations.")
+                  h5(icon("database"), " Variant Calling Benchmarking Database"),
+                  p(strong("Overview:"), " This repository contains systematically evaluated variant calling experiments across multiple sequencing platforms and computational pipelines. Each experiment represents a controlled comparison against established genomic reference standards."),
+                  
+                  
+                  p(strong("Usage:"), " Use sidebar filters or comparison options to subset experiments. Click ▶ to expand experiment details.", style = "margin-bottom: 0; font-size: 1em;")
                 ),
                 div(style = "width: 100%; overflow-x: auto;",
                     DT::dataTableOutput("experiments_table")
@@ -289,14 +285,13 @@ ui <- fluidPage(
             div(
               class = "alert alert-info",
               style = "margin-bottom: 20px;",
-              h5("Performance Results"),
-              p("This table shows detailed performance metrics for each experiment. Each experiment displays ", 
-                strong("two rows"), ": one for ", 
-                span(style = "color: #d73027; font-weight: bold;", "SNP variants"), 
-                " and one for ", 
-                span(style = "color: #4575b4; font-weight: bold;", "INDEL variants"), 
-                ". Metrics are shown as percentages for easy comparison.")
-            ),
+              h5(icon("chart-line"), " Variant Calling Performance Metrics"),
+              p(strong("Results Overview:"), " Performance metrics for each experiment showing precision, recall, and F1-score separately for",
+                span(style = "color: #d73027; font-weight: bold;", "SNP variants"), "and",
+                span(style = "color: #4575b4; font-weight: bold;", "INDEL variants."), 
+                " Values represent percentage accuracy against validated truth set (GIAB)"),
+  
+               ),
             DT::dataTableOutput("performance_table")
           ),
           
@@ -308,12 +303,12 @@ ui <- fluidPage(
               column(12,
                      div(
                        class = "alert alert-info",
-                       h5("Performance Visualizations"),
-                       p("These scatter plots display precision vs recall performance for each experiment, with ", 
-                         strong("F1 contour lines"), " showing performance benchmarks. "),
-                       p(strong("Click points"), " and scroll down to view experiment details below, or ", strong("hover"), " for quick metrics"),
-                       p(style = "font-size: 0.9em; color: #6c757d;", "Tip: Drag to zoom, double-click to reset")
-                     )
+                       h5(icon("chart-area"), " Performance Characterization Plots"),
+                       p(strong("Performance Plots:"), " Precision vs. recall scatter plots with F1-score reference lines for visual comparison of variant calling performance. 
+                       Each point represents one experiment, colored by sequencing technology and shaped by variant caller.
+                         Interactive plots enable detailed exploration of individual results and identification of optimal technology-algorithm combinations."),
+                       p(style = "font-size: 1em", strong("Interaction:"), " Click points to view detailed experiment metadata below. Hover for quick performance metrics. Drag to zoom, double-click to reset view.")
+                     ),
               )
             ),
             br(),
@@ -322,6 +317,7 @@ ui <- fluidPage(
               style = "background-color: #ffffff; padding: 25px; margin-bottom: 20px;",
               fluidRow(
                 column(4, class = "plot-column",
+                       style = "max-width: 33.33%; overflow: hidden;",
                        # SNP Plot title
                        div(
                          style = "background: linear-gradient(135deg, #fefafa 0%, #fdf5f5 100%); 
@@ -337,6 +333,7 @@ ui <- fluidPage(
                        plotlyOutput("snp_plot", height = "500px")
                 ),
                 column(4, class = "plot-column",
+                       style = "max-width: 33.33%; overflow: hidden;",
                        # INDEL plot title
                        div(
                          style = "background: linear-gradient(135deg, #fafbfd 0%, #f5f7fc 100%); 
@@ -363,7 +360,7 @@ ui <- fluidPage(
                 ),
                 column(4,
                        div(
-                           # Simple header
+                           # header
                            div(
                              style = "background: linear-gradient(135deg, #fdfaff 0%, #fbf5ff 100%); 
                              border: 1px solid #c4a1d6; border-radius: 8px; 
@@ -421,10 +418,13 @@ ui <- fluidPage(
             div(
               class = "alert alert-info",
               style = "margin-bottom: 20px;",
-              h5("Stratified Performance Analysis"),
-              p("Analyze F1 scores across different genomic regions for the selected experiments. "),
-              p(style = "font-size: 0.9em; margin-bottom: 0;",
-                strong("Note: "), "Only experiments from your current selection (previous tabs) are shown.")
+              h5(icon("layer-group"), " Stratified Performance Analysis"),
+              p(strong("Regional Breakdown:"), " Performance metrics displayed across genomic regions with different sequence characteristics.
+              Available stratifications include complexity-based regions (easy/difficult), GC content ranges, functional annotations (coding/non-coding),
+              repetitive sequences (homopolymers, segmental duplications), and specialized regions (MHC, low mappability areas). 
+              Select regions to analyze and view results as plots or data tables."),
+              p(style =" margin-bottom: 0;font-size: 1em",
+              strong("Usage:"), " Click arrows (▶) to expand region categories. Hover over region names for definitions. Only experiments from your current selection (previous tabs) are analyzed.")
             ),
             
             # Region selection panel
@@ -450,7 +450,19 @@ ui <- fluidPage(
                                ),
                                selected = c("All Regions"),
                                inline = TRUE
-                             )
+                             ),
+                             tags$script(HTML("
+                   $(document).ready(function(){
+                     $('input[value=\"Easy Regions\"]').parent().attr({
+                       'data-toggle': 'tooltip',
+                       'title': 'High-confidence regions with unique sequences and good mappability'
+                     });
+                     $('input[value=\"Difficult Regions\"]').parent().attr({
+                       'data-toggle': 'tooltip', 
+                       'title': 'Challenging regions with repetitive sequences, low complexity, or structural variations'
+                     });
+                   });
+                 "))
                            ),
                            
                            # Functional Regions (Collapsible)
@@ -472,11 +484,23 @@ ui <- fluidPage(
                                  NULL,
                                  choices = list(
                                    "RefSeq CDS" = "RefSeq CDS",
-                                   "Not in CDS" = "Non-CDS Regions"
+                                   "Non-CDS Regions" = "Non-CDS Regions"
                                  ),
                                  selected = character(0),
                                  inline = TRUE
-                               )
+                               ),
+                               tags$script(HTML("
+                     $(document).ready(function(){
+                       $('input[value=\"RefSeq CDS\"]').parent().attr({
+                         'data-toggle': 'tooltip',
+                         'title': 'Protein-coding DNA sequences from NCBI Reference Sequence database'
+                       });
+                       $('input[value=\"Non-CDS Regions\"]').parent().attr({
+                         'data-toggle': 'tooltip',
+                         'title': 'Non-coding genomic regions including introns, intergenic, and regulatory sequences'
+                       });
+                     });
+                   "))
                              )
                            ),
                            
@@ -504,11 +528,27 @@ ui <- fluidPage(
                                  ),
                                  selected = character(0),
                                  inline = TRUE
-                               )
+                               ),
+                               tags$script(HTML("
+                     $(document).ready(function(){
+                       $('input[value=\"Homopolymer 4-6bp\"]').parent().attr({
+                         'data-toggle': 'tooltip',
+                         'title': 'Short repetitive single-nucleotide runs (e.g., AAAA, TTTTT)'
+                       });
+                       $('input[value=\"Homopolymer 7-11bp\"]').parent().attr({
+                         'data-toggle': 'tooltip',
+                         'title': 'Medium-length repetitive single-nucleotide runs'
+                       });
+                       $('input[value=\"Homopolymer >11bp\"]').parent().attr({
+                         'data-toggle': 'tooltip',
+                         'title': 'Long repetitive single-nucleotide runs (≥12 consecutive identical bases)'
+                       });
+                     });
+                   "))
                              )
                            ),
                            
-                           # GC Content Regions (Collapsible)
+                           # GC Content Regions (Collapsible) - No tooltips needed, self-explanatory
                            div(
                              style = "margin-top: 15px;",
                              tags$a(
@@ -569,34 +609,47 @@ ui <- fluidPage(
                              )
                            ),
                            
-                           # Other Regions (Collapsible)
+                           # Complex Regions (Collapsible)
                            div(
                              style = "margin-top: 15px;",
                              tags$a(
                                href = "#other_collapse",
                                `data-toggle` = "collapse",
                                style = "text-decoration: none; color: #495057;",
-                               h6("▶ Other Regions",
+                               h6("▶ Complex Regions",
                                   style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
                              ),
                              div(
                                id = "other_collapse",
                                class = "collapse",
                                style = "margin-top: 6px;",
-                               div(
-                                 h6("Complex Regions:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
-                                 checkboxGroupInput(
-                                   "complex_regions",
-                                   NULL,
-                                   choices = list(
-                                     "MHC" = "MHC Region",
-                                     "Segmental Duplications" = "Segmental Duplications",
-                                     "Low Mappability" = "Low Mappability"
-                                   ),
-                                   selected = character(0),
-                                   inline = TRUE
-                                 )
-                               )
+                               checkboxGroupInput(
+                                 "complex_regions",
+                                 NULL,
+                                 choices = list(
+                                   "MHC Region" = "MHC Region",
+                                   "Segmental Duplications" = "Segmental Duplications",
+                                   "Low Mappability" = "Low Mappability"
+                                 ),
+                                 selected = character(0),
+                                 inline = TRUE
+                               ),
+                               tags$script(HTML("
+                     $(document).ready(function(){
+                       $('input[value=\"MHC Region\"]').parent().attr({
+                         'data-toggle': 'tooltip',
+                         'title': 'Major Histocompatibility Complex - highly polymorphic immune system genes on chromosome 6'
+                       });
+                       $('input[value=\"Segmental Duplications\"]').parent().attr({
+                         'data-toggle': 'tooltip',
+                         'title': 'Large DNA segments (≥1kb) with ≥90% sequence identity found in ≥2 copies'
+                       });
+                       $('input[value=\"Low Mappability\"]').parent().attr({
+                         'data-toggle': 'tooltip',
+                         'title': 'Regions where short sequencing reads cannot be uniquely mapped due to repetitive content'
+                       });
+                     });
+                   "))
                              )
                            )
                        )
@@ -621,7 +674,10 @@ ui <- fluidPage(
                     class = "btn-primary",
                     style = "padding: 10px 25px; font-size: 16px;"
                   )
-              )
+              ),
+              
+              # Initialize tooltips
+              tags$script(HTML(REGION_TOOLTIPS_JS))
             ),
             
             # Results display
