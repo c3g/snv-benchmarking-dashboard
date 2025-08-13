@@ -238,7 +238,10 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
         ggplotly(p, tooltip = "text", source = "snp_plot_isolated") %>%
           layout(showlegend = FALSE,
                  dragmode = "zoom",
-                 hoverlabel = list(align = "left")
+                 hoverlabel = list(align = "left"),
+                 width = NULL, 
+                 height = 500,
+                 autosize = TRUE
           ) %>%    
           event_register("plotly_click")
       })
@@ -331,7 +334,10 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
         ggplotly(p, tooltip = "text", source = "indel_plot_isolated") %>%
           layout(showlegend = FALSE,
                  dragmode = "zoom",
-                 hoverlabel = list(align = "left")
+                 hoverlabel = list(align = "left"),
+                 width = NULL, 
+                 height = 500,
+                 autosize = TRUE
           ) %>%    
           event_register("plotly_click")
       })
