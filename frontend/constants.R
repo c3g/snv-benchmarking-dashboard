@@ -270,31 +270,16 @@ APP_CSS_STYLES <- "
       border: 1px solid #e4e7ea;
     }
     
+    .dataTables_wrapper tbody tr:nth-child(even) {
+      background-color: #f1f5ff;  /* More noticeable blue */
+    }
+    
+    .dataTables_wrapper tbody tr:nth-child(odd) {
+      background-color: #ffffff;
+    }
+    
     .dataTables_wrapper tbody tr:hover {
-      background-color: #f7fafc;
-    }
-    
-    .dataTables_wrapper tbody td {
-      text-transform: capitalize !important;
-      border-bottom: 1px solid #f7f8f9;
-    }
-    
-    .dataTables_wrapper tbody td:nth-child(1) {
-      text-transform: none !important;
-    }
-    
-    .btn-primary {
-      background-color: #5084d1;
-      border: none;
-      border-radius: 5px;
-      font-weight: 500;
-      padding: 10px 18px;
-      transition: all 0.2s ease;
-    }
-    
-    .btn-primary:hover {
-      background-color: #4472ca;
-      transform: translateY(-1px);
+      background-color: #e0edff !important;  /* Blue hover */
     }
     
     .btn-success {
@@ -561,3 +546,60 @@ METRIC_SELECTION_JS <- "
 "
 
 
+# Region selection CSS
+REGION_INFO_CSS <- "
+  .region-info-icon {
+    color: #007bff;
+    cursor: help;
+    margin-left: 5px;
+    font-size: 14px;
+  }
+  
+  .tooltip-inner {
+    max-width: 350px;
+    text-align: left;
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 12px 15px;
+    background-color: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #bbdefb;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    opacity: 1;
+  }
+  
+  .tooltip {
+    opacity: 1 !important;
+  }
+  
+  .tooltip.bs-tooltip-right .arrow::before {
+    border-right-color: #e3f2fd;
+  }
+  
+  .tooltip.bs-tooltip-left .arrow::before {
+    border-left-color: #e3f2fd;
+  }
+  
+  .tooltip.bs-tooltip-top .arrow::before {
+    border-top-color: #e3f2fd;
+  }
+  
+  .tooltip.bs-tooltip-bottom .arrow::before {
+    border-bottom-color: #e3f2fd;
+  }
+"
+
+# tooltip JavaScript
+REGION_TOOLTIPS_JS <- "
+  $(document).ready(function(){
+    // Initialize tooltips
+    $('[data-toggle=\"tooltip\"]').tooltip({
+      placement: 'right',
+      html: true
+    });
+  });
+
+"
+
+APP_CSS_STYLES <- paste0(APP_CSS_STYLES, REGION_INFO_CSS)
