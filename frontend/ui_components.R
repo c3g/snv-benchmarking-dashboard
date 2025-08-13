@@ -179,7 +179,7 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       
       div(
         h5(paste("Complete Experiment Details"), 
-           style = "color: #4a148c ; font-weight: 600; margin-bottom: 20px; font-size: 17px;"),
+           style = "font-weight: 600; margin-bottom: 20px; font-size: 17px;"),
         div(
           class = "metadata-grid-4col",
           
@@ -582,15 +582,15 @@ upload_modal_ui <- function() {
                             value = NA, min = 1, max = 200, step = 0.1)
         ),
         column(3,
-               numericInput("read_length", "Read Length (bp) _ SRS", 
+               numericInput("read_length", "Read Length (bp) _ Short Read Sequencing", 
                             value = NA, min = 50, max = 500, step = 0.1)
         ),
         column(3,
-               numericInput("mean_insert_size", "Mean Insert Size (bp) _ SRS", 
+               numericInput("mean_insert_size", "Mean Insert Size (bp) _ Short Read Sequencing", 
                             value = NA, min = 100, max = 1000, step = 1)
         ),
         column(4,
-               numericInput("mean_read_length", "Mean Read Length (bp) _ LRS", 
+               numericInput("mean_read_length", "Mean Read Length (bp) _ Long Read Sequencing", 
                             value = NA, min = 100, max = 100000, step = 0.1)
         )
       )
