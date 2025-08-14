@@ -266,11 +266,29 @@ ui <- fluidPage(
                 div(
                   class = "alert alert-info",
                   style = "margin-bottom: 20px;",
-                  h5(icon("database"), " Variant Calling Benchmarking Database"),
-                  p(strong("Overview:"), " This repository contains systematically evaluated variant calling experiments across multiple sequencing platforms and computational pipelines. Each experiment represents a controlled comparison against established genomic reference standards."),
+                  h5(icon("database"), " SNV Benchmarking Database - Comprehensive Variant Calling Evaluation"),
                   
+                  p(strong("Overview:"), " This dashboard provides systematic evaluation and comparison of variant calling performance across multiple sequencing technologies and computational pipelines. Each experiment represents a controlled benchmarking analysis using ",
+                    a("hap.py", href = "https://github.com/Illumina/hap.py", target = "_blank"),
+                    " (a standard benchmarking tool) to compare variant calls against established genomic reference standards including ",
+                    a("GIAB (Genome in a Bottle)", href = "https://www.nist.gov/programs-projects/genome-bottle", target = "_blank"), ", ",
+                    a("CMRG", href = "https://github.com/genome-in-a-bottle/cmrg-benchmarksets", target = "_blank"), 
+                    ", and ", a("T2T", href = "https://github.com/marbl/CHM13", target = "_blank"), " truth sets."),
                   
-                  p(strong("Usage:"), " Use sidebar filters or comparison options to subset experiments. Click ▶ to expand experiment details.", style = "margin-bottom: 0; font-size: 1em;")
+                  p(strong("Technologies Covered:"), " Compare performance across major sequencing platforms including ",
+                    strong("Short-read sequencing"), " (",
+                    a("Illumina", href = "https://www.illumina.com/", target = "_blank"), ", ",
+                    a("MGI", href = "https://en.mgi-tech.com/", target = "_blank"), 
+                    ") and ", strong("Long-read sequencing"), " (",
+                    a("PacBio", href = "https://www.pacb.com/", target = "_blank"), ", ",
+                    a("Oxford Nanopore (ONT)", href = "https://nanoporetech.com/", target = "_blank"), 
+                    ") using variant callers including ",
+                    a("DeepVariant", href = "https://github.com/google/deepvariant", target = "_blank"), " (ML-based), ",
+                    a("GATK", href = "https://gatk.broadinstitute.org/", target = "_blank"), " (traditional), and ",
+                    a("Clair3", href = "https://github.com/HKU-BAL/Clair3", target = "_blank"), " (long-read optimized)."),
+                
+                  p(strong("Getting Started:"), " Use sidebar filters to focus on specific technologies or callers. Chose a comparison option to evaluate multiple approaches. Click ▶ to expand detailed metadata for each experiment. ",
+                    style = "margin-bottom: 0; font-size: 1em;")
                 ),
                 div(style = "width: 100%; overflow-x: auto;",
                     DT::dataTableOutput("experiments_table")
@@ -286,12 +304,26 @@ ui <- fluidPage(
               class = "alert alert-info",
               style = "margin-bottom: 20px;",
               h5(icon("chart-line"), " Variant Calling Performance Metrics"),
-              p(strong("Results Overview:"), " Performance metrics for each experiment showing precision, recall, and F1-score separately for",
-                span(style = "color: #d73027; font-weight: bold;", "SNP variants"), "and",
-                span(style = "color: #4575b4; font-weight: bold;", "INDEL variants."), 
-                " Values represent percentage accuracy against validated truth set (GIAB)"),
-  
-               ),
+              
+              p(strong("Performance Overview:"), " Quantitative results from ",
+                a("hap.py", href = "https://github.com/Illumina/hap.py", target = "_blank"),
+                " benchmarking showing ",
+                a("precision, recall, and F1-score", href = "https://en.wikipedia.org/wiki/Precision_and_recall", target = "_blank"),
+                " for each technology-caller combination. Metrics are calculated separately for ",
+                span(style = "color: #d73027; font-weight: bold;", "SNP variants"), " and ",
+                span(style = "color: #4575b4; font-weight: bold;", "INDEL variants"), 
+                " against validated ",
+                a("GIAB", href = "https://www.nist.gov/programs-projects/genome-bottle", target = "_blank"), 
+                " truth sets."),
+              
+              p(strong("Key Metrics:"), " ",
+                strong("Precision"), " measures accuracy of called variants (% true positives), ",
+                strong("Recall"), " measures completeness (% of true variants detected), and ",
+                strong("F1-score"), " provides balanced performance assessment. Higher percentages indicate better performance across all metrics."),
+              
+              p(strong("Usage:"), " Sort by any metric to identify top performers. Compare SNP vs INDEL performance patterns across different sequencing technologies and variant calling algorithms.",
+                style = "margin-bottom: 0; font-size: 1em;")
+            ),
             DT::dataTableOutput("performance_table")
           ),
           
@@ -304,10 +336,20 @@ ui <- fluidPage(
                      div(
                        class = "alert alert-info",
                        h5(icon("chart-area"), " Performance Characterization Plots"),
-                       p(strong("Performance Plots:"), " Precision vs. recall scatter plots with F1-score reference lines for visual comparison of variant calling performance. 
-                       Each point represents one experiment, colored by sequencing technology and shaped by variant caller.
-                         Interactive plots enable detailed exploration of individual results and identification of optimal technology-algorithm combinations."),
-                       p(style = "font-size: 1em", strong("Interaction:"), " Click points to view detailed experiment metadata below. Hover for quick performance metrics. Drag to zoom, double-click to reset view.")
+                       p(strong("Performance Plots:"), " Precision vs. recall scatter plots with ",
+                         a("F1-score", href = "https://en.wikipedia.org/wiki/F-score", target = "_blank"),
+                         " reference lines for visual comparison of variant calling performance. Each point represents one experiment, colored by sequencing technology (",
+                         a("Illumina", href = "https://www.illumina.com/", target = "_blank"), ", ",
+                         a("PacBio", href = "https://www.pacb.com/", target = "_blank"), ", ",
+                         a("ONT", href = "https://nanoporetech.com/", target = "_blank"), ", ",
+                         a("MGI", href = "https://en.mgi-tech.com/", target = "_blank"),
+                         ") and shaped by variant caller (",
+                         a("DeepVariant", href = "https://github.com/google/deepvariant", target = "_blank"), ", ",
+                         a("GATK", href = "https://gatk.broadinstitute.org/", target = "_blank"), ", ",
+                         a("Clair3", href = "https://github.com/HKU-BAL/Clair3", target = "_blank"), ")."),
+                       p(style = "font-size: 1em;", 
+                         strong("Interaction:"), " Click points to view detailed experiment metadata below.",
+                         strong("Hover"), " for quick performance metrics.", strong("Drag")," to zoom and ",strong("double-click"), " to reset view.")
                      ),
               )
             ),
@@ -419,12 +461,15 @@ ui <- fluidPage(
               class = "alert alert-info",
               style = "margin-bottom: 20px;",
               h5(icon("layer-group"), " Stratified Performance Analysis"),
-              p(strong("Regional Breakdown:"), " Performance metrics displayed across genomic regions with different sequence characteristics.
-              Available stratifications include complexity-based regions (easy/difficult), GC content ranges, functional annotations (coding/non-coding),
-              repetitive sequences (homopolymers, segmental duplications), and specialized regions (MHC, low mappability areas). 
-              Select regions to analyze and view results as plots or data tables."),
-              p(style =" margin-bottom: 0;font-size: 1em",
-              strong("Usage:"), " Click arrows (▶) to expand region categories. Hover over region names for definitions. Only experiments from your current selection (previous tabs) are analyzed.")
+              
+              p(strong("Regional Breakdown:"), " Performance metrics displayed across genomic regions with different sequence characteristics. 
+                Available stratifications include complexity-based regions (easy/difficult), GC content ranges, functional annotations (coding/non-coding), 
+                repetitive sequences (homopolymers, segmental duplications), and specialized regions (MHC, low mappability areas). These stratifications follow ",
+                a("GIAB genome stratification standards", href = "https://github.com/genome-in-a-bottle/genome-stratifications", target = "_blank"), "."),
+              
+              p(style = "font-size: 1em; margin-bottom: 0;", 
+                strong("Note:"), " Only experiments from your current selection (previous tabs) are analyzed. Select regions below and click 'Update Analysis' to generate results as plots or data tables. ",
+                strong("Hover over region names"), " for detailed descriptions and genomic context information.")
             ),
             
             # Region selection panel
