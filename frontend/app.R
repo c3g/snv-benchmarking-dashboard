@@ -119,8 +119,16 @@ ui <- fluidPage(
     # SIDEBAR PANEL
     div(class = "sidebar",
         div(class = "sidebar-header",
-            h4("SNV Benchmarking Dashboard", 
-               style = "margin: 0; font-size: 1.3em; font-weight: 600;")
+            # Logo and title container
+            div(style = "display: flex; align-items: center; gap: 12px;",
+                # Logo
+                img(src = "C3G_Logo.png", 
+                    alt = "Logo", 
+                    style = "height: 50px; width: 55px; object-fit: contain;"),
+                # Title
+                h4("SNV Benchmarking Dashboard", 
+                   style = "margin: 0; font-size: 1.35em; font-weight: 600; line-height: 1.2;")
+            )
         ),
         div(class = "sidebar-content",
             
@@ -204,7 +212,7 @@ ui <- fluidPage(
             # Manual experiment selection panel
             conditionalPanel(
               condition = "output.comparison_mode == 'manual_selection'",
-              p("Click on experiments in the table to select them for comparison.", style = "font-size: 15px;"),
+              p("Click on experiments in the table to select them for comparison.", style = "font-size: 12px;"),
               textOutput("selected_experiments_count"),
               actionButton("clear_experiment_selection", "Clear Selection",
                            class = "btn-secondary btn-sm", style = "width: 100%")
@@ -217,10 +225,10 @@ ui <- fluidPage(
               div(
                 class = "panel panel-info",
                 div(class = "panel-heading d-flex justify-content-between align-items-center",
-                    h5("Selected Experiments for Comparison", class = "mb-0")
+                    h5("Selected Experiments", class = "mb-0", style = "text-align: center")
                 ),
-                div(class = "panel-body", style = "padding: 10px;",
-                    div(style = "max-height: 90px; overflow-y: auto; overflow-x: auto; border: 1px solid #dee2e6;",
+                div(class = "panel-body", style = "padding: 5px;",
+                    div(style = "max-height: 90px; overflow-y: auto; overflow-x: auto; border: 0.5px solid #dee2e6;",
                         tableOutput("compact_selected_experiments")
                     ),
                     br(),
