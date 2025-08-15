@@ -280,7 +280,7 @@ ui <- fluidPage(
                     a("hap.py", href = "https://github.com/Illumina/hap.py", target = "_blank"),
                     " (a standard benchmarking tool) to compare variant calls against established genomic reference standards including ",
                     a("GIAB (Genome in a Bottle)", href = "https://www.nist.gov/programs-projects/genome-bottle", target = "_blank"), ", ",
-                    a("CMRG", href = "https://github.com/genome-in-a-bottle/cmrg-benchmarksets", target = "_blank"), 
+                    a("CMRG", href = "https://data.nist.gov/od/id/mds2-2475", target = "_blank"), 
                     ", and ", a("T2T", href = "https://github.com/marbl/CHM13", target = "_blank"), " truth sets."),
                   
                   p(strong("Technologies Covered:"), " Compare performance across major sequencing platforms including ",
@@ -391,7 +391,7 @@ ui <- fluidPage(
                          padding: 10px 16px; margin-bottom: 18px; text-align: center;
                          box-shadow: 0 1px 2px rgba(159, 168, 218, 0.1);",
                          h4("INDEL Performance", 
-                            style = "color: #1976d2; font-weight: 500; margin: 0; 
+                            style = "color: #1976d2; font-weight: 600; margin: 0; 
                            font-size: 17px; letter-spacing: 0.3px;")
                        ),
                        br(),
