@@ -114,6 +114,7 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       
       div(
         h6(strong("ID: ",exp_id, "-", meta$name), 
+           h5("Selected Experiment Details"),
            style = "color: #4472ca; margin-bottom: 10px; font-size: 16px; font-weight: 600;"),
         div(
           class = "row",

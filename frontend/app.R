@@ -127,7 +127,7 @@ ui <- fluidPage(
                     style = "height: 50px; width: 55px; object-fit: contain;"),
                 # Title
                 h4("SNV Benchmarking Dashboard", 
-                   style = "margin: 0; font-size: 1.35em; font-weight: 600; line-height: 1.2;")
+                   style = "margin: 0; font-size: 1.25em; font-weight: 600; line-height: 1.2;")
             )
         ),
         div(class = "sidebar-content",
@@ -440,7 +440,6 @@ ui <- fluidPage(
                          style = "background-color: #f8f9fa; border-left: 4px solid #007bff; margin-top: 15px;",
                          fluidRow( 
                            column(10,
-                                  h5("Selected Experiment Details"),
                                   htmlOutput("basic_experiment_info")
                            ),
                            column(2,
