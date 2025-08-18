@@ -54,7 +54,7 @@ create_stratified_grouped_plot <- function(data, variant_type, metric_name = "f1
              annotate("text", x = 0.5, y = 0.5, 
                       label = paste("No", variant_type, "data for selected regions"), 
                       size = 6) +
-             xlim(0, 1.1) + ylim(0, 1.1) +
+             xlim(0, 1.0) + ylim(0, 1.0) +
              theme_bw())
   }
   
@@ -239,7 +239,7 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
           layout(showlegend = FALSE,
                  dragmode = "zoom",
                  hoverlabel = list(align = "left"),
-                 margin = list(l = 5, r = 5, t = 15, b = 5),
+                 margin = list(l = 5, r = 5, t = 45, b = 5),
                  width = NULL, 
                  height = 500,
                  autosize = TRUE
@@ -336,7 +336,7 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
           layout(showlegend = FALSE,
                  dragmode = "zoom",
                  hoverlabel = list(align = "left"),
-                 margin = list(l = 5, r = 5, t = 15, b = 5),
+                 margin = list(l = 5, r = 5, t = 45, b = 5),
                  width = NULL, 
                  height = 500,
                  autosize = TRUE

@@ -378,7 +378,7 @@ ui <- fluidPage(
                             style = "color: #d32f2f; font-weight: 600; margin: 0; 
                           font-size: 17px; letter-spacing: 0.3px;")
                        ),
-                       br(),
+                   
                        
                        plotlyOutput("snp_plot", height = "500px")
                 ),
@@ -394,7 +394,7 @@ ui <- fluidPage(
                             style = "color: #1976d2; font-weight: 600; margin: 0; 
                            font-size: 17px; letter-spacing: 0.3px;")
                        ),
-                       br(),
+                      
                        #loading spinner
                        conditionalPanel(
                          condition = "!output.indel_plot",
