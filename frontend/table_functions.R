@@ -10,13 +10,14 @@ Main tables:
 - Performance results (Tab 2: formatted metrics as percentages)  
 - Stratified analysis (Tab 4: SNP/INDEL tables with metric highlighting)
 - Selected experiments (Sidebar: compact table for comparisons)
+- Delete modal experiment table (Delete datasets Modal)
 
 Helper functions:
 - create_experiment_details_html() (expand Tab 1 table rows)
 - create_metric_table() (formats stratified data with highlighting)
 - create_f1_table() (creates pivot tables for regions)
 - setup_table_outputs() (creates all table outputs)
-
+- create_delete_experiments_table() (creates a list of experiments to select from)
 "
 
 # ============================================================================
@@ -71,6 +72,8 @@ create_experiment_details_html <- function(metadata) {
     '</tr>'
   )
 }
+
+# ------------------------------------------------
 # Create F1 score tables for stratified analysis
 create_f1_table <- function(data) {
   if (nrow(data) == 0) {
@@ -91,6 +94,7 @@ create_f1_table <- function(data) {
   return(table_data)
 }
 
+# ------------------------------------------------
 # Create metric tables for stratified analysis with highlighting
 create_metric_table <- function(stratified_data, variant_filter, selected_metric) {
   # Filter for specific variant type
@@ -154,6 +158,41 @@ create_metric_table <- function(stratified_data, variant_filter, selected_metric
         fontWeight = "bold"
       )
   }
+  
+  return(dt)
+}
+
+# ------------------------------------------------
+# Create table for delete modal
+create_delete_experiments_table <- function(data) {
+  if (nrow(data) == 0) {
+    return(DT::datatable(data.frame(Message = "No experiments found")))
+  }
+  
+  # Create simplified view for deletion
+  delete_data <- data %>%
+    select(id, name, technology, platform_name, caller, caller_version, created_at) %>%
+    mutate(
+      created_at = if("created_at" %in% names(.)) format(as.Date(created_at), "%Y/%m/%d") else "N/A"
+    )
+  
+  # Create DataTable with selection enabled
+  dt <- DT::datatable(
+    delete_data,
+    selection = list(mode = 'multiple'),
+    options = list(
+      pageLength = 10,
+      scrollX = TRUE,
+      dom = 'frtip',
+      columnDefs = list(
+        list(targets = 0, className = "dt-center", width = "50px"),
+        list(targets = "_all", className = "dt-left")
+      )
+    ),
+    rownames = FALSE,
+    colnames = c("ID", "Experiment", "Technology", "Platform", "Caller", "Version", "Created"),
+    class = 'cell-border stripe hover compact'
+  )
   
   return(dt)
 }
@@ -338,4 +377,20 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
   }, striped = TRUE, hover = TRUE, spacing = 'xs', width = "100%",
   class = "table-condensed",
   style = "font-size: 11px; margin-bottom: 5px;")
+  
+  # ====================================================================
+  # DELETE EXPERIMENTS TABLE (MODAL)
+  # ====================================================================
+  
+  output$delete_experiments_table <- DT::renderDataTable({
+    # Get all experiments for deletion selection
+    all_experiments <- tryCatch({
+      db$get_experiments_overview()
+    }, error = function(e) {
+      data.frame()
+    })
+    
+    create_delete_experiments_table(all_experiments)
+  })
+  
 }
