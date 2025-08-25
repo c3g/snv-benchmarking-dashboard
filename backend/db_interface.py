@@ -68,7 +68,7 @@ def get_experiments_overview(filters=None, experiment_ids_param=None):
         
     Returns:
         pandas.DataFrame: Experiment overview data with columns: id, name, technology, 
-                         platform, caller, caller_version, chemistry, truth_set, sample, created_at
+                         platform_name, caller, caller_version, chemistry, truth_set, sample, created_at
     """
     # Parse JSON IDs
     experiment_ids = parse_experiment_ids(experiment_ids_param)
@@ -119,7 +119,7 @@ def get_experiments_overview(filters=None, experiment_ids_param=None):
                     'id': exp.id,
                     'name': exp.name,
                     'technology': exp.sequencing_technology.technology.value if exp.sequencing_technology else "N/A",
-                    'platform': exp.sequencing_technology.platform_name if (exp.sequencing_technology and exp.sequencing_technology.platform_name) else "N/A",
+                    'platform_name': exp.sequencing_technology.platform_name if (exp.sequencing_technology and exp.sequencing_technology.platform_name) else "N/A",
                     'caller': exp.variant_caller.name.value if exp.variant_caller else "N/A",
                     'caller_version': exp.variant_caller.version if (exp.variant_caller and exp.variant_caller.version) else "N/A",
                     'chemistry': exp.chemistry.name if (exp.chemistry and exp.chemistry.name) else "N/A",
