@@ -17,6 +17,7 @@ Features:
 - Interactive precision-recall plots with F1 contours
 - Stratified analysis across genomic regions
 - Upload interface for new hap.py results
+- Delete dataset functionality
 - HTML report export functionality
 
 Main Components:
@@ -245,18 +246,35 @@ ui <- fluidPage(
     div(class = "main-content",
         width = 9,
         
-        # Header with download and upload buttons
+        # Header with download, upload, and delete buttons
         div(
           style = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 0; padding-bottom: 0;",
           div(style = "flex-grow: 1;"),
           div(
-            style = "margin-left: 20px; padding-top: 5px;",
-            upload_button_ui(),
+            style = "margin-left: 20px; padding-top: 5px; display: flex; gap: 8px;",
+            
+            # Upload button
+            actionButton(
+              "show_upload_modal", 
+              label = tagList(icon("upload"), "Upload Dataset"),
+              class = "btn-success btn-sm",
+              style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px;"
+            ),
+            
+            # Delete button
+            actionButton(
+              "show_delete_modal", 
+              label = tagList(icon("trash"), "Delete Datasets"),
+              class = "btn-danger btn-sm",
+              style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px;"
+            ),
+            
+            # Download button
             downloadButton(
               "export_html_report", 
-              label = tagList("Download Report"),
+              label = tagList( "Download Report"),
               class = "btn-primary btn-sm",
-              style = "font-size: 14px; padding: 6px 12px; white-space: nowrap;"
+              style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px;"
             )
           )
         ),
@@ -895,7 +913,8 @@ ui <- fluidPage(
         ),
         
         # Upload modal
-        upload_modal_ui()
+        upload_modal_ui(),
+        delete_modal_ui()
     )
   )
 )
