@@ -337,20 +337,18 @@ def add_experiment(session, row, metadata_objects):
     """Create Experiment record linking all metadata"""
     experiment_name = row['name']
     description = row.get('description', f"Benchmarking experiment for {experiment_name}")
+    csv_id = row.get('ID')  # GET CSV ID
     
-    # Check if experiment already exists
-    existing_experiment = session.query(Experiment).filter_by(
-        name=experiment_name,
-        sequencing_technology_id=metadata_objects['seq_tech'].id if metadata_objects['seq_tech'] else None,
-        variant_caller_id=metadata_objects['caller'].id if metadata_objects['caller'] else None
-    ).first()
+    # Check if experiment already exists BY ID
+    existing_experiment = session.query(Experiment).filter_by(id=csv_id).first()
     
     if existing_experiment:
-        logger.warning(f"Experiment already exists: {experiment_name}")
+        logger.warning(f"Experiment ID {csv_id} already exists: {experiment_name}")
         return existing_experiment
     
     try:
         new_experiment = Experiment(
+            id=csv_id,  # SET ID FROM CSV
             name=experiment_name,
             description=description,
             sequencing_technology_id=metadata_objects['seq_tech'].id if metadata_objects['seq_tech'] else None,
