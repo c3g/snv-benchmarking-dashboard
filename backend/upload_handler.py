@@ -114,14 +114,20 @@ def validate_metadata(metadata):
 
 def get_next_experiment_id():
     """
-    Get the next available experiment ID by counting existing entries.
+    Get the next available experiment ID by finding max ID + 1
     """
     try:
         if os.path.exists(METADATA_CSV_PATH):
             existing_df = pd.read_csv(METADATA_CSV_PATH)
-            return len(existing_df) + 1
+            
+            if len(existing_df) == 0:
+                return 1  # First experiment
+            
+            # Find maximum ID and add 1
+            max_id = existing_df['ID'].max()
+            return int(max_id) + 1
         else:
-            return 1
+            return 1  # First experiment
     except Exception as e:
         logger.error(f"Error getting next ID: {e}")
         return 1  # Fallback to 1
