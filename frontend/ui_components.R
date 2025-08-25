@@ -17,7 +17,7 @@ Main sections:
    - Organized metadata sections (technology, caller, truth set, etc.)
    - Validation and filename preview
 
-3. upload_button_ui() - Simple trigger button for upload modal
+3. delete_modal_ui() - List of datasets to select in order to remove from the database
 "
 # ============================================================================
 # UI OUTPUT SETUP FUNCTION
@@ -357,7 +357,7 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       tryCatch({
         # Get next experiment ID 
         overview <- db$get_experiments_overview()
-        next_id <- nrow(overview) + 1
+        next_id <- max(overview$id, na.rm = TRUE) +1 
         preview_id <- sprintf("%03d", next_id)  # Format with 3 digits
         
         # Extract sample name
@@ -388,16 +388,6 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
 # ============================================================================
 # UPLOAD UI COMPONENTS
 # ============================================================================
-
-# Upload button for main UI
-upload_button_ui <- function() {
-  actionButton(
-    "show_upload_modal", 
-    label = tagList(icon("upload"), "Upload Dataset"),
-    class = "btn-success btn-sm",
-    style = "font-size: 14px; padding: 6px 12px; white-space: nowrap;"
-  )
-}
 
 # Upload Modal UI
 upload_modal_ui <- function() {
@@ -619,5 +609,47 @@ upload_modal_ui <- function() {
       br(),
       div(id = "upload_status", style = "margin-top: 15px;")
     )
+  )
+}
+
+# ============================================================================
+# DELETE UI COMPONENTS
+# ============================================================================
+
+# Delete Modal UI
+delete_modal_ui <- function() {
+  bsModal(
+    "delete_modal", 
+    "Delete Datasets", 
+    "show_delete_modal", 
+    size = "large",
+    
+    # Warning message
+    div(
+      class = "alert alert-danger",
+      style = "margin-bottom: 20px;",
+      h5(icon("exclamation-triangle"), " Warning: Permanent Deletion"),
+      p("This action will permanently delete selected experiments and their associated files.")
+    ),
+    
+    # Experiment selection
+    wellPanel(
+      h4("Select Experiments to Delete"),
+      div(
+        style = "max-height: 400px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px;",
+        DT::dataTableOutput("delete_experiments_table")
+      )
+    ),
+    
+    # Action buttons
+    div(
+      style = "text-align: right; margin-top: 20px;",
+      actionButton("cancel_delete", "Cancel", class = "btn-secondary"),
+      actionButton("confirm_delete_selected", "Delete Selected", 
+                   class = "btn-danger", style = "margin-left: 10px;")
+    ),
+    
+    # Status display
+    div(id = "delete_status", style = "margin-top: 15px;")
   )
 }
