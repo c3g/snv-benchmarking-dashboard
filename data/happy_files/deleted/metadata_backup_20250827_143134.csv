@@ -4,4 +4,4 @@ ID,name,technology,target,platform_name,platform_type,platform_version,chemistry
 3,HG002_ONTR10,ONT,WGS,Nanopore,LRS,,R10.4.1,Clair3,ML,1.0.10,r1041_e82_400bps_sup_v430,minimap2,2.28,GIAB,HG002,4.2.1,GRCh38,SNP+INDEL,small,Germline,False,hap.py,0.3.12,43.1,,,"9,572",003_HG002_ONT_Nanopore_Clair3_GIAB.csv,,,
 5,HG002_PacBio,Pacbio,WGS,Revio,LRS,,Revio ,DeepVariant,ML,1.6.0,Pacbio,pbmm2,1.16.99,GIAB,HG002,4.2.1,GRCh38,SNP+INDEL,small,Germline,False,hap.py,0.3.12,33.1,,,"14,286.30",005_HG002_Pacbio_Revio_DeepVariant_GIAB.csv,,,
 6,HG002_PacBio,Pacbio,WGS,Revio,LRS,,Revio ,Clair3,ML,1.0.8,hifi,pbmm2,1.16.99,GIAB,HG002,4.2.1,GRCh38,SNP+INDEL,small,Germline,False,hap.py,0.3.12,33.1,,,"14,286.30",006_HG002_Pacbio_Revio_Clair3_GIAB.csv,,,
-7,HG002_TEST,PACBIO,WGS,Revio,LRS,,,DEEPVARIANT,ML,10.01,,,,GIAB,HG002,4.2.1,GRCH38,SNP+INDEL,SMALL,GERMLINE,False,HAP.PY,0.3.12,100.0,,,,007_HG002_pacbio_revio_deepvariant_giab.csv,,2025-08-25,
+7,HG002_TEST,PACBIO,WGS,Revio,LRS,,,DEEPVARIANT,ML,10.1,,,,GIAB,HG002,4.2.1,GRCH38,SNP+INDEL,SMALL,GERMLINE,False,HAP.PY,0.3.12,33.1,,,,007_HG002_pacbio_revio_deepvariant_giab.csv,,2025-08-25,
