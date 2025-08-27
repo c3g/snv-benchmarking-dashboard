@@ -3,6 +3,7 @@
 
 # Project Data
 data/happy_files/*.csv
+data/happy_files/deleted/*.csv
 data/*.csv
 data/*.db
 data/benchmarking.db
