@@ -2,6 +2,7 @@
 .DS_Store
 
 # Project Data
+data/
 data/happy_files/*.csv
 data/happy_files/deleted/*.csv
 data/*.csv
