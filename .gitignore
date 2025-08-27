@@ -42,6 +42,7 @@ ENV/
 .ipynb_checkpoints
 
 # R
+.Rapp.history
 .Rhistory
 .RData
 .RDataTmp
