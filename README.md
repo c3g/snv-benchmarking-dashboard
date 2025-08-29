@@ -56,3 +56,22 @@ Communication between layers occurs through the **reticulate** interface, allowi
 
 * **Containerfile** - Container build with R and Python environments
 * **github/workflows/** - Automated container builds (create GitHub release to trigger deployment)
+
+# Features
+**1. Multi-Technology Benchmarking**
+<br> * Sequencing Technologies: Illumina, PacBio, ONT, MGI
+<br> * Variant Callers: DeepVariant, GATK, Clair3
+<br> * Truth Sets: GIAB, CMRG, T2T reference standards
+<br> * Variant Types: SNP and INDEL performance analysis
+
+<br> **2. Interactive Analysis**
+<br> * Comparison Modes: Technology-vs-technology, caller-vs-caller, or custom experiment selection
+<br> * Data Tables: Sortable, filterable datasets with expandable metadata and performance metrics 
+<br> * Performance Visualization: Precision vs Recall scatter plots with F1-score contours
+<br> * Stratified Analysis: Performance across genomic regions (easy/difficult, GC content, functional annotations)
+
+<br> **3. Data Management**
+<br> * Upload Interface: Add new hap.py results with metadata validation to database
+<br> * Export Functionality: Generate comprehensive HTML reports
+<br> * Database Integration: Normalized storage with metadata relationships
+<br> * File Management: Automated filename generation organization
