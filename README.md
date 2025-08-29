@@ -57,7 +57,7 @@ Communication between layers occurs through the **reticulate** interface, allowi
 * **Containerfile** - Container build with R and Python environments
 * **github/workflows/** - Automated container builds (create GitHub release to trigger deployment)
 
-# Features
+# <br>Features
 **1. Multi-Technology Benchmarking**
 <br> * Sequencing Technologies: Illumina, PacBio, ONT, MGI
 <br> * Variant Callers: DeepVariant, GATK, Clair3
@@ -75,3 +75,32 @@ Communication between layers occurs through the **reticulate** interface, allowi
 <br> * Export Functionality: Generate comprehensive HTML reports
 <br> * Database Integration: Normalized storage with metadata relationships
 <br> * File Management: Automated filename generation organization
+
+# <br> Local Deployment 
+<br>**Prerequisites**
+
+* **Docker**
+* **Data directory containing:**
+<br>* Metadata CSV (000_benchmark_dashboard_default_metadata.csv) 
+<br>* Hap.py CSV files (e.g., 001_HG002_Illumina_DeepVariant_GIAB.csv)
+
+<br>**1. Create deployment directory**
+```bash
+mkdir -p ~/snv-dashboard
+cd ~/snv-dashboard
+```
+**2.Deploy with Docker**
+```bash
+# Pull the latest container image
+docker pull ghcr.io/c3g/snv-dashboard:latest
+
+# Start the dashboard (replace with your data path)
+docker run -d \
+  --name snv-benchmarking \
+  -p 3838:3838 \
+  -v "/path/to/your/benchmarking/data:/data" \
+  -e BENCHMARKING_DATA_LOCATION=/data \
+  ghcr.io/c3g/snv-dashboard:latest
+```
+**3. Access Local Dashboard**
+<br>Open http://localhost:3838 on your browser
