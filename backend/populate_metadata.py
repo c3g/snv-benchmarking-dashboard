@@ -19,6 +19,7 @@ from models import *
 from config import METADATA_CSV_PATH
 from happy_parser import parse_happy_csv
 from utils import clean_value, safe_float
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -339,6 +340,15 @@ def add_experiment(session, row, metadata_objects):
     description = row.get('description', f"Benchmarking experiment for {experiment_name}")
     csv_id = row.get('ID')  # GET CSV ID
     
+    # Parse created date from CSV
+    created_at = None
+    if 'created_at' in row and pd.notna(row['created_at']) and str(row['created_at']).strip():
+        try:
+            created_at = pd.to_datetime(row['created_at']).date()
+        except Exception as e:
+            logger.warning(f"Could not parse created_at for experiment {csv_id}: {e}")
+            created_at = None
+    
     # Check if experiment already exists BY ID
     existing_experiment = session.query(Experiment).filter_by(id=csv_id).first()
     
@@ -351,6 +361,7 @@ def add_experiment(session, row, metadata_objects):
             id=csv_id,  # SET ID FROM CSV
             name=experiment_name,
             description=description,
+            created_at = created_at,
             sequencing_technology_id=metadata_objects['seq_tech'].id if metadata_objects['seq_tech'] else None,
             variant_caller_id=metadata_objects['caller'].id if metadata_objects['caller'] else None,
             aligner_id=metadata_objects['aligner'].id if metadata_objects['aligner'] else None,
