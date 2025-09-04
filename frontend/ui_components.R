@@ -633,13 +633,11 @@ delete_modal_ui <- function() {
     ),
     
     # Experiment selection
-    wellPanel(
       h4("Select Experiments to Delete"),
       div(
         style = "max-height: 400px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px;",
         DT::dataTableOutput("delete_experiments_table")
-      )
-    ),
+      ),
     
     # Action buttons
     div(
