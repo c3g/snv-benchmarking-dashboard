@@ -237,7 +237,7 @@ def create_metadata_entry(metadata, filename, experiment_id):
         'mean_read_length': metadata.get('mean_read_length', ''),
         'file_name': filename,
         'file_path': None,
-        'upload_date': datetime.now().strftime('%Y-%m-%d'),
+        'created_at': datetime.now().strftime('%Y-%m-%d'),
     }
 # ============================================================================
 # MAIN UPLOAD PROCESSING
