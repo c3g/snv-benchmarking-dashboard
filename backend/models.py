@@ -378,7 +378,7 @@ class Experiment(Base):
     chemistry_id = Column(Integer, ForeignKey('chemistries.id'))
     
     # Timestamps
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime)
 
     # Relationships
     sequencing_technology = relationship("SequencingTechnology", back_populates="experiments")
