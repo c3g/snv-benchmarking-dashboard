@@ -6,12 +6,12 @@ Database models and enums for SNV Benchmarking Dashboard.
 
 Main components:
 - Enum definitions for all categorical data types
-- SQLAlchemy table models for normalized database structure
+- SQLAlchemy table models with auto-created ENUMs
 - Relationship definitions between tables
 - RegionType enum with hap.py mapping methods
 """
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, Enum, func
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, Enum
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 import enum
@@ -239,7 +239,7 @@ class SequencingTechnology(Base):
     __tablename__ = "sequencing_technologies"
 
     id = Column(Integer, primary_key=True)
-    technology = Column(Enum(SeqTechName), nullable=False)
+    technology = Column(Enum(SeqTechName), nullable=False) 
     target = Column(Enum(SeqTechTarget))
     platform_type = Column(Enum(SeqTechPlatformType))
     platform_name = Column(String(50))
@@ -284,7 +284,7 @@ class TruthSet(Base):
     __tablename__ = 'truth_sets'
     
     id = Column(Integer, primary_key=True)
-    name = Column(Enum(TruthSetName))
+    name = Column(Enum(TruthSetName)) 
     version = Column(String(50))
     reference = Column(Enum(TruthSetReference))
     sample = Column(Enum(TruthSetSample))
@@ -299,7 +299,7 @@ class BenchmarkTool(Base):
     __tablename__ = 'benchmark_tools' 
     
     id = Column(Integer, primary_key=True)
-    name = Column(Enum(BenchmarkToolName))
+    name = Column(Enum(BenchmarkToolName))  
     version = Column(String(50)) 
     
     experiments = relationship("Experiment", back_populates="benchmark_tool")
@@ -345,7 +345,7 @@ class Chemistry(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(50))  # e.g., "SPRQ"
     version = Column(String(50))
-    sequencing_technology = Column(Enum(SeqTechName)) # Related sequencing technology
+    sequencing_technology = Column(Enum(SeqTechName))  
     sequencing_platform = Column(String(50))
 
     experiments = relationship("Experiment", back_populates="chemistry")
@@ -443,7 +443,7 @@ class BenchmarkResult(Base):
     # Core identifiers (filtering criteria)
     variant_type = Column(String(20), nullable=False)      # SNP, INDEL
     subtype = Column(String(100), default='NULL')             # Always 'NULL'
-    subset = Column(Enum(RegionType), nullable=False)       # Region types
+    subset = Column(Enum(RegionType), nullable=False)   
     filter_type = Column(String(20), default='ALL')       # Always 'ALL'
     
     # Performance metrics
