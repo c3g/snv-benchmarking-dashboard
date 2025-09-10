@@ -2,6 +2,7 @@
 .DS_Store
 
 # Project Data
+*.db
 data/
 data/happy_files/*.csv
 data/happy_files/deleted/*.csv
@@ -30,6 +31,7 @@ htmlcov/
 
 # Environments
 .env
+backend/.env
 .venv
 env/
 venv/
