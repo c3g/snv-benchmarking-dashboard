@@ -166,9 +166,11 @@ def map_enum(enum_type, value):
     if not value:
         return None
     try:
-        mapped = ENUM_MAPPINGS.get(enum_type, {}).get(clean_value(value))
+        cleaned_value = clean_value(value)
+        mapped = ENUM_MAPPINGS.get(enum_type, {}).get(cleaned_value)
         if mapped is None:
-            logger.warning(f"Unknown {enum_type} value: '{value}'")
+            logger.error(f"UNMAPPED {enum_type} value: '{value}' -> '{cleaned_value}'")
+            logger.error(f"Available mappings: {list(ENUM_MAPPINGS.get(enum_type, {}).keys())}")
         return mapped
     except Exception as e:
         logger.warning(f"Error mapping {enum_type} value '{value}': {e}")
@@ -436,7 +438,7 @@ def populate_database_from_csv(file_path=METADATA_CSV_PATH):
                             logger.warning(f"Failed to load results: {result.get('error')}")
                     
                     success_count += 1
-                    logger.info(f"Completed setup for experiment {row.get('ID', index+1)}")
+                    logger.info(f"Completed setup for experiment ID: {row.get('ID', index+1)}")
                     
                 except Exception as e:
                     logger.error(f"Failed to process experiment {row.get('name', 'Unknown')}: {e}")
