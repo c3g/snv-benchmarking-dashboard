@@ -10,7 +10,6 @@ Main components:
 - CSV metadata population
 - Connection testing and verification
 """
-
 from database import drop_all_data, create_tables, test_connection, validate_environment
 from models import *
 from populate_metadata import *
@@ -32,7 +31,6 @@ def main():
     if not test_connection():
         logger.error("Cannot connect to database")
         sys.exit(1)
-
     # Code to Drop all existing data - commented out/ only run if needed
     # try:
     #    drop_all_data()
@@ -43,6 +41,7 @@ def main():
     
     # Create tables
     try:
+      #  drop_all_data() ----- RESET WHEN NEEDED
         create_tables()
         logger.info("---- Database tables created ----")
     except Exception as e:
