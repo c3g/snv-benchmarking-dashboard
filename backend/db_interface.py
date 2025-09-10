@@ -109,7 +109,9 @@ def get_experiments_overview(filters=None, experiment_ids_param=None):
                     except ValueError:
                         logger.error(f"Invalid caller filter: {filters['caller']}")
                         return pd.DataFrame()
-            
+            #Order query by ID
+            query = query.order_by(Experiment.id.asc())
+
             experiments = query.all()
             
             # Extract essential data
