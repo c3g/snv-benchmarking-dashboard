@@ -140,7 +140,7 @@ def force_reconnect():
 def create_tables():
     """Create tables with auto-created ENUMs - much simpler!"""
     
-    #Base.metadata.drop_all(bind=engine) ------- to drop all tables before recreating them
+    #Base.metadata.drop_all(bind=engine) ------- to drop all tables before recreating them, to be used if needed
     Base.metadata.create_all(bind=engine)
     
     logger.info(f"Database tables created successfully ({'PostgreSQL' if IS_POSTGRESQL else 'SQLite'})")
@@ -171,13 +171,12 @@ def validate_environment():
     if not os.access(DATA_FOLDER, os.R_OK | os.W_OK):
         logger.error(f"Cannot read/write to DATA_FOLDER: {DATA_FOLDER}")
         return False
-    
-    # For PostgreSQL, we don't need to check database directory
+
     if IS_POSTGRESQL:
         logger.info("Environment validation successful (PostgreSQL)")
         return True
     
-    # For SQLite, check database directory access
+    # (For SQLite) check database directory access
     db_dir = os.path.dirname(DATABASE_PATH)
     if not os.path.exists(db_dir):
         logger.error(f"Database directory does not exist: {db_dir}")
@@ -201,7 +200,7 @@ def drop_all_data():
     logger.info("All data dropped and tables recreated")
 
 def clear_all_data():
-    """Clear all data (still keeping tables)"""
+    """Clear all data (still keeping tables)""" # ------ This function is not used for deleting a record from the db 
     with get_db_session() as session:
         # Disable foreign key checks temporarily
         if IS_POSTGRESQL:
