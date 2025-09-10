@@ -590,78 +590,96 @@ setup_observers <- function(input, output, session, data_reactives) {
   })
   
   # Handle final delete confirmation
-  observeEvent(input$final_confirm_delete, {
-    selected_ids <- session$userData$selected_delete_ids
+observeEvent(input$final_confirm_delete, {
+  selected_ids <- session$userData$selected_delete_ids
+  
+  if (is.null(selected_ids) || length(selected_ids) == 0) {
+    removeModal()
+    return()
+  }
+  
+  removeModal()
+  
+  # Show loading notification
+  loading_id <- showNotification(
+    paste("Deleting", length(selected_ids), "experiments... Please wait."),
+    type = "message", 
+    duration = NULL,
+    closeButton = FALSE
+  )
+  
+  # Perform deletion
+  tryCatch({
     
-    if (is.null(selected_ids) || length(selected_ids) == 0) {
-      removeModal()
-      return()
+    success_count <- 0
+    total_count <- length(selected_ids)
+    
+    for (exp_id in selected_ids) {
+      result <- delete_handler$delete_experiment(exp_id)
+      
+      if (result$success) {
+        success_count <- success_count + 1
+      } else {
+        cat("Failed to delete experiment", exp_id, ":", result$error, "\n")
+      }
     }
     
-    removeModal()
+    # restart the R-Python connection 
+    cat("Restarting Python connection...\n")
     
-    # Show loading notification
-    loading_id <- showNotification(
-      paste("Deleting", length(selected_ids), "experiments and rebuilding database... Please wait."),
-      type = "message", 
-      duration = NULL,
-      closeButton = FALSE
-    )
+    # Clear the current Python session
+    reticulate::py_run_string("
+import sys
+# Clear module cache
+for module_name in list(sys.modules.keys()):
+    if any(x in module_name for x in ['database', 'db_interface', 'models', 'delete_handler']):
+        del sys.modules[module_name]
+")
     
-    # Perform deletion
-    tryCatch({
-      
-      # Delete experiments one by one (in reverse order to handle ID shifting)
-      success_count <- 0
-      total_count <- length(selected_ids)
-      
-      # Sort IDs in descending order to avoid indexing issues
-      sorted_ids <- sort(selected_ids, decreasing = TRUE)
-      
-      for (exp_id in sorted_ids) {
-        result <- delete_handler$delete_experiment(exp_id)
-        
-        if (result$success) {
-          success_count <- success_count + 1
-        } else {
-          # Log individual failures but continue
-          cat("Failed to delete experiment", exp_id, ":", result$error, "\n")
-        }
-      }
-      
-      # Remove loading notification
-      removeNotification(loading_id)
-      
-      if (success_count == total_count) {
-        showNotification(
-          paste("Successfully deleted", success_count, "experiments and rebuilt database."),
-          type = "message",
-          duration = 6
-        )
-      } else {
-        showNotification(
-          paste("Deleted", success_count, "out of", total_count, "experiments. Some failures occurred."),
-          type = "warning",
-          duration = 8
-        )
-      }
-      
-      # Close modal and refresh data
-      toggleModal(session, "delete_modal", toggle = "close")
-      session$reload()
-      
-    }, error = function(e) {
-      removeNotification(loading_id)
+    # Re-import
+    db <<- import("db_interface")
+    delete_handler <<- import("delete_handler")
+    upload_handler <<- import("upload_handler")
+    
+    # Test the new connection
+    test_count <- nrow(db$get_experiments_overview())
+    cat("After reconnection: found", test_count, "experiments\n")
+    
+    # Remove loading notification
+    removeNotification(loading_id)
+    
+    if (success_count == total_count) {
       showNotification(
-        paste("Delete operation failed:", e$message),
-        type = "error",
-        duration = 10
+        paste("Successfully deleted", success_count, "experiments.", test_count, "experiments remaining."),
+        type = "message",
+        duration = 6
       )
-    })
+    } else {
+      showNotification(
+        paste("Deleted", success_count, "out of", total_count, "experiments."),
+        type = "warning",
+        duration = 8
+      )
+    }
     
-    # Clean up
-    session$userData$selected_delete_ids <- NULL
+    # Close modal
+    toggleModal(session, "delete_modal", toggle = "close")
+    
+    # page refresh
+    session$reload()
+    
+  }, error = function(e) {
+    removeNotification(loading_id)
+    showNotification(
+      paste("Delete operation failed:", e$message),
+      type = "error",
+      duration = 10
+    )
   })
+  
+  # Clean up
+  session$userData$selected_delete_ids <- NULL
+})
   
   # Handle cancel delete
   observeEvent(input$cancel_delete, {

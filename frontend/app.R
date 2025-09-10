@@ -63,15 +63,42 @@ library(shinyBS)
 # PYTHON BACKEND INTERFACE
 # ============================================================================
 
+# reticulate::py_install("python-dotenv")
+cat("Setting up Python backend connection...\n")
+
+# ___________________ MUST CHANGE
+Sys.setenv(
+  DB_HOST = "localhost",
+  DB_PORT = "5432", 
+  DB_NAME = "snv_benchmarking",
+  DB_USER = "snv_user",
+  DB_PASSWORD = "snv1234"
+)
+
+# Set Python environment variables
+py_run_string("import os")
+py_run_string(sprintf("os.environ['DB_HOST'] = '%s'", Sys.getenv("DB_HOST")))
+py_run_string(sprintf("os.environ['DB_PORT'] = '%s'", Sys.getenv("DB_PORT")))
+py_run_string(sprintf("os.environ['DB_NAME'] = '%s'", Sys.getenv("DB_NAME")))
+py_run_string(sprintf("os.environ['DB_USER'] = '%s'", Sys.getenv("DB_USER")))
+py_run_string(sprintf("os.environ['DB_PASSWORD'] = '%s'", Sys.getenv("DB_PASSWORD")))
+py_run_string("import sys")
+py_run_string("sys.path.append('../backend')")
+
+# Import Python modules
 tryCatch({
-  py_run_string("import sys")
-  py_run_string("sys.path.append('../backend')")
   db <<- import("db_interface")
+  py_run_string("from database import force_reconnect; force_reconnect()")
+  upload_handler <<- import("upload_handler")
+  
+  # Test the connection
+  test_data <- db$get_experiments_overview()
+  cat("Python backend connected successfully, found", nrow(test_data), "experiments\n")
+  
 }, error = function(e) {
+  cat("Python backend connection failed:", e$message, "\n")
   stop("Cannot connect to Python backend.")
 })
-
-upload_handler <- import("upload_handler")
 # ============================================================================
 # R MODULE IMPORTS
 # ============================================================================
