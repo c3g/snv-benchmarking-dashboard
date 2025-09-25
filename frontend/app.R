@@ -67,6 +67,7 @@ tryCatch({
   py_run_string("import sys")
   py_run_string("sys.path.append('../backend')")
   db <<- import("db_interface")
+  auth <<- import("auth")
 }, error = function(e) {
   stop("Cannot connect to Python backend.")
 })
@@ -85,6 +86,7 @@ source("table_functions.R")
 source("observers.R")
 source("ui_components.R")
 source("html_export.R") 
+source("auth_frontend.R")
 
 # global theme
 theme_set(theme_bw())
@@ -103,12 +105,14 @@ ui <- fluidPage(
     # CSS styles
     tags$style(HTML(APP_CSS_STYLES)),
     tags$style(HTML(METADATA_CSS_STYLES)),
+    tags$style(HTML(AUTH_CSS_STYLES)),
     
     # JavaScript 
     tags$script(HTML(TABLE_INTERACTION_JS)),
     tags$script(HTML(CUSTOM_MESSAGE_HANDLERS_JS)),
     tags$script(HTML(COLLAPSIBLE_HANDLERS_JS)),
     tags$script(HTML(METRIC_SELECTION_JS)),
+    tags$script(HTML(AUTH_JS))
   ),
   
   # ====================================================================
@@ -129,7 +133,8 @@ ui <- fluidPage(
                 # Title
                 h4("SNV Benchmarking Dashboard", 
                    style = "margin: 0; font-size: 1.25em; font-weight: 600; line-height: 1.2;")
-            )
+            ),
+            auth_button_ui() 
         ),
         div(class = "sidebar-content",
             
@@ -912,9 +917,11 @@ ui <- fluidPage(
           )
         ),
         
-        # Upload modal
+        # Upload and delete modal
         upload_modal_ui(),
-        delete_modal_ui()
+        delete_modal_ui(),
+        # user modal
+        auth_modal_ui()
     )
   )
 )
