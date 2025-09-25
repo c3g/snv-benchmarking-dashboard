@@ -28,33 +28,18 @@ logger = logging.getLogger(__name__)
 
 @contextmanager
 def get_auth_session():
-    """
-    Dedicated session manager for authentication operations.
-    Handles database retries and connection issues.
-    """
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            session = sessionmaker(bind=engine)()
-            yield session
-            session.commit()
-            break
-        except OperationalError as e:
-            session.rollback()
-            if attempt == max_retries - 1:
-                logger.error(f"Database connection failed after {max_retries} attempts: {e}")
-                raise
-            time.sleep(0.5 * (attempt + 1))  # Exponential backoff
-        except Exception as e:
-            session.rollback()
-            logger.error(f"Database error in auth session: {e}")
-            raise
-        finally:
-            try:
-                session.close()
-            except:
-                pass
-
+    """Simple session manager"""
+    session = sessionmaker(bind=engine)()
+    try:
+        yield session
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        logger.error(f"Database error: {e}")
+        raise
+    finally:
+        session.close()
+        
 # ============================================================================
 # PASSWORD MANAGEMENT
 # ============================================================================
