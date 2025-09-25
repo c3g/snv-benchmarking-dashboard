@@ -37,7 +37,7 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
     created_at = Column(DateTime, default=func.now())
-    last_login = Column(DateTime)
+    # last_login = Column(DateTime)
     is_active = Column(Boolean, default=True)
     
     # Relationships
