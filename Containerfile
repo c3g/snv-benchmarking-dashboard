@@ -43,6 +43,7 @@ RUN install2.r --error \
 COPY backend/ /app/backend/
 COPY frontend/ /app/frontend/
 COPY run.R /app/run.R
+COPY .Renviron /app/.Renviron
 
 # Environment variables
 ENV PYTHONPATH="/app/backend:/app"
