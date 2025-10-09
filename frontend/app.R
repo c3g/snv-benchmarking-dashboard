@@ -44,6 +44,7 @@ Module Files:
 # core and data manipulation
 library(reticulate)
 library(shiny)
+library(shinyjs) #for auth
 library(DT)
 library(dplyr)
 library(tidyr)
@@ -97,6 +98,7 @@ theme_set(theme_bw())
 
 ui <- fluidPage(
   
+  useShinyjs(), #for auth
   # ====================================================================
   # HEAD SECTION - CSS and JavaScript
   # ====================================================================
@@ -1002,5 +1004,4 @@ get_current_user <- reactive({
 # ============================================================================
 # APPLICATION LAUNCH
 # ============================================================================
-
-shinyApp(ui = ui, server = server, options = list(launch.browser = TRUE))
+shinyApp(ui = ui, server = server)
