@@ -1,8 +1,8 @@
 # ============================================================================
 # auth.R - OpenID Connect (OIDC) Authentication
 # ============================================================================
-# Handles user authentication via OIDC provider (e.g., Keycloak, Auth0)
-# Manages session state and provides login/logout functionality
+# Handles user authentication via OIDC provider
+# Manages session state 
 
 library(httr2)
 library(jose)
