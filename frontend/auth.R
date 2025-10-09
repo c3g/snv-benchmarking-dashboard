@@ -2,12 +2,7 @@ library(httr2)
 library(jose)
 library(jsonlite)
 
-Sys.setenv(
-  OIDC_ISSUER = "http://localhost:8080/realms/test", #URL of the identity provider
-  OIDC_CLIENT_ID = "snv-dashboard",
-  OIDC_CLIENT_SECRET = "2yosJOz5mAOCkpoGzTMWtWkjOKh6bCkd",
-  OIDC_REDIRECT_URI = "http://127.0.0.1:3838"
-)
+
 
 OIDC_ISSUER <- Sys.getenv("OIDC_ISSUER", "")
 OIDC_CLIENT_ID <- Sys.getenv("OIDC_CLIENT_ID", "")
