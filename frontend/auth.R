@@ -1,17 +1,28 @@
+# ============================================================================
+# auth.R - OpenID Connect (OIDC) Authentication
+# ============================================================================
+# Handles user authentication via OIDC provider (e.g., Keycloak, Auth0)
+# Manages session state and provides login/logout functionality
+
 library(httr2)
 library(jose)
 library(jsonlite)
 
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
 
-
+# Load OIDC credentials from environment variables
 OIDC_ISSUER <- Sys.getenv("OIDC_ISSUER", "")
 OIDC_CLIENT_ID <- Sys.getenv("OIDC_CLIENT_ID", "")
 OIDC_CLIENT_SECRET <- Sys.getenv("OIDC_CLIENT_SECRET", "")
 OIDC_REDIRECT_URI <- Sys.getenv("OIDC_REDIRECT_URI", "")
 
+# Check if authentication is properly configured
 OIDC_ENABLED <- (OIDC_ISSUER != "" && OIDC_CLIENT_ID != "" && 
                  OIDC_CLIENT_SECRET != "" && OIDC_REDIRECT_URI != "")
 
+# Fetch OIDC provider configuration
 get_oidc_config <- function() {
   if (!OIDC_ENABLED) return(NULL)
   tryCatch({
@@ -25,19 +36,27 @@ get_oidc_config <- function() {
 
 OIDC_CONFIG <- get_oidc_config()
 
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+# Generate random state token
 random_string <- function() {
   paste0(sample(c(letters, LETTERS, 0:9), 32, replace = TRUE), collapse = "")
 }
 
+# Check if current session is authenticated
 is_authenticated <- function(session) {
   !is.null(session$userData$user_email)
 }
 
+# Get user information from session
 get_user_info <- function(session) {
   if (!is_authenticated(session)) return(NULL)
   list(email = session$userData$user_email, name = session$userData$user_name)
 }
 
+# Build OIDC authorization URL
 create_login_url <- function(state) {
   if (is.null(OIDC_CONFIG)) return(NULL)
   params <- paste0(
@@ -50,10 +69,11 @@ create_login_url <- function(state) {
   paste0(OIDC_CONFIG$authorization_endpoint, "?", params)
 }
 
-# requests JWT from OICD and decode
+# Exchange authorization code for JWT token and decode user claims
 get_user_from_code <- function(code) {
   if (is.null(OIDC_CONFIG)) return(NULL)
   tryCatch({
+    # Request JWT token from OIDC provider
     token_response <- request(OIDC_CONFIG$token_endpoint) %>%
       req_body_form(
         grant_type = "authorization_code",
@@ -65,7 +85,7 @@ get_user_from_code <- function(code) {
       req_perform() %>%
       resp_body_json()
     
-    # Decode token
+    # Decode JWT payload to extract user claims
     token_parts <- strsplit(token_response$id_token, "\\.")[[1]]
     claims_json <- rawToChar(jose::base64url_decode(token_parts[2]))
     claims <- jsonlite::fromJSON(claims_json)
@@ -81,16 +101,25 @@ get_user_from_code <- function(code) {
   })
 }
 
+# ============================================================================
+# UI COMPONENTS
+# ============================================================================
+
 auth_ui <- function() {
   uiOutput("auth_status")
 }
 
+# ============================================================================
+# SERVER LOGIC
+# ============================================================================
+
+# Main authentication server logic - returns reactive authentication state
 auth_server <- function(input, output, session) {
   
-  # Create a reactive value to track authentication state
+  # Track authentication state
   authenticated <- reactiveVal(FALSE)
   
-  # Clear on session end
+  # Clear session data when user disconnects
   session$onSessionEnded(function() {
     session$userData$user_email <- NULL
     session$userData$user_name <- NULL
@@ -98,6 +127,7 @@ auth_server <- function(input, output, session) {
     authenticated(FALSE)
   })
   
+  # Render login/logout button based on auth state
   output$auth_status <- renderUI({
     if (is_authenticated(session)) {
       user <- get_user_info(session)
@@ -111,8 +141,9 @@ auth_server <- function(input, output, session) {
     }
   })
   
+  # Handle login button click - redirect to OIDC provider
   observeEvent(input$login_btn, {
-    # FORCE LOGOUT FIRST (clears any existing session)
+    # Clear any existing session
     session$userData$user_email <- NULL
     session$userData$user_name <- NULL
     session$userData$auth_state <- NULL
@@ -124,10 +155,12 @@ auth_server <- function(input, output, session) {
       return()
     }
     
+    # Generate and store state token
     state <- random_string()
     session$userData$auth_state <- state
     runjs(sprintf("sessionStorage.setItem('auth_state', '%s');", state))
     
+    # Redirect to OIDC login page
     login_url <- create_login_url(state)
     if (!is.null(login_url)) {
       runjs(sprintf("window.location.href = '%s';", login_url))
@@ -136,26 +169,29 @@ auth_server <- function(input, output, session) {
     }
   })
   
+  # Handle OAuth callback - process authorization code
   observe({
     query <- parseQueryString(session$clientData$url_search)
     
     if (!is.null(query$code) && !is.null(query$state)) {
       stored_state <- session$userData$auth_state
       
+      # Recover state from sessionStorage if server session lost it
       if (is.null(stored_state)) {
         runjs("Shiny.setInputValue('recovered_state', sessionStorage.getItem('auth_state'));")
         Sys.sleep(0.1)
         stored_state <- input$recovered_state
       }
       
+      # Verify state token matches
       if (is.null(stored_state) || query$state != stored_state) {
         updateQueryString("?", mode = "replace")
         return()
       }
       
+      # Exchange code for user info
       result <- get_user_from_code(query$code)
       
-      # Store email and name from the JWT token 
       if (result$success) {
         session$userData$user_email <- result$email
         session$userData$user_name <- result$name
@@ -171,6 +207,7 @@ auth_server <- function(input, output, session) {
     }
   })
   
+  # Handle logout button click
   observeEvent(input$logout_btn, {
     session$userData$user_email <- NULL
     session$userData$user_name <- NULL
@@ -179,6 +216,6 @@ auth_server <- function(input, output, session) {
     showNotification("Signed out", type = "message")
   })
   
-  # Return the reactive value
+  # Return reactive authentication state
   return(authenticated)
 }
