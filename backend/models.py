@@ -44,6 +44,7 @@ class CallerName(enum.Enum):
     DEEPVARIANT = "DEEPVARIANT"
     GATK = "GATK"
     CLAIR3 = "CLAIR3"
+    DRAGEN = "DRAGEN"
 
 class CallerType(enum.Enum):
     """Variant caller types"""
