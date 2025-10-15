@@ -176,7 +176,7 @@ ui <- fluidPage(
                                  choices = list("Illumina" = "ILLUMINA", "PacBio" = "PACBIO", 
                                                 "ONT" = "ONT", "MGI" = "MGI")),
               selectInput("tech_comparison_caller", "Choose a caller (for all):",
-                          choices = c("DeepVariant" = "DEEPVARIANT", "GATK" = "GATK", "Clair3" = "CLAIR3"),
+                          choices = c("DeepVariant" = "DEEPVARIANT", "GATK" = "GATK", "Clair3" = "CLAIR3", "DRAGEN" = "DRAGEN"),
                           selected = "DEEPVARIANT"),
               conditionalPanel(
                 condition = "input.selected_technologies && input.selected_technologies.length >= 2",
@@ -195,7 +195,7 @@ ui <- fluidPage(
               hr(),
               h5("Caller Comparison Setup:"),
               checkboxGroupInput("selected_callers", "Select callers (2 or more):",
-                                 choices = list("DeepVariant" = "DEEPVARIANT", "GATK" = "GATK", "Clair3" = "CLAIR3")),
+                                 choices = list("DeepVariant" = "DEEPVARIANT", "GATK" = "GATK", "Clair3" = "CLAIR3", "DRAGEN" = "DRAGEN")),
               selectInput("caller_comparison_tech", "Choose a technology (for all):",
                           choices = c("Illumina" = "ILLUMINA", "PacBio" = "PACBIO", "ONT" = "ONT", "MGI" = "MGI"),
                           selected = "ILLUMINA"),
@@ -310,8 +310,10 @@ ui <- fluidPage(
                     a("Oxford Nanopore (ONT)", href = "https://nanoporetech.com/", target = "_blank"), 
                     ") using variant callers including ",
                     a("DeepVariant", href = "https://github.com/google/deepvariant", target = "_blank"), " (ML-based), ",
-                    a("GATK", href = "https://gatk.broadinstitute.org/", target = "_blank"), " (traditional), and ",
-                    a("Clair3", href = "https://github.com/HKU-BAL/Clair3", target = "_blank"), " (long-read optimized)."),
+                    a("GATK", href = "https://gatk.broadinstitute.org/", target = "_blank"), " (Traditional), ",
+                    a("DRAGEN", href = "https://www.illumina.com/products/by-type/informatics-products/dragen-bio-it-platform.html", 
+                      target = "_blank"), " (Hardware-accelerated), and ",  # NEW
+                    a("Clair3", href = "https://github.com/HKU-BAL/Clair3", target = "_blank"), " (Long-read optimized)."),
                 
                   p(strong("Getting Started:"), " Use sidebar filters to focus on specific technologies or callers. Chose a comparison option to evaluate multiple approaches. Click ▶ to expand detailed metadata for each experiment. ",
                     style = "margin-bottom: 0; font-size: 1em;")
