@@ -69,8 +69,11 @@ create_stratified_grouped_plot <- function(data, variant_type, metric_name = "f1
   
   # Create technology-caller combination key
   plot_data <- plot_data %>%
-    mutate(tech_caller = paste(technology, caller, sep = "-"))
-  
+    mutate(tech_caller = paste(technology, caller, sep = "-")) %>%
+    arrange(desc(as.numeric(experiment_id)))
+    plot_data$exp_label <- factor(plot_data$exp_label, levels = unique(plot_data$exp_label))
+
+
   # Create the gradient plot
   plot <- ggplot(plot_data, aes(x = metric_value, y = exp_label)) + 
     geom_col(aes(fill = tech_caller), alpha = 0.85, width = 0.7) + 
