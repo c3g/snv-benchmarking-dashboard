@@ -863,7 +863,7 @@ ui <- fluidPage(
                        )
                 )
               ),
-              
+              create_experiment_details_panel_ui(),
               # Metric selection
               wellPanel(
                 style = "background-color: #f8f9fa; margin-bottom: 20px;",
