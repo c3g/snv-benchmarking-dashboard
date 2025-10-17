@@ -239,7 +239,10 @@ setup_observers <- function(input, output, session, data_reactives) {
     updateCheckboxGroupInput(session, "gc_low", selected = character(0))
     updateCheckboxGroupInput(session, "gc_normal", selected = character(0))
     updateCheckboxGroupInput(session, "gc_high", selected = character(0))
+    updateCheckboxGroupInput(session, "gc_extreme", selected = character(0))
     updateCheckboxGroupInput(session, "complex_regions", selected = character(0))
+    updateCheckboxGroupInput(session, "satellites_regions", selected = character(0))
+    
     
     showNotification("All selections cleared!", type = "message", duration = 2)
   })
@@ -270,13 +273,15 @@ setup_observers <- function(input, output, session, data_reactives) {
       showNotification("Loading stratified data...", type = "message", duration = 2)
       
       ids_json <- json_param(current_exp_ids)
-      
+
+      # convert to list
+      regions_list <- as.list(selected_regions)
       # Pass regions to database query for SQL filtering
       enhanced_data <- tryCatch({
         db$get_stratified_performance_by_regions(
           ids_json, 
           VARIANT_TYPES,
-          selected_regions
+          regions_list
         )
       }, error = function(e) {
         showNotification(paste("Database error:", e$message), type = "error", duration = 8)
