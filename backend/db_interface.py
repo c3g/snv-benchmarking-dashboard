@@ -484,6 +484,9 @@ def get_stratified_performance_by_regions(experiment_ids_param, variant_types=['
                     'variant_type': result.variant_type,
                     'technology': result.experiment.sequencing_technology.technology.value if (result.experiment and result.experiment.sequencing_technology) else 'Unknown',
                     'caller': result.experiment.variant_caller.name.value if (result.experiment and result.experiment.variant_caller) else 'Unknown',
+                    'caller_version': result.experiment.variant_caller.version if result.experiment.variant_caller else None,
+                    'platform_name': result.experiment.sequencing_technology.platform_name if result.experiment.sequencing_technology else None,
+    
                     'subset': result.subset.value,
                     'filter_type': result.filter_type,
                     'chemistry_name': result.experiment.chemistry.name if (result.experiment and result.experiment.chemistry and result.experiment.chemistry.name) else None,
