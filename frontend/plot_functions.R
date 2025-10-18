@@ -187,8 +187,9 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
         "<br>• Technology:", snp_data$technology,
         "<br>• Platform:", ifelse(is.na(snp_data$platform_name) | is.null(snp_data$platform_name), "N/A", snp_data$platform_name),
         "<br>• Caller:", snp_data$caller,
+        "<br>• Caller Version:", ifelse(is.na(snp_data$caller_version) | is.null(snp_data$caller_version), "N/A", snp_data$caller_version),
         "<br>• Chemistry:", ifelse(is.na(snp_data$chemistry_name) | is.null(snp_data$chemistry_name), "N/A", snp_data$chemistry_name),
-          "<br>• Truth Set:", ifelse(is.na(snp_data$truth_set_name) | is.null(snp_data$truth_set_name), "N/A", snp_data$truth_set_name), 
+        "<br>• Truth Set:", ifelse(is.na(snp_data$truth_set_name) | is.null(snp_data$truth_set_name), "N/A", snp_data$truth_set_name), 
 
         "<br><br><b>Performance:</b>",
         "<br>• Precision:", paste0(round(as.numeric(snp_data$precision)*100, 2), "%"),
@@ -286,6 +287,7 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
         "<br>• Technology:", indel_data$technology,
         "<br>• Platform:", ifelse(is.na(indel_data$platform_name) | is.null(indel_data$platform_name), "N/A", indel_data$platform_name),
         "<br>• Caller:", indel_data$caller,
+        "<br>• Caller Version:", ifelse(is.na(indel_data$caller_version) | is.null(indel_data$caller_version), "N/A", indel_data$caller_version),
         "<br>• Chemistry:", ifelse(is.na(indel_data$chemistry_name) | is.null(indel_data$chemistry_name), "N/A", indel_data$chemistry_name),
         "<br>• Truth Set:", ifelse(is.na(indel_data$truth_set_name) | is.null(indel_data$truth_set_name), "N/A", indel_data$truth_set_name),
 
