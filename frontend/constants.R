@@ -32,7 +32,7 @@ FILTER_TYPES <- list(
 TECHNOLOGY_OPTIONS <- c("ILLUMINA", "PACBIO", "ONT", "MGI")
 CALLER_OPTIONS <- c("DEEPVARIANT", "GATK", "CLAIR3", "DRAGEN")
 VARIANT_TYPES <- c("SNP", "INDEL")
-
+TRUTH_SET_OPTIONS <- c("All Truth Sets", "T2T", "GIAB", "CMRG")
 
 # ============================================================================
 # CSS STYLING CONSTANTS
@@ -601,5 +601,47 @@ REGION_TOOLTIPS_JS <- "
   });
 
 "
+# Truth set filter panel styling
+TRUTH_SET_FILTER_CSS <- "
+  .truth-set-filter-panel {
+    background-color: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  
+  .truth-set-filter-panel label {
+    margin: 0;
+    font-weight: 500;
+    font-size: 14px;
+    color: #495057;
+    white-space: nowrap;
+  }
+  
+  .truth-set-filter-panel .form-group {
+    margin: 0;
+    flex: 1;
+    max-width: 250px;
+  }
+  
+  .truth-set-filter-panel select {
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+  }
+  
+  .truth-set-filter-panel .info-icon {
+    color: #6c757d;
+    cursor: help;
+    font-size: 16px;
+  }
+"
 
-APP_CSS_STYLES <- paste0(APP_CSS_STYLES, REGION_INFO_CSS)
+# Update APP_CSS_STYLES at the very end
+APP_CSS_STYLES <- paste0(APP_CSS_STYLES, TRUTH_SET_FILTER_CSS)
