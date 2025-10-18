@@ -328,6 +328,7 @@ ui <- fluidPage(
           tabPanel(
             "Performance Results", 
             br(),
+          
             div(
               class = "alert alert-info",
               style = "margin-bottom: 20px;",
@@ -349,8 +350,26 @@ ui <- fluidPage(
                 strong("Recall"), " measures completeness (% of true variants detected), and ",
                 strong("F1-score"), " provides balanced performance assessment. Higher percentages indicate better performance across all metrics."),
               
-              p(strong("Usage:"), " Sort by any metric to identify top performers. Compare SNP vs INDEL performance patterns across different sequencing technologies and variant calling algorithms.",
+              p(strong("Usage:"), " Select truth sets to compare against. Compare SNP vs INDEL performance across different sequencing technologies and variant calling algorithms.
+              Sort by any metric to identify top performers.",
                 style = "margin-bottom: 0; font-size: 1em;")
+            ),
+            #truthset filter 
+            div(class = "truth-set-filter-panel",
+              tags$label("Choose Reference Standards for Comparison:"),
+              selectInput(
+                "truth_set_filter_tab2",
+                label = NULL,
+                choices = TRUTH_SET_OPTIONS,
+                selected = "All Truth Sets",
+                width = "100%"
+              ),
+              tags$span(
+                class = "info-icon",
+                icon("info-circle"),
+                title = "Filter experiments by benchmarking truth set",
+                `data-toggle` = "tooltip"
+              )
             ),
             DT::dataTableOutput("performance_table")
           ),
@@ -381,11 +400,29 @@ ui <- fluidPage(
                          
                        p(style = "font-size: 1em;", 
                          strong("Interaction:"), " Click points to view detailed experiment metadata below.",
-                         strong("Hover"), " for quick performance metrics.", strong("Drag")," to zoom and ",strong("double-click"), " to reset view.")
+                         strong("Hover"), " for quick performance metrics.", 
+                         br(),
+                         strong("Click and drag")," across any range to zoom in",strong("double-click"), " to reset view.")
                      ),
               )
             ),
-            br(),
+            #truthset filter 
+            div(class = "truth-set-filter-panel",
+              tags$label("Choose Reference Standards for Comparison:"),
+              selectInput(
+                "truth_set_filter_tab3",
+                label = NULL,
+                choices = TRUTH_SET_OPTIONS,
+                selected = "All Truth Sets",
+                width = "100%"
+              ),
+              tags$span(
+                class = "info-icon",
+                icon("info-circle"),
+                title = "Filter experiments by benchmarking truth set",
+                `data-toggle` = "tooltip"
+              )
+            ),
             # Performance plots
             wellPanel(
               style = "background-color: #ffffff; padding: 25px; margin-bottom: 20px;",
@@ -503,7 +540,23 @@ ui <- fluidPage(
                 strong("Note:"), " Only experiments from your current selection (previous tabs) are analyzed. Select regions below and click 'Update Analysis' to generate results as plots or data tables. ",
                 strong("Hover over region names"), " for detailed descriptions and genomic context information.")
             ),
-            
+            #truthset filter 
+            div(class = "truth-set-filter-panel",
+              tags$label("Choose Reference Standards for Comparison:"),
+              selectInput(
+                "truth_set_filter_tab4",
+                label = NULL,
+                choices = TRUTH_SET_OPTIONS,
+                selected = "All Truth Sets",
+                width = "100%"
+              ),
+              tags$span(
+                class = "info-icon",
+                icon("info-circle"),
+                title = "Filter experiments by benchmarking truth set",
+                `data-toggle` = "tooltip"
+              )
+            ),
             # Region selection panel
             wellPanel(
               style = "background-color: #f8f9fa; margin-bottom: 20px;",
