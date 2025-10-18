@@ -74,7 +74,7 @@ create_experiment_details_html <- function(metadata) {
 }
 
 # ------------------------------------------------
-# Create F1 score tables for stratified analysis
+# Create metrics tables for stratified analysis
 create_f1_table <- function(data) {
   if (nrow(data) == 0) {
     return(data.frame(Message = "No data available"))
@@ -99,7 +99,7 @@ create_f1_table <- function(data) {
 create_metric_table <- function(stratified_data, variant_filter, selected_metric) {
   # Filter for specific variant type
   filtered_data <- stratified_data %>%
-    filter(variant_type == variant_filter)
+    filter(variant_type == variant_filter) 
   
   if(nrow(filtered_data) == 0) {
     return(data.frame(Message = paste("No", variant_filter, "data available for selected regions")))
@@ -115,6 +115,7 @@ create_metric_table <- function(stratified_data, variant_filter, selected_metric
     #  chemistry_name = ifelse(is.na(chemistry_name) | chemistry_name == "" | chemistry_name == "NULL", 
     #                          "N/A", chemistry_name)
     ) %>%
+    arrange(experiment_id) %>% 
     rename(
       "ID" = experiment_id,
       "Experiment" = experiment_name,

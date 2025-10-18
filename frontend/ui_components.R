@@ -314,10 +314,11 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
     })
   })
   
+
   # ====================================================================
   # STRATIFIED ANALYSIS OUTPUTS (TAB 4)
   # ====================================================================
-  
+
   # Stratified analysis summary
   output$stratified_summary <- renderUI({
     data <- data_reactives$stratified_filtered_data()
@@ -334,23 +335,25 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
         n_results, " total results"
       ))
     })
-    output$experiment_info_list <- renderUI({
-      data <- data_reactives$stratified_filtered_data()
+
+  # Experiment info list with technology-based colors
+  output$experiment_info_list <- renderUI({
+    data <- data_reactives$stratified_filtered_data()
+    
+    if (nrow(data) == 0) {
+      return(p("No experiments selected", style = "color: #6c757d;"))
+    }
+    
+    experiment_ids <- unique(data$experiment_id)
+    
+    # Use json_param for reliable JSON formatting
+    tryCatch({
+      ids_json <- json_param(experiment_ids)
+      metadata <- db$get_experiment_metadata(ids_json)
       
-      if (nrow(data) == 0) {
-        return(p("No experiments selected", style = "color: #6c757d;"))
+      if (nrow(metadata) == 0) {
+        return(p("Unable to load experiment metadata", style = "color: #dc3545;"))
       }
-      
-      experiment_ids <- unique(data$experiment_id)
-      metadata <- db$get_experiment_metadata(toJSON(experiment_ids))
-      
-      if (nrow(metadata) == 0) return(NULL)
-      
-      exp_colors <- setNames(
-        colorRampPalette(c("#e74c3c", "#3498db", "#2ecc71", "#f39c12", 
-                          "#9b59b6", "#1abc9c"))(length(experiment_ids)),
-        experiment_ids
-      )
       
       # Header row
       header <- div(
@@ -376,10 +379,16 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
         div(style = "width: 90px;", "Truth Set")
       )
       
-      # Data rows
+      # Data rows with technology-based colors
       rows <- lapply(1:nrow(metadata), function(i) {
         exp <- metadata[i, ]
-        exp_color <- exp_colors[as.character(exp$id)]
+        
+        # Get color from technology_colors mapping
+        tech <- exp$technology %||% "Unknown"
+        exp_color <- technology_colors[tech]
+        if (is.null(exp_color) || is.na(exp_color)) {
+          exp_color <- technology_colors["Unknown"]
+        }
         
         div(
           style = paste0("padding: 6px 10px; margin-bottom: 3px; 
@@ -443,7 +452,12 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       })
       
       return(div(header, rows))
+      
+    }, error = function(e) {
+      p(paste("Error loading experiment metadata:", e$message), 
+        style = "color: #dc3545; font-size: 12px;")
     })
+  })
   # ====================================================================
   # UPLOAD FILENAME PREVIEW
   # ====================================================================
