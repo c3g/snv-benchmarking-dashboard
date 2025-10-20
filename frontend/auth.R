@@ -93,6 +93,7 @@ get_user_from_code <- function(code) {
     return(list(
       email = claims$email,
       name = claims$name %||% claims$preferred_username %||% claims$email,
+      username = claims$preferred_username %||% claims$sub, # uesrname
       success = TRUE
     ))
   }, error = function(e) {
@@ -129,12 +130,23 @@ auth_server <- function(input, output, session) {
   
   # Render login/logout button based on auth state
   output$auth_status <- renderUI({
+
+    auth_state <- authenticated() # force reactive auth state
     if (is_authenticated(session)) {
       user <- get_user_info(session)
       div(
-        style = "display: flex; gap: 10px; align-items: center;",
-        span(style = "font-size: 14px; color: #4472ca;", icon("user-circle"), paste("Welcome,", user$name)),
-        actionButton("logout_btn", "Sign Out", class = "btn-secondary btn-sm", style = "font-size: 12px; padding: 4px 12px;")
+        style = "display: flex; gap: 8px; align-items: center; background-color: #f8f9fa; padding: 6px 12px; border-radius: 4px; border: 1px solid #e4e7ea;",
+        span(
+          style = "font-size: 13px; color: #4472ca; font-weight: 500; display: flex; align-items: center; gap: 5px;",
+          icon("user"),
+          span(user$name)
+        ),
+        actionButton(
+          "logout_btn", 
+          "Sign Out",
+          class = "btn-sm",
+          style = "font-size: 13px; padding: 6px 12px; background-color: #ffffff; border: 1px solid #d1d5db; color: #556b78; font-weight: 500;"
+        )
       )
     } else {
       actionButton("login_btn", "Sign In", class = "btn-primary btn-sm", icon = icon("sign-in-alt"), style = "font-size: 13px; padding: 6px 16px;")
