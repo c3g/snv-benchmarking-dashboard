@@ -87,6 +87,7 @@ source("table_functions.R")
 source("observers.R")
 source("ui_components.R")
 source("html_export.R") 
+source("admin_config.R")
 
 
 # global theme
@@ -270,9 +271,10 @@ ui <- fluidPage(
               )
             ),
             
-            # Delete button - ONLY VISIBLE WHEN AUTHENTICATED
+            # Delete button - ONLY VISIBLE TO ADMIN
+            textOutput("debug_admin_status"),
             conditionalPanel(
-              condition = "output.user_authenticated",
+              condition = "output.user_is_admin",
               actionButton(
                 "show_delete_modal", 
                 label = tagList(icon("trash"), "Delete Datasets"),
@@ -943,6 +945,9 @@ server <- function(input, output, session) {
   # INITIALIZE MODULES
   # ====================================================================
   
+  # Initialize auth 
+  auth_server(input, output, session)
+
   # Setup core data processing (returns reactive values)
   data_reactives <- setup_data_reactives(input, output, session)
   
@@ -951,27 +956,7 @@ server <- function(input, output, session) {
   setup_table_outputs(input, output, session, data_reactives)
   setup_ui_outputs(input, output, session, data_reactives)
   setup_observers(input, output, session, data_reactives)
-  
-  # ====================================================================
-# AUTHENTICATION
-# ====================================================================
 
-# Initialize authentication
-is_authenticated <- auth_server(input, output, session)
-
-# Expose authentication status to UI
-output$user_authenticated <- reactive({
-  is_authenticated()
-})
-outputOptions(output, "user_authenticated", suspendWhenHidden = FALSE)
-
-# Get current user info
-get_current_user <- reactive({
-  if (is_authenticated()) {
-    return(get_user_info(session))
-  }
-  return(NULL)
-})
   # ====================================================================
   # HTML EXPORT FUNCTIONALITY
   # ====================================================================
