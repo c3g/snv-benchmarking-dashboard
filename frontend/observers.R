@@ -27,6 +27,8 @@ setup_observers <- function(input, output, session, data_reactives) {
   # ====================================================================
   # COMPARISON MODE BUTTON OBSERVERS
   # ====================================================================
+ 
+  data_refresh_trigger <- data_reactives$data_refresh_trigger
   
   # Technology comparison button
   observeEvent(input$compare_techs, {
@@ -92,7 +94,8 @@ setup_observers <- function(input, output, session, data_reactives) {
     dataTableProxy('experiments_table') %>% selectRows(NULL)
     showNotification("Experiment selection cleared!", type = "message")
   })
-  
+
+
   # ====================================================================
   # TABLE INTERACTION OBSERVERS
   # ====================================================================
@@ -373,6 +376,17 @@ setup_observers <- function(input, output, session, data_reactives) {
   # Main upload submission observer
   observeEvent(input$submit_upload, {
     
+  user_info <- get_user_info(session)
+  
+  # Check if user is authenticated
+  if (!is_authenticated(session)) {
+    showNotification(
+      "Please sign in to upload datasets", 
+      type = "error", 
+      duration = 5
+    )
+    return()
+  }
     # Basic validation checks
     if (is.null(input$upload_file)) {
       showNotification("Please select a file to upload", type = "error", duration = 5)
@@ -468,7 +482,8 @@ setup_observers <- function(input, output, session, data_reactives) {
       result <- tryCatch({
         upload_handler$upload_experiment(
           file_path = input$upload_file$datapath,
-          metadata_json = metadata_json
+          metadata_json = metadata_json,
+          username = user_info$username # check for user privileges
         )
       }, error = function(e) {
         removeNotification(loading_id)
@@ -486,13 +501,12 @@ setup_observers <- function(input, output, session, data_reactives) {
           type = "message", 
           duration = 8
         )
-        
+
         # Close modal
         toggleModal(session, "upload_modal", toggle = "close")
         
-        # Use same refresh method as delete
-        session$reload()
-        
+        #refresh data wituout reloading the page
+        data_refresh_trigger(data_refresh_trigger() + 1)
         return(TRUE)
         
       } else {
@@ -510,6 +524,15 @@ setup_observers <- function(input, output, session, data_reactives) {
       # Remove loading notification
       removeNotification(loading_id)
       
+      if (!result$success && !is.null(result$unauthorized) && result$unauthorized) {
+      showNotification(
+        HTML(paste("Unauthorized<br>", result$error)), 
+        type = "error", 
+        duration = 10
+      )
+      return(FALSE)
+    }
+
       # Show error
       showNotification(
         paste("Upload Error:", e$message), 
@@ -591,6 +614,20 @@ setup_observers <- function(input, output, session, data_reactives) {
   
   # Handle final delete confirmation
   observeEvent(input$final_confirm_delete, {
+
+      user_info <- get_user_info(session)
+  
+  # Check authorization
+  if (!is_authenticated(session) || !is_admin(user_info$username)) {
+    removeModal()
+    showNotification(
+      "Unauthorized: Admin privileges required", 
+      type = "error", 
+      duration = 5
+    )
+    return()
+  }
+  
     selected_ids <- session$userData$selected_delete_ids
     
     if (is.null(selected_ids) || length(selected_ids) == 0) {
@@ -602,7 +639,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     
     # Show loading notification
     loading_id <- showNotification(
-      paste("Deleting", length(selected_ids), "experiments and rebuilding database... Please wait."),
+      paste("Deleting", length(selected_ids), "experiments and rebuilding database."),
       type = "message", 
       duration = NULL,
       closeButton = FALSE
@@ -619,7 +656,10 @@ setup_observers <- function(input, output, session, data_reactives) {
       sorted_ids <- sort(selected_ids, decreasing = TRUE)
       
       for (exp_id in sorted_ids) {
-        result <- delete_handler$delete_experiment(exp_id)
+        result <- delete_handler$delete_experiment(
+          exp_id, 
+          username = user_info$username
+          )
         
         if (result$success) {
           success_count <- success_count + 1
@@ -632,6 +672,16 @@ setup_observers <- function(input, output, session, data_reactives) {
       # Remove loading notification
       removeNotification(loading_id)
       
+      #authorization check
+      if (!is.null(result$unauthorized) && result$unauthorized) {
+        removeNotification(loading_id)
+        showNotification(
+          paste("Unauthorized:", result$error),
+          type = "error",
+          duration = 10
+        )
+        return()
+      }
       if (success_count == total_count) {
         showNotification(
           paste("Successfully deleted", success_count, "experiments and rebuilt database."),
@@ -648,7 +698,9 @@ setup_observers <- function(input, output, session, data_reactives) {
       
       # Close modal and refresh data
       toggleModal(session, "delete_modal", toggle = "close")
-      session$reload()
+        
+        #refresh data wituout reloading the page
+        data_refresh_trigger(data_refresh_trigger() + 1)
       
     }, error = function(e) {
       removeNotification(loading_id)
