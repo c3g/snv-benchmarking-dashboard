@@ -106,6 +106,7 @@ ENUM_MAPPINGS = {
         'deepvariant': CallerName.DEEPVARIANT,
         'gatk': CallerName.GATK,
         'clair3': CallerName.CLAIR3,
+        'dragen': CallerName.DRAGEN,
     },
     'caller_type': {
         'ml': CallerType.ML,
@@ -149,30 +150,28 @@ ENUM_MAPPINGS = {
     }
 }
 
-def map_enum(enum_type, value):
-    """
-    Convert CSV string values to their corresponding database enum values.
+def map_enum(field_name, value):
+    """Map string values to enum types with case-insensitive matching"""
     
-    Uses ENUM_MAPPINGS dictionary to translate user-friendly CSV values 
-    (like 'illumina', 'deepvariant') into proper SQLAlchemy enum objects.
+    if pd.isna(value) or value == '' or value is None:
+        return None
     
-    Args:
-        enum_type (str): Type of enum to map to (e.g., 'technology', 'caller_name')
-        value (str): Raw value from CSV (e.g., 'ILLUMINA', 'DeepVariant')
-        
-    Returns:
-        Enum: Corresponding SQLAlchemy enum value (e.g., SeqTechName.ILLUMINA)
-    """
-    if not value:
+    # Clean the value
+    value_clean = str(value).strip().lower()
+    
+    # Use the ENUM_MAPPINGS dictionary that already exists
+    if field_name not in ENUM_MAPPINGS:
+        logger.warning(f"Unknown enum field: {field_name}")
         return None
-    try:
-        mapped = ENUM_MAPPINGS.get(enum_type, {}).get(clean_value(value))
-        if mapped is None:
-            logger.warning(f"Unknown {enum_type} value: '{value}'")
-        return mapped
-    except Exception as e:
-        logger.warning(f"Error mapping {enum_type} value '{value}': {e}")
+    
+    field_mappings = ENUM_MAPPINGS[field_name]
+    
+    if value_clean not in field_mappings:
+        logger.warning(f"Unknown {field_name} value: '{value}' (cleaned: '{value_clean}')")
+        logger.info(f"Valid options: {list(field_mappings.keys())}")
         return None
+    
+    return field_mappings[value_clean]
 
 def map_boolean(value):
     """Convert string to boolean"""

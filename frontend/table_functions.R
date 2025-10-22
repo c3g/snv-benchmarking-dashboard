@@ -105,21 +105,23 @@ create_metric_table <- function(stratified_data, variant_filter, selected_metric
     return(data.frame(Message = paste("No", variant_filter, "data available for selected regions")))
   }
   
-  # Format the data showing all metrics
+  # Format the data showing all metrics 
   display_data <- filtered_data %>%
-    select(experiment_id, experiment_name, technology, caller, chemistry_name, subset, 
+    select(experiment_id, experiment_name, technology, caller,caller_version, platform_name, subset, 
            f1_score, precision, recall) %>%
     mutate(
       across(c(recall, precision, f1_score), ~ round(.x * 100, 2)),
-      chemistry_name = ifelse(is.na(chemistry_name) | chemistry_name == "" | chemistry_name == "NULL", 
-                              "N/A", chemistry_name)
+    # chemistry name not included in stratified results for now
+    #  chemistry_name = ifelse(is.na(chemistry_name) | chemistry_name == "" | chemistry_name == "NULL", 
+    #                          "N/A", chemistry_name)
     ) %>%
     rename(
       "ID" = experiment_id,
       "Experiment" = experiment_name,
       "Technology" = technology,
       "Caller" = caller,
-      "Chemistry" = chemistry_name,
+      "Version" = caller_version,
+      "Platform" = platform_name,
       "Region" = subset,
       "F1 Score %" = f1_score,
       "Precision %" = precision,

@@ -44,6 +44,7 @@ class CallerName(enum.Enum):
     DEEPVARIANT = "DEEPVARIANT"
     GATK = "GATK"
     CLAIR3 = "CLAIR3"
+    DRAGEN = "DRAGEN"
 
 class CallerType(enum.Enum):
     """Variant caller types"""
@@ -120,18 +121,35 @@ class RegionType(enum.Enum):
     GC_80_85 = "GC_80_85"
     GC_VERY_HIGH = "GC_>85"
     
+    # GC Extreme Ranges
+    GC_LT25_OR_GT65 = "GC <25 or >65"
+    GC_LT30_OR_GT55 = "GC <30 or >55"
+
     # Functional
     REFSEQ_CDS = "RefSeq CDS"
     NOT_IN_CDS = "Non-CDS Regions"
     
-    # Repetitive
+    # Repetitive - Segmental duplications 
     SEGDUP = "Segmental Duplications"
+    NOT_IN_SEGDUPS = "Non-Segmental Duplications"
+
+    # Repetitive - homopolymers
     HOMOPOLYMER_4TO6 = "Homopolymer 4-6bp"
     HOMOPOLYMER_7TO11 = "Homopolymer 7-11bp"
-    HOMOPOLYMER_GT11 = "Homopolymer >11bp"
-    
-    # Other
+    HOMOPOLYMER_GT12 = "Homopolymer >12bp"
+    HOMOPOLYMER_GE21 = "Homopolymer ≥21bp"
+    ALL_TR_AND_HOMOPOLYMERS = "All Tandem Repeats & Homopolymers" 
+    NOT_IN_ALL_TR_AND_HOMOPOLYMERS = "Non-Tandem Repeats & Non-Homopolymers" 
+
+    # Repetitive - Satellites
+    SATELLITES = "Satellites"  
+    NOT_IN_SATELLITES = "Non-Satellites" 
+
+    # Mappability
     LOW_MAPPABILITY = "Low Mappability"
+    NOT_IN_LOW_MAPPABILITY = "Non-Low Mappability" 
+
+    # Other
     MHC = "MHC Region"
     TS_BOUNDARY = "Truth Set Boundary"
     TS_CONTAINED = "Truth Set Contained"
@@ -139,10 +157,10 @@ class RegionType(enum.Enum):
     @classmethod
     def from_string(cls, region_str):
         """
-        Convert hap.py region string to enum value.
+        Convert hap.py region string to enum value (case-insensitive).
         
         Maps the raw region strings from hap.py CSV files to their corresponding
-        enum values for database storage.
+        enum values for database storage. Handles multiple naming conventions.
         
         Args:
             region_str (str): Raw region string from hap.py output (e.g., "*", "easy", "GC_<15")
@@ -150,39 +168,89 @@ class RegionType(enum.Enum):
         Returns:
             RegionType: Corresponding enum value or None if mapping not found
         """
+        if not region_str:
+            return None
+        
+        region_str_lower = str(region_str).strip().lower()
+        
         mapping = {
+            # Core regions
             "*": cls.ALL,
             "easy": cls.EASY,
             "difficult": cls.DIFFICULT,
-            "GC_<15": cls.GC_VERY_LOW,
-            "GC_15_20": cls.GC_15_20,
-            "GC_20_25": cls.GC_20_25,
-            "GC_25_30": cls.GC_25_30,
-            "GC_30_55": cls.GC_30_55,
-            "GC_55_60": cls.GC_55_60,
-            "GC_60_65": cls.GC_60_65,
-            "GC_65_70": cls.GC_65_70,
-            "GC_70_75": cls.GC_70_75,
-            "GC_75_80": cls.GC_75_80,
-            "GC_80_85": cls.GC_80_85,
-            "GC_>85": cls.GC_VERY_HIGH,
+            
+            # GC Content 
+            "gc_<15": cls.GC_VERY_LOW,
+            "gc_15_20": cls.GC_15_20,
+            "gc_20_25": cls.GC_20_25,
+            "gc_25_30": cls.GC_25_30,
+            "gc_30_55": cls.GC_30_55,
+            "gc_55_60": cls.GC_55_60,
+            "gc_60_65": cls.GC_60_65,
+            "gc_65_70": cls.GC_65_70,
+            "gc_70_75": cls.GC_70_75,
+            "gc_75_80": cls.GC_75_80,
+            "gc_80_85": cls.GC_80_85,
+            "gc_>85": cls.GC_VERY_HIGH,
+
+            "gc15": cls.GC_VERY_LOW,
+            "gc15to20": cls.GC_15_20,
+            "gc20to25": cls.GC_20_25,
+            "gc25to30": cls.GC_25_30,
+            "gc30to55": cls.GC_30_55,
+            "gc55to60": cls.GC_55_60,
+            "gc60to65": cls.GC_60_65,
+            "gc65to70": cls.GC_65_70,
+            "gc70to75": cls.GC_70_75,
+            "gc75to80": cls.GC_75_80,
+            "gc80to85": cls.GC_80_85,
+            "gc85": cls.GC_VERY_HIGH,
+            
+            # Extreme GC ranges
+            "gclt25orgt65": cls.GC_LT25_OR_GT65,
+            "gclt30orgt55": cls.GC_LT30_OR_GT55,
+            
+            # Functional regions
             "refseq_cds": cls.REFSEQ_CDS,
             "not_in_cds": cls.NOT_IN_CDS,
+            "not_in_refseq_cds": cls.NOT_IN_CDS,
+            
+            # Segmental duplications
             "segdup": cls.SEGDUP,
+            "segdups": cls.SEGDUP,
+            "not_in_segdups": cls.NOT_IN_SEGDUPS,
+            
+            # Homopolymers
             "homopolymer_4to6": cls.HOMOPOLYMER_4TO6,
             "homopolymer_7to11": cls.HOMOPOLYMER_7TO11,
-            "homopolymer_gt11": cls.HOMOPOLYMER_GT11,
+            "homopolymer_gt11": cls.HOMOPOLYMER_GT12,
+            "homopolymer_gt12": cls.HOMOPOLYMER_GT12,
+            "homopolymer_ge12": cls.HOMOPOLYMER_GT12,
+            "homopolymer_ge21": cls.HOMOPOLYMER_GE21,
+            
+            # Tandem repeats & homopolymers
+            "all_tr_and_homopolymers": cls.ALL_TR_AND_HOMOPOLYMERS,
+            "not_in_all_tr_and_homopolymers": cls.NOT_IN_ALL_TR_AND_HOMOPOLYMERS,
+            
+            # Satellites
+            "satellites": cls.SATELLITES,
+            "not_in_satellites": cls.NOT_IN_SATELLITES,
+            
+            # Mappability
             "low_mappability": cls.LOW_MAPPABILITY,
-            "MHC": cls.MHC,
-            "TS_boundary": cls.TS_BOUNDARY,
-            "TS_contained": cls.TS_CONTAINED
+            "not_in_low_mappability": cls.NOT_IN_LOW_MAPPABILITY,
+            
+            # Special regions
+            "mhc": cls.MHC,
+            "ts_boundary": cls.TS_BOUNDARY,
+            "ts_contained": cls.TS_CONTAINED
         }
-        return mapping.get(region_str)
+        return mapping.get(region_str_lower)
     
     @classmethod
     def from_display_name(cls, display_name):
         """
-        Convert UI display names to enum values.
+        Convert UI display names to enum values (case-insensitive).
         
         Maps user-friendly region names from the dashboard UI to their
         corresponding enum values for database queries.
@@ -193,42 +261,69 @@ class RegionType(enum.Enum):
         Returns:
             RegionType: Corresponding enum value or None if mapping not found
         """
+        if not display_name:
+            return None
+            
+        display_name_lower = str(display_name).strip().lower()
+        
         mapping = {
             # Main regions
-            "All Regions": cls.ALL,
-            "Easy Regions": cls.EASY,
-            "Difficult Regions": cls.DIFFICULT,
+            "all regions": cls.ALL,
+            "easy regions": cls.EASY,
+            "difficult regions": cls.DIFFICULT,
             
             # Functional
-            "RefSeq CDS": cls.REFSEQ_CDS,
-            "Non-CDS Regions": cls.NOT_IN_CDS,
+            "refseq cds": cls.REFSEQ_CDS,
+            "non-cds regions": cls.NOT_IN_CDS,
             
             # Homopolymer
-            "Homopolymer 4-6bp": cls.HOMOPOLYMER_4TO6,
-            "Homopolymer 7-11bp": cls.HOMOPOLYMER_7TO11,
-            "Homopolymer >11bp": cls.HOMOPOLYMER_GT11,
+            "homopolymer 4-6bp": cls.HOMOPOLYMER_4TO6,
+            "homopolymer 7-11bp": cls.HOMOPOLYMER_7TO11,
+            "homopolymer >12bp": cls.HOMOPOLYMER_GT12,
+            "homopolymer ≥21bp": cls.HOMOPOLYMER_GE21,
+            "homopolymer >=21bp": cls.HOMOPOLYMER_GE21,
             
-            # GC Content (map UI names to enum values)
-            "GC_<15": cls.GC_VERY_LOW,
-            "GC_15_20": cls.GC_15_20,
-            "GC_20_25": cls.GC_20_25,
-            "GC_25_30": cls.GC_25_30,
-            "GC_30_55": cls.GC_30_55,
-            "GC_55_60": cls.GC_55_60,
-            "GC_60_65": cls.GC_60_65,
-            "GC_65_70": cls.GC_65_70,
-            "GC_70_75": cls.GC_70_75,
-            "GC_75_80": cls.GC_75_80,
-            "GC_80_85": cls.GC_80_85,
-            "GC_>85": cls.GC_VERY_HIGH,
+            # Tandem Repeats & Homopolymers
+            "all tandem repeat & homopolymers": cls.ALL_TR_AND_HOMOPOLYMERS,
+            "all tr & homopolymers": cls.ALL_TR_AND_HOMOPOLYMERS,
+            "non-tandem repeat & non-homopolymers": cls.NOT_IN_ALL_TR_AND_HOMOPOLYMERS,
+            "non-tr & non-homopolymers": cls.NOT_IN_ALL_TR_AND_HOMOPOLYMERS,
             
-            # Complex regions  
-            "MHC Region": cls.MHC,
-            "Segmental Duplications": cls.SEGDUP,
-            "Low Mappability": cls.LOW_MAPPABILITY,
+            # GC Content
+            "gc_<15": cls.GC_VERY_LOW,
+            "gc_15_20": cls.GC_15_20,
+            "gc_20_25": cls.GC_20_25,
+            "gc_25_30": cls.GC_25_30,
+            "gc_30_55": cls.GC_30_55,
+            "gc_55_60": cls.GC_55_60,
+            "gc_60_65": cls.GC_60_65,
+            "gc_65_70": cls.GC_65_70,
+            "gc_70_75": cls.GC_70_75,
+            "gc_75_80": cls.GC_75_80,
+            "gc_80_85": cls.GC_80_85,
+            "gc_>85": cls.GC_VERY_HIGH,
+            
+            # Extreme GC ranges
+            "gc <25 or >65": cls.GC_LT25_OR_GT65,
+            "gc <30 or >55": cls.GC_LT30_OR_GT55,
+
+            # Complex regions
+            "mhc region": cls.MHC,
+            "segmental duplications": cls.SEGDUP,
+            "low mappability": cls.LOW_MAPPABILITY,
+            
+            # Non-Segmental Duplications
+            "non-segmental duplications": cls.NOT_IN_SEGDUPS,
+            
+            # Non-Low Mappability
+            "non-low mappability": cls.NOT_IN_LOW_MAPPABILITY,
+            
+            # Satellites
+            "satellites": cls.SATELLITES,
+            "non-satellites": cls.NOT_IN_SATELLITES,
         }
         
-        return mapping.get(display_name)
+        return mapping.get(display_name_lower)
 
 # ============================================================================
 # DATABASE TABLES

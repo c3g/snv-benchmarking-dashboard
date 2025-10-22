@@ -181,7 +181,7 @@ ui <- fluidPage(
                                  choices = list("Illumina" = "ILLUMINA", "PacBio" = "PACBIO", 
                                                 "ONT" = "ONT", "MGI" = "MGI")),
               selectInput("tech_comparison_caller", "Choose a caller (for all):",
-                          choices = c("DeepVariant" = "DEEPVARIANT", "GATK" = "GATK", "Clair3" = "CLAIR3"),
+                          choices = c("DeepVariant" = "DEEPVARIANT", "GATK" = "GATK", "Clair3" = "CLAIR3", "DRAGEN" = "DRAGEN"),
                           selected = "DEEPVARIANT"),
               conditionalPanel(
                 condition = "input.selected_technologies && input.selected_technologies.length >= 2",
@@ -200,7 +200,7 @@ ui <- fluidPage(
               hr(),
               h5("Caller Comparison Setup:"),
               checkboxGroupInput("selected_callers", "Select callers (2 or more):",
-                                 choices = list("DeepVariant" = "DEEPVARIANT", "GATK" = "GATK", "Clair3" = "CLAIR3")),
+                                 choices = list("DeepVariant" = "DEEPVARIANT", "GATK" = "GATK", "Clair3" = "CLAIR3", "DRAGEN" = "DRAGEN")),
               selectInput("caller_comparison_tech", "Choose a technology (for all):",
                           choices = c("Illumina" = "ILLUMINA", "PacBio" = "PACBIO", "ONT" = "ONT", "MGI" = "MGI"),
                           selected = "ILLUMINA"),
@@ -326,8 +326,10 @@ ui <- fluidPage(
                     a("Oxford Nanopore (ONT)", href = "https://nanoporetech.com/", target = "_blank"), 
                     ") using variant callers including ",
                     a("DeepVariant", href = "https://github.com/google/deepvariant", target = "_blank"), " (ML-based), ",
-                    a("GATK", href = "https://gatk.broadinstitute.org/", target = "_blank"), " (traditional), and ",
-                    a("Clair3", href = "https://github.com/HKU-BAL/Clair3", target = "_blank"), " (long-read optimized)."),
+                    a("GATK", href = "https://gatk.broadinstitute.org/", target = "_blank"), " (Traditional), ",
+                    a("DRAGEN", href = "https://www.illumina.com/products/by-type/informatics-products/dragen-bio-it-platform.html", 
+                      target = "_blank"), " (Hardware-accelerated), and ",  # NEW
+                    a("Clair3", href = "https://github.com/HKU-BAL/Clair3", target = "_blank"), " (Long-read optimized)."),
                 
                   p(strong("Getting Started:"), " Use sidebar filters to focus on specific technologies or callers. Chose a comparison option to evaluate multiple approaches. Click ▶ to expand detailed metadata for each experiment. ",
                     style = "margin-bottom: 0; font-size: 1em;")
@@ -355,7 +357,7 @@ ui <- fluidPage(
                 span(style = "color: #d73027; font-weight: bold;", "SNP variants"), " and ",
                 span(style = "color: #4575b4; font-weight: bold;", "INDEL variants"), 
                 " against validated ",
-                a("GIAB", href = "https://www.nist.gov/programs-projects/genome-bottle", target = "_blank"), 
+                #a("GIAB", href = "https://www.nist.gov/programs-projects/genome-bottle", target = "_blank"), 
                 " truth sets."),
               
               p(strong("Key Metrics:"), " ",
@@ -388,7 +390,11 @@ ui <- fluidPage(
                          ") and shaped by variant caller (",
                          a("DeepVariant", href = "https://github.com/google/deepvariant", target = "_blank"), ", ",
                          a("GATK", href = "https://gatk.broadinstitute.org/", target = "_blank"), ", ",
-                         a("Clair3", href = "https://github.com/HKU-BAL/Clair3", target = "_blank"), ")."),
+                         a("Clair3", href = "https://github.com/HKU-BAL/Clair3", target = "_blank"), ", ",
+                         a("DRAGEN", href = "https://www.illumina.com/products/by-type/informatics-products/dragen-bio-it-platform.html", 
+                          target = "_blank"), 
+                          ")."),
+                         
                        p(style = "font-size: 1em;", 
                          strong("Interaction:"), " Click points to view detailed experiment metadata below.",
                          strong("Hover"), " for quick performance metrics.", strong("Drag")," to zoom and ",strong("double-click"), " to reset view.")
@@ -505,7 +511,8 @@ ui <- fluidPage(
               
               p(strong("Regional Breakdown:"), " Performance metrics displayed across genomic regions with different sequence characteristics. 
                 Available stratifications include complexity-based regions (easy/difficult), GC content ranges, functional annotations (coding/non-coding), 
-                repetitive sequences (homopolymers, segmental duplications), and specialized regions (MHC, low mappability areas). These stratifications follow ",
+                repetitive sequences (homopolymers, tandem repeats, segmental duplications, satellites), and specialized regions (MHC, low mappability areas). 
+                These stratifications follow ",
                 a("GIAB genome stratification standards", href = "https://github.com/genome-in-a-bottle/genome-stratifications", target = "_blank"), "."),
               
               p(style = "font-size: 1em; margin-bottom: 0;", 
@@ -591,50 +598,67 @@ ui <- fluidPage(
                            ),
                            
                            # Homopolymer Regions
-                           div(
-                             style = "margin-top: 15px;",
-                             tags$a(
-                               href = "#homopolymer_collapse",
-                               `data-toggle` = "collapse",
-                               style = "text-decoration: none; color: #495057;",
-                               h6("▶ Homopolymer Regions",
+                         
+                            div(
+                              style = "margin-top: 15px;",
+                              tags$a(
+                                href = "#homopolymer_collapse",
+                                `data-toggle` = "collapse",
+                                style = "text-decoration: none; color: #495057;",
+                                h6("▶ Homopolymer Regions",
                                   style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
-                             ),
-                             div(
-                               id = "homopolymer_collapse",
-                               class = "collapse",
-                               style = "margin-top: 6px;",
-                               checkboxGroupInput(
-                                 "homopolymer_regions",
-                                 NULL,
-                                 choices = list(
-                                   "Homopolymer 4-6bp" = "Homopolymer 4-6bp",
-                                   "Homopolymer 7-11bp" = "Homopolymer 7-11bp",
-                                   "Homopolymer >11bp" = "Homopolymer >11bp"
-                                 ),
-                                 selected = character(0),
-                                 inline = TRUE
-                               ),
-                               tags$script(HTML("
-                     $(document).ready(function(){
-                       $('input[value=\"Homopolymer 4-6bp\"]').parent().attr({
-                         'data-toggle': 'tooltip',
-                         'title': 'Short repetitive single-nucleotide runs (e.g., AAAA, TTTTT)'
-                       });
-                       $('input[value=\"Homopolymer 7-11bp\"]').parent().attr({
-                         'data-toggle': 'tooltip',
-                         'title': 'Medium-length repetitive single-nucleotide runs'
-                       });
-                       $('input[value=\"Homopolymer >11bp\"]').parent().attr({
-                         'data-toggle': 'tooltip',
-                         'title': 'Long repetitive single-nucleotide runs (≥12 consecutive identical bases)'
-                       });
-                     });
-                   "))
-                             )
-                           ),
-                           
-                           # GC Content Regions (Collapsible) - No tooltips needed, self-explanatory
+                              ),
+                              div(
+                                id = "homopolymer_collapse",
+                                class = "collapse",
+                                style = "margin-top: 6px;",
+                                checkboxGroupInput(
+                                  "homopolymer_regions",
+                                  NULL,
+                                  choices = list(
+                                    "Homopolymer 4-6bp" = "Homopolymer 4-6bp",
+                                    "Homopolymer 7-11bp" = "Homopolymer 7-11bp",
+                                    "Homopolymer >12bp" = "Homopolymer >12bp",
+                                    "Homopolymer ≥21bp" = "Homopolymer ≥21bp",
+                                    "All Tandem Repeat & Homopolymers" = "All TR & Homopolymers",
+                                    "Non-Tandem Repeat & Non-Homopolymers" = "Non-TR & Non-Homopolymers"
+                                  ),
+                                  selected = character(0),
+                                  inline = TRUE
+                                ),
+                                # TOOLTIPS 
+                                tags$script(HTML("
+                                  $(document).ready(function(){
+                                    $('input[value=\"Homopolymer 4-6bp\"]').parent().attr({
+                                      'data-toggle': 'tooltip',
+                                      'title': 'Short repetitive single-nucleotide runs (e.g., AAAA, TTTTT)'
+                                    });
+                                    $('input[value=\"Homopolymer 7-11bp\"]').parent().attr({
+                                      'data-toggle': 'tooltip',
+                                      'title': 'Medium-length repetitive single-nucleotide runs'
+                                    });
+                                    $('input[value=\"Homopolymer >11bp\"]').parent().attr({
+                                      'data-toggle': 'tooltip',
+                                      'title': 'Long repetitive single-nucleotide runs (≥12 consecutive identical bases)'
+                                    });
+                                    $('input[value=\"Homopolymer ≥21bp\"]').parent().attr({
+                                      'data-toggle': 'tooltip',
+                                      'title': 'Very long repetitive single-nucleotide runs (≥21 consecutive identical bases)'
+                                    });
+                                    $('input[value=\"All TR & Homopolymers\"]').parent().attr({
+                                      'data-toggle': 'tooltip',
+                                      'title': 'All tandem repeats and homopolymer regions combined'
+                                    });
+                                    $('input[value=\"Non-TR & Non-Homopolymers\"]').parent().attr({
+                                      'data-toggle': 'tooltip',
+                                      'title': 'Regions excluding all tandem repeats and homopolymers'
+                                    });
+                                    $('[data-toggle=\"tooltip\"]').tooltip();
+                                  });
+                                "))
+                              )
+                            ),
+                            # GC Content Regions
                            div(
                              style = "margin-top: 15px;",
                              tags$a(
@@ -691,53 +715,129 @@ ui <- fluidPage(
                                           selected = character(0)
                                         )
                                  )
-                               )
-                             )
-                           ),
-                           
-                           # Complex Regions (Collapsible)
-                           div(
-                             style = "margin-top: 15px;",
-                             tags$a(
-                               href = "#other_collapse",
-                               `data-toggle` = "collapse",
-                               style = "text-decoration: none; color: #495057;",
-                               h6("▶ Complex Regions",
-                                  style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
-                             ),
-                             div(
-                               id = "other_collapse",
-                               class = "collapse",
-                               style = "margin-top: 6px;",
-                               checkboxGroupInput(
-                                 "complex_regions",
-                                 NULL,
-                                 choices = list(
-                                   "MHC Region" = "MHC Region",
-                                   "Segmental Duplications" = "Segmental Duplications",
-                                   "Low Mappability" = "Low Mappability"
-                                 ),
-                                 selected = character(0),
-                                 inline = TRUE
                                ),
-                               tags$script(HTML("
-                     $(document).ready(function(){
-                       $('input[value=\"MHC Region\"]').parent().attr({
-                         'data-toggle': 'tooltip',
-                         'title': 'Major Histocompatibility Complex - highly polymorphic immune system genes on chromosome 6'
-                       });
-                       $('input[value=\"Segmental Duplications\"]').parent().attr({
-                         'data-toggle': 'tooltip',
-                         'title': 'Large DNA segments (≥1kb) with ≥90% sequence identity found in ≥2 copies'
-                       });
-                       $('input[value=\"Low Mappability\"]').parent().attr({
-                         'data-toggle': 'tooltip',
-                         'title': 'Regions where short sequencing reads cannot be uniquely mapped due to repetitive content'
-                       });
-                     });
-                   "))
-                             )
-                           )
+                                checkboxGroupInput(
+                                  "gc_extreme",
+                                  NULL,
+                                  choices = list(
+                                    "GC <25% or >65%" = "GC <25 or >65",
+                                    "GC <30% or >55%" = "GC <30 or >55"
+                                  ),
+                                  selected = character(0),
+                                  inline = FALSE
+                                ),
+                                tags$script(HTML("
+                                  $(document).ready(function(){
+                                    $('input[value=\"GC <25 or >65\"]').parent().attr({
+                                      'data-toggle': 'tooltip',
+                                      'title': 'Extreme GC content regions: either very low (<25%) or very high (>65%)'
+                                    });
+                                    $('input[value=\"GC <30 or >55\"]').parent().attr({
+                                      'data-toggle': 'tooltip',
+                                      'title': 'Moderate-extreme GC content regions: either low (<30%) or high (>55%)'
+                                    });
+                                    $('[data-toggle=\"tooltip\"]').tooltip();
+                                  });
+                                "))
+                              )
+                             
+                           ),
+                            # Complex Regions 
+                            div(
+                              style = "margin-top: 15px;",
+                              tags$a(
+                                href = "#complex_collapse",
+                                `data-toggle` = "collapse",
+                                style = "text-decoration: none; color: #495057;",
+                                h6("▶ Complex Regions",
+                                  style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
+                              ),
+                              div(
+                                id = "complex_collapse",
+                                class = "collapse",
+                                style = "margin-top: 6px;",
+                                checkboxGroupInput(
+                                  "complex_regions",
+                                  NULL,
+                                  choices = list(
+                                    "Segmental Duplications" = "Segmental Duplications",
+                                    "Non-Segmental Duplications" = "Non-Segmental Duplications",
+                                    "Low Mappability" = "Low Mappability",
+                                    "Non-Low Mappability" = "Non-Low Mappability",
+                                    "MHC Region" = "MHC Region"
+                                  ),
+                                  selected = character(0),
+                                  inline = TRUE
+                                ),
+                                # TOOLTIPS
+                                tags$script(HTML("
+                                  $(document).ready(function(){
+                                    $('input[value=\"Segmental Duplications\"]').parent().attr({
+                                      'data-toggle': 'tooltip',
+                                      'title': 'Large blocks of duplicated DNA (≥1kb, >90% identity)'
+                                    });
+                                    $('input[value=\"Non-Segmental Duplications\"]').parent().attr({
+                                      'data-toggle': 'tooltip',
+                                      'title': 'Regions excluding segmental duplications'
+                                    });
+                                    $('input[value=\"Low Mappability\"]').parent().attr({
+                                      'data-toggle': 'tooltip',
+                                      'title': 'Difficult-to-sequence regions where reads map ambiguously'
+                                    });
+                                    $('input[value=\"Non-Low Mappability\"]').parent().attr({
+                                      'data-toggle': 'tooltip',
+                                      'title': 'Regions with good read mappability'
+                                    });
+                                    $('input[value=\"MHC Region\"]').parent().attr({
+                                      'data-toggle': 'tooltip',
+                                      'title': 'Major Histocompatibility Complex - highly polymorphic immune system genes'
+                                    });
+                                    $('[data-toggle=\"tooltip\"]').tooltip();
+                                  });
+                                "))
+                              )
+                            ),
+
+                           # Satellites Regions
+                            div(
+                              style = "margin-top: 15px;",
+                              tags$a(
+                                href = "#satellites_collapse",
+                                `data-toggle` = "collapse",
+                                style = "text-decoration: none; color: #495057;",
+                                h6("▶ Satellite Regions",
+                                  style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
+                              ),
+                              div(
+                                id = "satellites_collapse",
+                                class = "collapse",
+                                style = "margin-top: 6px;",
+                                checkboxGroupInput(
+                                  "satellites_regions",
+                                  NULL,
+                                  choices = list(
+                                    "Satellites" = "Satellites",
+                                    "Non-Satellites" = "Non-Satellites"
+                                  ),
+                                  selected = character(0),
+                                  inline = TRUE
+                                ),
+                                # TOOLTIPS
+                                tags$script(HTML("
+                                  $(document).ready(function(){
+                                    $('input[value=\"Satellites\"]').parent().attr({
+                                      'data-toggle': 'tooltip',
+                                      'title': 'Repetitive DNA sequences often found in centromeric and pericentromeric regions'
+                                    });
+                                    $('input[value=\"Non-Satellites\"]').parent().attr({
+                                      'data-toggle': 'tooltip',
+                                      'title': 'Regions excluding satellite DNA sequences'
+                                    });
+                                    $('[data-toggle=\"tooltip\"]').tooltip();
+                                  });
+                                "))
+                              )
+                            ),
                        )
                 )
               ),
@@ -779,7 +879,7 @@ ui <- fluidPage(
                        )
                 )
               ),
-              
+              create_experiment_details_panel_ui(),
               # Metric selection
               wellPanel(
                 style = "background-color: #f8f9fa; margin-bottom: 20px;",

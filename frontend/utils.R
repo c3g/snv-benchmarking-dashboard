@@ -27,11 +27,12 @@ caller_shapes <- c(
   "DEEPVARIANT" = 16,        # Circle 
   "GATK" = 17,               # Triangle
   "CLAIR3" = 15,             # Square 
+  "DRAGEN" = 18, 
   "Unknown" = 4              # X shape
 )
 
 # Shape symbols for HTML legend display
-shape_symbols <- c("16" = "●", "17" = "▲", "15" = "■", "4" = "✕")
+shape_symbols <- c("16" = "●", "17" = "▲", "15" = "■", "18" = "◆", "4" = "✕")
 
 # Technology-caller gradient combinations for stratified plots
 tech_caller_colors <- c(
@@ -39,6 +40,7 @@ tech_caller_colors <- c(
   "ILLUMINA-DEEPVARIANT" = "#F8766D",
   "ILLUMINA-GATK" = "#E55A5A",
   "ILLUMINA-CLAIR3" = "#FF9999",
+  "ILLUMINA-DRAGEN" = "#CC3333", 
   
   # PACBIO family (Purple variations)
   "PACBIO-DEEPVARIANT" = "#C77CFF",

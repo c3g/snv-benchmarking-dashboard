@@ -18,6 +18,7 @@ Main sections:
    - Validation and filename preview
 
 3. delete_modal_ui() - List of datasets to select in order to remove from the database
+4. Stratified experiment details panel
 "
 # ============================================================================
 # UI OUTPUT SETUP FUNCTION
@@ -325,15 +326,124 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
     n_experiments <- length(unique(data$experiment_id))
     n_regions <- length(unique(data$subset))
     n_results <- nrow(data)
-    
-    HTML(paste0(
-      "<strong>Analysis Summary:</strong> ",
-      n_experiments, " experiments × ",
-      n_regions, " regions = ",
-      n_results, " total results"
-    ))
-  })
-  
+      
+      HTML(paste0(
+        "<strong>Analysis Summary:</strong> ",
+        n_experiments, " experiments × ",
+        n_regions, " regions = ",
+        n_results, " total results"
+      ))
+    })
+    output$experiment_info_list <- renderUI({
+      data <- data_reactives$stratified_filtered_data()
+      
+      if (nrow(data) == 0) {
+        return(p("No experiments selected", style = "color: #6c757d;"))
+      }
+      
+      experiment_ids <- unique(data$experiment_id)
+      metadata <- db$get_experiment_metadata(toJSON(experiment_ids))
+      
+      if (nrow(metadata) == 0) return(NULL)
+      
+      exp_colors <- setNames(
+        colorRampPalette(c("#e74c3c", "#3498db", "#2ecc71", "#f39c12", 
+                          "#9b59b6", "#1abc9c"))(length(experiment_ids)),
+        experiment_ids
+      )
+      
+      # Header row
+      header <- div(
+        style = "padding: 6px 10px; margin-bottom: 8px; 
+                background: #e9ecef; border-radius: 4px;
+                display: flex; align-items: center; gap: 10px;
+                font-size: 11px; font-weight: 600; color: #495057;",
+        
+        div(style = "width: 50px;", "ID"),
+        span("│", style = "color: #adb5bd;"),
+        div(style = "width: 75px;", "Technology"),
+        span("│", style = "color: #adb5bd;"),
+        div(style = "width: 85px;", "Platform"),
+        span("│", style = "color: #adb5bd;"),
+        div(style = "width: 90px;", "Caller"),
+        span("│", style = "color: #adb5bd;"),
+        div(style = "width: 120px;", "Version"),
+        span("│", style = "color: #adb5bd;"),
+        div(style = "width: 70px;", "Chemistry"),
+        span("│", style = "color: #adb5bd;"),
+        div(style = "width: 60px;", "Coverage"),
+        span("│", style = "color: #adb5bd;"),
+        div(style = "width: 90px;", "Truth Set")
+      )
+      
+      # Data rows
+      rows <- lapply(1:nrow(metadata), function(i) {
+        exp <- metadata[i, ]
+        exp_color <- exp_colors[as.character(exp$id)]
+        
+        div(
+          style = paste0("padding: 6px 10px; margin-bottom: 3px; 
+                  background: linear-gradient(90deg, #fafbfc 0%, #ffffff 100%);
+                  border-left: 3px solid ", exp_color, "; border-radius: 4px;
+                  display: flex; align-items: center; gap: 10px;
+                  font-size: 11px;"),
+          
+          # ID with color dot
+          div(
+            style = "width: 50px; display: flex; align-items: center; gap: 5px;",
+            span(style = paste0("width: 7px; height: 7px; border-radius: 50%; 
+                                background: ", exp_color, "; flex-shrink: 0;")),
+            strong(paste0("ID:", exp$id), style = "color: #2c3e50;")
+          ),
+          
+          span("│", style = "color: #dee2e6;"),
+          
+          # Technology
+          div(style = "width: 75px; color: #495057;",
+              exp$technology %||% "N/A"),
+          
+          span("│", style = "color: #dee2e6;"),
+          
+          # Platform
+          div(style = "width: 85px; color: #495057;",
+              exp$platform_name %||% "N/A"),
+          
+          span("│", style = "color: #dee2e6;"),
+          
+          # Caller
+          div(style = "width: 90px; color: #495057;",
+              exp$caller %||% "N/A"),
+          
+          span("│", style = "color: #dee2e6;"),
+          
+          # Version
+          div(style = "width: 120px; color: #495057;",
+              exp$caller_version %||% "N/A"),
+          
+          span("│", style = "color: #dee2e6;"),
+          
+          # Chemistry
+          div(style = "width: 70px; color: #495057;",
+              exp$chemistry_name %||% "N/A"),
+          
+          span("│", style = "color: #dee2e6;"),
+          
+          # Coverage
+          div(style = "width: 60px; color: #495057; font-weight: 500;",
+              ifelse(is.na(exp$mean_coverage), "N/A", 
+                    paste0(round(exp$mean_coverage, 1), "x"))),
+          
+          span("│", style = "color: #dee2e6;"),
+          
+          # Truth set
+          div(style = "width: 90px; color: #495057;",
+              paste0(exp$truth_set_name %||% "N/A", " ", 
+                    exp$truth_set_version %||% ""))
+        )
+      })
+      
+      return(div(header, rows))
+    })
   # ====================================================================
   # UPLOAD FILENAME PREVIEW
   # ====================================================================
@@ -649,5 +759,52 @@ delete_modal_ui <- function() {
     
     # Status display
     div(id = "delete_status", style = "margin-top: 15px;")
+  )
+}
+# ============================================================================
+# STRATIFIED EXPERIMENT DETAILS PANEL
+# ============================================================================
+create_experiment_details_panel_ui <- function() {
+  div(
+    style = "margin-bottom: 20px;",
+    
+    # Header
+    div(
+      onclick = "toggleExpList()",
+      style = "background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; 
+               padding: 10px 16px; cursor: pointer; display: flex; 
+               justify-content: space-between; align-items: center;",
+      
+      div(
+        span(id = "exp_list_arrow", "▶", style = "font-size: 11px; margin-right: 8px;"),
+        strong("Show Experiment Information "),
+        textOutput("stratified_experiment_count", inline = TRUE)
+      ),
+      
+      span("Click to expand", style = "font-size: 12px; color: #6c757d; font-style: italic;")
+    ),
+    
+    # List container
+    div(
+      id = "experiment_list_container",
+      style = "display: none; margin-top: 8px; padding: 12px; 
+               background: white; border: 1px solid #dee2e6; border-radius: 6px;",
+      uiOutput("experiment_info_list")
+    ),
+    
+    tags$script(HTML("
+      function toggleExpList() {
+        var container = document.getElementById('experiment_list_container');
+        var arrow = document.getElementById('exp_list_arrow');
+        
+        if (container.style.display === 'none') {
+          container.style.display = 'block';
+          arrow.innerHTML = '▼';
+        } else {
+          container.style.display = 'none';
+          arrow.innerHTML = '▶';
+        }
+      }
+    "))
   )
 }
