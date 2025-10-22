@@ -16,6 +16,7 @@ from datetime import datetime
 from config import METADATA_CSV_PATH, DATA_FOLDER
 from database import drop_all_data
 from populate_metadata import populate_database_from_csv
+from authorization import require_admin
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +38,20 @@ def save_metadata():
        shutil.copy2(METADATA_CSV_PATH, archived_path)
        logger.info(f"Metadata archived to: {archived_name}")
 
-def delete_experiment(experiment_id):
-   """Delete experiment by removing from CSV and rebuilding database"""
+
+#---- MAIN DELETE FUNCTION ----#
+@require_admin
+def delete_experiment(experiment_id,username=None):
+   
+   """
+   Delete experiment - ADMIN ONLY
+   Args:
+       experiment_id (str): ID of the experiment to delete
+       username: Username for authorization (required)
+   Returns:
+       dict: Deletion result with success status and message"""
    try:
+       logger.info(f"Deletion requested by {username} for experiment {experiment_id}")
        logger.info(f"Starting deletion of experiment {experiment_id}")
        
        # 1. Create backup
