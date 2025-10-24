@@ -13,7 +13,7 @@ Main sections:
    - Stratified analysis summaries
 
 2. upload_modal_ui() - Complete form for adding new experiments
-   - Multi-step upload process (file → metadata → submit)
+   - Multi-step upload process
    - Organized metadata sections (technology, caller, truth set, etc.)
    - Validation and filename preview
 
@@ -319,8 +319,8 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
   # STRATIFIED ANALYSIS OUTPUTS (TAB 4)
   # ====================================================================
 
-  # Stratified analysis summary
-  output$stratified_summary <- renderUI({
+  # Stratified analysis summary - not used for now 
+  'output$stratified_summary <- renderUI({
     data <- data_reactives$stratified_filtered_data()
     if (nrow(data) == 0) return(NULL)
     
@@ -330,12 +330,24 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       
       HTML(paste0(
         "<strong>Analysis Summary:</strong> ",
-        n_experiments, " experiments × ",
+        n_experiments, " experiments x",
         n_regions, " regions = ",
         n_results, " total results"
       ))
-    })
+    })'
 
+  # Experiment count for stratified analysis
+  output$stratified_experiment_count <- renderText({
+    data <- data_reactives$stratified_filtered_data()
+    
+    if (nrow(data) == 0) {
+      return("")
+    }
+    
+    n_experiments <- length(unique(data$experiment_id))
+    paste0("(", n_experiments, " experiment", ifelse(n_experiments != 1, "s", ""), ")")
+  })
+  
   # Experiment info list with technology-based colors
   output$experiment_info_list <- renderUI({
     data <- data_reactives$stratified_filtered_data()
@@ -458,6 +470,11 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
         style = "color: #dc3545; font-size: 12px;")
     })
   })
+  
+  # Prevent suspension when container is hidden
+  outputOptions(output, "experiment_info_list", suspendWhenHidden = FALSE)
+  outputOptions(output, "stratified_experiment_count", suspendWhenHidden = FALSE)
+  
   # ====================================================================
   # UPLOAD FILENAME PREVIEW
   # ====================================================================
