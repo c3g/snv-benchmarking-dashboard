@@ -565,317 +565,320 @@ ui <- fluidPage(
               fluidRow(
                 column(12,
                        div(style = "background: white; border: 1px solid #dee2e6; border-radius: 5px; padding: 20px;",
-                           
-                           # Main Regions
-                           div(
-                             h6("Main Regions", 
-                                style = "margin-bottom: 10px; color: #495057; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
-                             checkboxGroupInput(
-                               "core_regions",
-                               NULL,
-                               choices = list(
-                                 "Overall" = "All Regions",
-                                 "Easy Regions" = "Easy Regions", 
-                                 "Difficult Regions" = "Difficult Regions"
-                               ),
-                               selected = c("All Regions"),
-                               inline = TRUE
-                             ),
-                             tags$script(HTML("
-                   $(document).ready(function(){
-                     $('input[value=\"Easy Regions\"]').parent().attr({
-                       'data-toggle': 'tooltip',
-                       'title': 'High-confidence regions with unique sequences and good mappability'
-                     });
-                     $('input[value=\"Difficult Regions\"]').parent().attr({
-                       'data-toggle': 'tooltip', 
-                       'title': 'Challenging regions with repetitive sequences, low complexity, or structural variations'
-                     });
-                   });
-                 "))
-                           ),
-                           
-                           # Functional Regions (Collapsible)
-                           div(
-                             style = "margin-top: 15px;",
-                             tags$a(
-                               href = "#functional_collapse",
-                               `data-toggle` = "collapse",
-                               style = "text-decoration: none; color: #495057;",
-                               h6("▶ Functional Regions",
-                                  style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
-                             ),
-                             div(
-                               id = "functional_collapse",
-                               class = "collapse",
-                               style = "margin-top: 6px;",
-                               checkboxGroupInput(
-                                 "functional_regions",
-                                 NULL,
-                                 choices = list(
-                                   "RefSeq CDS" = "RefSeq CDS",
-                                   "Non-CDS Regions" = "Non-CDS Regions"
-                                 ),
-                                 selected = character(0),
-                                 inline = TRUE
-                               ),
-                               tags$script(HTML("
-                     $(document).ready(function(){
-                       $('input[value=\"RefSeq CDS\"]').parent().attr({
-                         'data-toggle': 'tooltip',
-                         'title': 'Protein-coding DNA sequences from NCBI Reference Sequence database'
-                       });
-                       $('input[value=\"Non-CDS Regions\"]').parent().attr({
-                         'data-toggle': 'tooltip',
-                         'title': 'Non-coding genomic regions including introns, intergenic, and regulatory sequences'
-                       });
-                     });
-                   "))
-                             )
-                           ),
-                           
-                           # Homopolymer Regions
-                         
-                            div(
-                              style = "margin-top: 15px;",
-                              tags$a(
-                                href = "#homopolymer_collapse",
-                                `data-toggle` = "collapse",
-                                style = "text-decoration: none; color: #495057;",
-                                h6("▶ Homopolymer Regions",
-                                  style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
-                              ),
-                              div(
-                                id = "homopolymer_collapse",
-                                class = "collapse",
-                                style = "margin-top: 6px;",
-                                checkboxGroupInput(
-                                  "homopolymer_regions",
-                                  NULL,
-                                  choices = list(
-                                    "Homopolymer 4-6bp" = "Homopolymer 4-6bp",
-                                    "Homopolymer 7-11bp" = "Homopolymer 7-11bp",
-                                    "Homopolymer >12bp" = "Homopolymer >12bp",
-                                    "Homopolymer ≥21bp" = "Homopolymer ≥21bp",
-                                    "All Tandem Repeat & Homopolymers" = "All TR & Homopolymers",
-                                    "Non-Tandem Repeat & Non-Homopolymers" = "Non-TR & Non-Homopolymers"
-                                  ),
-                                  selected = character(0),
-                                  inline = TRUE
-                                ),
-                                # TOOLTIPS 
-                                tags$script(HTML("
-                                  $(document).ready(function(){
-                                    $('input[value=\"Homopolymer 4-6bp\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Short repetitive single-nucleotide runs (e.g., AAAA, TTTTT)'
-                                    });
-                                    $('input[value=\"Homopolymer 7-11bp\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Medium-length repetitive single-nucleotide runs'
-                                    });
-                                    $('input[value=\"Homopolymer >11bp\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Long repetitive single-nucleotide runs (≥12 consecutive identical bases)'
-                                    });
-                                    $('input[value=\"Homopolymer ≥21bp\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Very long repetitive single-nucleotide runs (≥21 consecutive identical bases)'
-                                    });
-                                    $('input[value=\"All TR & Homopolymers\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'All tandem repeats and homopolymer regions combined'
-                                    });
-                                    $('input[value=\"Non-TR & Non-Homopolymers\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Regions excluding all tandem repeats and homopolymers'
-                                    });
-                                    $('[data-toggle=\"tooltip\"]').tooltip();
-                                  });
-                                "))
-                              )
-                            ),
-                            # GC Content Regions
-                           div(
-                             style = "margin-top: 15px;",
-                             tags$a(
-                               href = "#gc_collapse",
-                               `data-toggle` = "collapse",
-                               style = "text-decoration: none; color: #495057;",
-                               h6("▶ GC Content Regions",
-                                  style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
-                             ),
-                             div(
-                               id = "gc_collapse",
-                               class = "collapse",
-                               style = "margin-top: 10px;",
-                               fluidRow(
-                                 column(4,
-                                        h6("Low GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
-                                        checkboxGroupInput(
-                                          "gc_low",
-                                          NULL,
-                                          choices = list(
-                                            "Very Low (<15%)" = "GC_<15",
-                                            "GC 15-20%" = "GC_15_20",
-                                            "GC 20-25%" = "GC_20_25",
-                                            "GC 25-30%" = "GC_25_30"
-                                          ),
-                                          selected = character(0)
-                                        )
-                                 ),
-                                 column(4,
-                                        h6("Normal GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
-                                        checkboxGroupInput(
-                                          "gc_normal",
-                                          NULL,
-                                          choices = list(
-                                            "GC 30-55%" = "GC_30_55",
-                                            "GC 55-60%" = "GC_55_60", 
-                                            "GC 60-65%" = "GC_60_65",
-                                            "GC 65-70%" = "GC_65_70"
-                                          ),
-                                          selected = character(0)
-                                        )
-                                 ),
-                                 column(4,
-                                        h6("High GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
-                                        checkboxGroupInput(
-                                          "gc_high",
-                                          NULL,
-                                          choices = list(
-                                            "GC 70-75%" = "GC_70_75",
-                                            "GC 75-80%" = "GC_75_80",
-                                            "GC 80-85%" = "GC_80_85",
-                                            "Very High (>85%)" = "GC_>85"
-                                          ),
-                                          selected = character(0)
-                                        )
-                                 )
-                               ),
-                                checkboxGroupInput(
-                                  "gc_extreme",
-                                  NULL,
-                                  choices = list(
-                                    "GC <25% or >65%" = "GC <25 or >65",
-                                    "GC <30% or >55%" = "GC <30 or >55"
-                                  ),
-                                  selected = character(0),
-                                  inline = FALSE
-                                ),
-                                tags$script(HTML("
-                                  $(document).ready(function(){
-                                    $('input[value=\"GC <25 or >65\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Extreme GC content regions: either very low (<25%) or very high (>65%)'
-                                    });
-                                    $('input[value=\"GC <30 or >55\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Moderate-extreme GC content regions: either low (<30%) or high (>55%)'
-                                    });
-                                    $('[data-toggle=\"tooltip\"]').tooltip();
-                                  });
-                                "))
-                              )
-                             
-                           ),
-                            # Complex Regions 
-                            div(
-                              style = "margin-top: 15px;",
-                              tags$a(
-                                href = "#complex_collapse",
-                                `data-toggle` = "collapse",
-                                style = "text-decoration: none; color: #495057;",
-                                h6("▶ Complex Regions",
-                                  style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
-                              ),
-                              div(
-                                id = "complex_collapse",
-                                class = "collapse",
-                                style = "margin-top: 6px;",
-                                checkboxGroupInput(
-                                  "complex_regions",
-                                  NULL,
-                                  choices = list(
-                                    "Segmental Duplications" = "Segmental Duplications",
-                                    "Non-Segmental Duplications" = "Non-Segmental Duplications",
-                                    "Low Mappability" = "Low Mappability",
-                                    "Non-Low Mappability" = "Non-Low Mappability",
-                                    "MHC Region" = "MHC Region"
-                                  ),
-                                  selected = character(0),
-                                  inline = TRUE
-                                ),
-                                # TOOLTIPS
-                                tags$script(HTML("
-                                  $(document).ready(function(){
-                                    $('input[value=\"Segmental Duplications\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Large blocks of duplicated DNA (≥1kb, >90% identity)'
-                                    });
-                                    $('input[value=\"Non-Segmental Duplications\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Regions excluding segmental duplications'
-                                    });
-                                    $('input[value=\"Low Mappability\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Difficult-to-sequence regions where reads map ambiguously'
-                                    });
-                                    $('input[value=\"Non-Low Mappability\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Regions with good read mappability'
-                                    });
-                                    $('input[value=\"MHC Region\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Major Histocompatibility Complex - highly polymorphic immune system genes'
-                                    });
-                                    $('[data-toggle=\"tooltip\"]').tooltip();
-                                  });
-                                "))
-                              )
-                            ),
 
-                           # Satellites Regions
-                            div(
-                              style = "margin-top: 15px;",
-                              tags$a(
-                                href = "#satellites_collapse",
-                                `data-toggle` = "collapse",
-                                style = "text-decoration: none; color: #495057;",
-                                h6("▶ Satellite Regions",
-                                  style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
+                        # Primary Stratifications
+                        div(
+                          h6("Primary Stratifications", 
+                            style = "margin-bottom: 10px; color: #495057; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
+                          checkboxGroupInput(
+                            "core_regions",
+                            NULL,
+                            choices = list(
+                              "Overall" = "All Regions",
+                              "Easy Regions" = "Easy Regions", 
+                              "Difficult Regions" = "Difficult Regions"
+                            ),
+                            selected = c("All Regions"),
+                            inline = TRUE
+                          ),
+                          tags$script(HTML("
+                $(document).ready(function(){
+                  $('input[value=\"Easy Regions\"]').parent().attr({
+                    'data-toggle': 'tooltip',
+                    'title': 'High-confidence regions with unique sequences and good mappability'
+                  });
+                  $('input[value=\"Difficult Regions\"]').parent().attr({
+                    'data-toggle': 'tooltip', 
+                    'title': 'Challenging regions with repetitive sequences, low complexity, or structural variations'
+                  });
+                });
+              "))
+                        ),
+                        
+                        # Functional regions
+                        div(
+                          style = "margin-top: 15px;",
+                          tags$a(
+                            href = "#functional_collapse",
+                            `data-toggle` = "collapse",
+                            style = "text-decoration: none; color: #495057;",
+                            h6("▶ Functional Regions",
+                              style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
+                          ),
+                          div(
+                            id = "functional_collapse",
+                            class = "collapse",
+                            style = "margin-top: 6px;",
+                            checkboxGroupInput(
+                              "functional_regions",
+                              NULL,
+                              choices = list(
+                                "RefSeq CDS" = "RefSeq CDS",
+                                "Non-CDS Regions" = "Non-CDS Regions"
                               ),
-                              div(
-                                id = "satellites_collapse",
-                                class = "collapse",
-                                style = "margin-top: 6px;",
-                                checkboxGroupInput(
-                                  "satellites_regions",
-                                  NULL,
-                                  choices = list(
-                                    "Satellites" = "Satellites",
-                                    "Non-Satellites" = "Non-Satellites"
-                                  ),
-                                  selected = character(0),
-                                  inline = TRUE
+                              selected = character(0),
+                              inline = TRUE
+                            ),
+                            tags$script(HTML("
+                            $(document).ready(function(){
+                              $('input[value=\"RefSeq CDS\"]').parent().attr({
+                                'data-toggle': 'tooltip',
+                                'title': 'Protein-coding DNA sequences from NCBI Reference Sequence database'
+                              });
+                              $('input[value=\"Non-CDS Regions\"]').parent().attr({
+                                'data-toggle': 'tooltip',
+                                'title': 'Non-coding genomic regions including introns, intergenic, and regulatory sequences'
+                              });
+                            });
+                          "))
+                          )
+                        ),
+                        
+                        # Repetitive DNA Regions
+                        div(
+                          style = "margin-top: 15px;",
+                          tags$a(
+                            href = "#repetitive_collapse",
+                            `data-toggle` = "collapse",
+                            style = "text-decoration: none; color: #495057;",
+                            h6("▶ Repetitive DNA Regions",
+                              style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
+                          ),
+                          div(
+                            id = "repetitive_collapse",
+                            class = "collapse",
+                            style = "margin-top: 6px;",
+                            
+                            # Simple Repeats subsection
+                            div(
+                              style = "margin-bottom: 10px;",
+                              h6("Simple Repeats:", style = "font-size: 13px; color: #6c757d; margin-bottom: 5px; font-weight: 600;"),
+                              checkboxGroupInput(
+                                "homopolymer_regions",
+                                NULL,
+                                choices = list(
+                                  "Homopolymer 4-6bp" = "Homopolymer 4-6bp",
+                                  "Homopolymer 7-11bp" = "Homopolymer 7-11bp",
+                                  "Homopolymer >12bp" = "Homopolymer >12bp",
+                                  "Homopolymer ≥21bp" = "Homopolymer ≥21bp"
                                 ),
-                                # TOOLTIPS
-                                tags$script(HTML("
-                                  $(document).ready(function(){
-                                    $('input[value=\"Satellites\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Repetitive DNA sequences often found in centromeric and pericentromeric regions'
-                                    });
-                                    $('input[value=\"Non-Satellites\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Regions excluding satellite DNA sequences'
-                                    });
-                                    $('[data-toggle=\"tooltip\"]').tooltip();
-                                  });
-                                "))
+                                selected = character(0),
+                                inline = TRUE
                               )
                             ),
-                       )
+                            
+                            # Tandem Repeats subsection
+                            div(
+                              style = "margin-bottom: 10px;",
+                              h6("Tandem Repeats:", style = "font-size: 13px; color: #6c757d; margin-bottom: 5px; font-weight: 600;"),
+                              checkboxGroupInput(
+                                "satellites_regions",
+                                NULL,
+                                choices = list(
+                                  "Satellites" = "Satellites",
+                                  "All Tandem Repeat & Homopolymers" = "All TR & Homopolymers"
+                                ),
+                                selected = character(0),
+                                inline = TRUE
+                              )
+                            ),
+                            
+                            # Non-Repetitive subsection
+                            div(
+                              h6("Non-Repetitive:", style = "font-size: 13px; color: #6c757d; margin-bottom: 5px; font-weight: 600;"),
+                              checkboxGroupInput(
+                                "non_repetitive_regions",
+                                NULL,
+                                choices = list(
+                                  "Non-Satellites" = "Non-Satellites",
+                                  "Non-Tandem Repeat & Non-Homopolymers" = "Non-TR & Non-Homopolymers"
+                                ),
+                                selected = character(0),
+                                inline = TRUE
+                              )
+                            ),
+                            
+                            # Tooltips for repetitive regions
+                            tags$script(HTML("
+                              $(document).ready(function(){
+                                $('input[value=\"Homopolymer 4-6bp\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Short repetitive single-nucleotide runs (4-6 consecutive identical bases)'
+                                });
+                                $('input[value=\"Homopolymer 7-11bp\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Medium-length repetitive single-nucleotide runs (7-11 consecutive identical bases)'
+                                });
+                                $('input[value=\"Homopolymer >12bp\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Long repetitive single-nucleotide runs (>12 consecutive identical bases)'
+                                });
+                                $('input[value=\"Homopolymer ≥21bp\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Very long repetitive single-nucleotide runs (≥21 consecutive identical bases)'
+                                });
+                                $('input[value=\"Satellites\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Short tandem repeats often found in centromeric and pericentromeric regions'
+                                });
+                                $('input[value=\"All TR & Homopolymers\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'All tandem repeats and homopolymer regions combined'
+                                });
+                                $('input[value=\"Non-Satellites\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Regions excluding satellite DNA sequences'
+                                });
+                                $('input[value=\"Non-TR & Non-Homopolymers\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Regions excluding all tandem repeats and homopolymers'
+                                });
+                                $('[data-toggle=\"tooltip\"]').tooltip();
+                              });
+                            "))
+                          )
+                        ),
+                        
+                        # Structural Complexity
+                        div(
+                          style = "margin-top: 15px;",
+                          tags$a(
+                            href = "#complex_collapse",
+                            `data-toggle` = "collapse",
+                            style = "text-decoration: none; color: #495057;",
+                            h6("▶ Structural Complexity",
+                              style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
+                          ),
+                          div(
+                            id = "complex_collapse",
+                            class = "collapse",
+                            style = "margin-top: 6px;",
+                            checkboxGroupInput(
+                              "complex_regions",
+                              NULL,
+                              choices = list(
+                                "Segmental Duplications" = "Segmental Duplications",
+                                "Non-Segmental Duplications" = "Non-Segmental Duplications",
+                                "Low Mappability" = "Low Mappability",
+                                "Non-Low Mappability" = "Non-Low Mappability",
+                                "MHC Region" = "MHC Region"
+                              ),
+                              selected = character(0),
+                              inline = TRUE
+                            ),
+                            tags$script(HTML("
+                              $(document).ready(function(){
+                                $('input[value=\"Segmental Duplications\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Large blocks of duplicated DNA (≥1kb, >90% identity)'
+                                });
+                                $('input[value=\"Non-Segmental Duplications\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Regions excluding segmental duplications'
+                                });
+                                $('input[value=\"Low Mappability\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Difficult-to-sequence regions where reads map ambiguously'
+                                });
+                                $('input[value=\"Non-Low Mappability\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Regions with good read mappability'
+                                });
+                                $('input[value=\"MHC Region\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Major Histocompatibility Complex - highly polymorphic immune system genes'
+                                });
+                                $('[data-toggle=\"tooltip\"]').tooltip();
+                              });
+                            "))
+                          )
+                        ),
+                        
+                        # GC Composition
+                        div(
+                          style = "margin-top: 15px;",
+                          tags$a(
+                            href = "#gc_collapse",
+                            `data-toggle` = "collapse",
+                            style = "text-decoration: none; color: #495057;",
+                            h6("▶ GC Composition",
+                              style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
+                          ),
+                          div(
+                            id = "gc_collapse",
+                            class = "collapse",
+                            style = "margin-top: 10px;",
+                            fluidRow(
+                              column(4,
+                                    h6("Low GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
+                                    checkboxGroupInput(
+                                      "gc_low",
+                                      NULL,
+                                      choices = list(
+                                        "Very Low (<15%)" = "GC_<15",
+                                        "GC 15-20%" = "GC_15_20",
+                                        "GC 20-25%" = "GC_20_25",
+                                        "GC 25-30%" = "GC_25_30"
+                                      ),
+                                      selected = character(0)
+                                    )
+                              ),
+                              column(4,
+                                    h6("Normal GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
+                                    checkboxGroupInput(
+                                      "gc_normal",
+                                      NULL,
+                                      choices = list(
+                                        "GC 30-55%" = "GC_30_55",
+                                        "GC 55-60%" = "GC_55_60", 
+                                        "GC 60-65%" = "GC_60_65",
+                                        "GC 65-70%" = "GC_65_70"
+                                      ),
+                                      selected = character(0)
+                                    )
+                              ),
+                              column(4,
+                                    h6("High GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
+                                    checkboxGroupInput(
+                                      "gc_high",
+                                      NULL,
+                                      choices = list(
+                                        "GC 70-75%" = "GC_70_75",
+                                        "GC 75-80%" = "GC_75_80",
+                                        "GC 80-85%" = "GC_80_85",
+                                        "Very High (>85%)" = "GC_>85"
+                                      ),
+                                      selected = character(0)
+                                    )
+                              )
+                            ),
+                            h6("Extreme GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
+                            checkboxGroupInput(
+                              "gc_extreme",
+                              NULL,
+                              choices = list(
+                                "GC <25% or >65%" = "GC <25 or >65",
+                                "GC <30% or >55%" = "GC <30 or >55"
+                              ),
+                              selected = character(0),
+                              inline = FALSE
+                            ),
+                            tags$script(HTML("
+                              $(document).ready(function(){
+                                $('input[value=\"GC <25 or >65\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Extreme GC content regions: either very low (<25%) or very high (>65%)'
+                                });
+                                $('input[value=\"GC <30 or >55\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Moderate-extreme GC content regions: either low (<30%) or high (>55%)'
+                                });
+                                $('[data-toggle=\"tooltip\"]').tooltip();
+                              });
+                            "))
+                          )
+                        ),
+                    )
                 )
               ),
               
@@ -916,7 +919,7 @@ ui <- fluidPage(
                        )
                 )
               ),
-              create_experiment_details_panel_ui(),
+        
               # Metric selection
               wellPanel(
                 style = "background-color: #f8f9fa; margin-bottom: 20px;",
@@ -968,7 +971,7 @@ ui <- fluidPage(
                   )
                 )
               ),
-              
+              create_experiment_details_panel_ui(),
               # Results tabs
               tabsetPanel(
                 tabPanel("📊 Performance Plots",

@@ -282,6 +282,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     updateCheckboxGroupInput(session, "gc_extreme", selected = character(0))
     updateCheckboxGroupInput(session, "complex_regions", selected = character(0))
     updateCheckboxGroupInput(session, "satellites_regions", selected = character(0))
+    updateCheckboxGroupInput(session, "non_repetitive_regions", selected = character(0))
     
     
     showNotification("All selections cleared!", type = "message", duration = 2)
@@ -401,7 +402,7 @@ setup_observers <- function(input, output, session, data_reactives) {
       } else if (file_info$size > 100 * 1024 * 1024) {  # 100MB limit
         output$file_status <- renderUI({
           div(class = "alert alert-warning", style = "padding: 8px; margin: 5px 0;",
-              "⚠️ Large file detected. Upload may take some time.")
+              "âš ï¸ Large file detected. Upload may take some time.")
         })
       } else {
         output$file_status <- renderUI({
@@ -445,7 +446,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     
     # Show loading notification
     loading_id <- showNotification(
-      "🔄 Processing upload... Please wait", 
+      "ðŸ”„ Processing upload... Please wait", 
       type = "message", 
       duration = NULL,
       closeButton = FALSE

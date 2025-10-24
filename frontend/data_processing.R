@@ -262,7 +262,8 @@ setup_data_reactives <- function(input, output, session) {
       input$gc_high,
       input$gc_extreme,
       input$complex_regions,
-      input$satellites_regions
+      input$satellites_regions,
+      input$non_repetitive_regions
     )
     
     all_selected_regions <- unique(all_selected_regions[all_selected_regions != ""])
