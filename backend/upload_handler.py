@@ -319,7 +319,7 @@ def process_upload(temp_file_path, metadata_json_string):
                 'truth_set_reference', 'variant_type', 'variant_size', 'variant_origin',
                 'is_phased', 'benchmark_tool_name', 'benchmark_tool_version',
                 'mean_coverage', 'read_length', 'mean_insert_size', 'mean_read_length',
-                'file_name', 'file_path', 'upload_date'
+                'file_name', 'file_path', 'created_at'
             ])
         
         # Add new entry
