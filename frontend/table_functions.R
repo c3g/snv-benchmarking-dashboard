@@ -140,7 +140,7 @@ create_metric_table <- function(stratified_data, variant_filter, selected_metric
   # Create the data table with highlighting
   dt <- DT::datatable(display_data,
                       options = list(
-                        pageLength = 10,
+                        pageLength = 20,
                         scrollX = TRUE,
                         dom = 'frtip',
                         columnDefs = list(
@@ -184,7 +184,7 @@ create_delete_experiments_table <- function(data) {
     delete_data,
     selection = list(mode = 'multiple'),
     options = list(
-      pageLength = 10,
+      pageLength = 20,
       scrollX = TRUE,
       dom = 'frtip',
       columnDefs = list(
@@ -247,6 +247,7 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
       escape = FALSE,
       extensions = c('Responsive'),
       options = list(
+        pageLength = 20,
         responsive = TRUE,
         scrollX = TRUE,
         autoWidth = FALSE,
@@ -291,7 +292,7 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
       df,
       selection = 'none',
       options = list(
-        pageLength = 15,
+        pageLength = 20,
         scrollX = TRUE,
         columnDefs = list(
           list(targets = 0, className = "dt-center", width = "50px"),     # ID column
