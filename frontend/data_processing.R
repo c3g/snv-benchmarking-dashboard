@@ -136,7 +136,6 @@ setup_data_reactives <- function(input, output, session) {
     
     # If "All Truth Sets" selected, return all IDs
     if (is.null(truth_set_filter) || truth_set_filter == "All Truth Sets") {
-      cat("Returning all experiments (no filter)\n")
       return(ids)
     }
     

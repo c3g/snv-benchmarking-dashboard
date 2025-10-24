@@ -446,7 +446,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     
     # Show loading notification
     loading_id <- showNotification(
-      "Processing upload... Please wait", 
+      " Processing upload... Please wait", 
       type = "message", 
       duration = NULL,
       closeButton = FALSE
