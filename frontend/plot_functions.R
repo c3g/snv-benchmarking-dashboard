@@ -250,6 +250,7 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
                  height = 500,
                  autosize = TRUE
           ) %>%    
+          config(responsive = TRUE) %>%
           event_register("plotly_click")
       })
       
@@ -350,6 +351,7 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
                  height = 500,
                  autosize = TRUE
           ) %>%    
+          config(responsive = TRUE) %>%
           event_register("plotly_click")
       })
       
