@@ -261,13 +261,13 @@ ui <- fluidPage(
               style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px;"
             ),
             
-            # Delete button
-            actionButton(
-              "show_delete_modal", 
-              label = tagList(icon("trash"), "Delete Datasets"),
-              class = "btn-danger btn-sm",
-              style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px;"
-            ),
+            # Delete button - comme3nted out for now 
+            #actionButton(
+             # "show_delete_modal", 
+             # label = tagList(icon("trash"), "Delete Datasets"),
+             # class = "btn-danger btn-sm",
+            #  style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px;"
+            #),
             
             # Download button
             downloadButton(
