@@ -588,7 +588,7 @@ upload_modal_ui <- function() {
                textInput("platform_name", "Platform*")
         ),
         column(3,
-               selectInput("platform_type", "Platform Type",
+               selectInput("platform_type", "Platform Type*",
                            choices = c("","SRS" = "srs", "LRS" = "lrs"))
         ),
         column(3,
@@ -614,10 +614,10 @@ upload_modal_ui <- function() {
       fluidRow(
         column(3,
                selectInput("caller_name", "Caller*",
-                           choices = c("", "DEEPVARIANT", "GATK", "CLAIR3"))
+                           choices = c("", "DEEPVARIANT", "GATK", "CLAIR3", "DRAGEN"))
         ),
         column(3,
-               selectInput("caller_type", "Caller Type",
+               selectInput("caller_type", "Caller Type*",
                            choices = c("","ML" = "ml", "Traditional" = "traditional"))
         ),
         column(3,
@@ -648,8 +648,7 @@ upload_modal_ui <- function() {
       fluidRow(
         column(3,
                selectInput("truth_set_name", "Truth Set",
-                           choices = c("GIAB" = "giab", "CMRG" = "cmrg", "T2T" = "t2t"),
-                           selected = "giab")
+                           choices = c("GIAB" = "giab", "CMRG" = "cmrg", "T2T" = "t2t"))
         ),
         column(3,
                selectInput("truth_set_sample", "Sample",

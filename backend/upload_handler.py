@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 # required metadata fields for upload
-REQUIRED_METADATA = ['exp_name', 'technology', 'platform_name', 'caller_name', 'caller_version', 'mean_coverage', 'truth_set_name']
+REQUIRED_METADATA = ['exp_name', 'technology', 'platform_name', 'platform_type' ,'caller_name', 'caller_version','caller_type', 'mean_coverage', 'truth_set_name']
 # required happy columns 
 REQUIRED_COLS = ['Type', 'Subtype', 'Subset', 'METRIC.Recall', 'METRIC.Precision', 'METRIC.F1_Score']
 
@@ -101,7 +101,7 @@ def validate_metadata(metadata):
         logger.error(f"Metadata validation failed: invalid technology '{metadata['technology']}'")
         return False, f"Invalid technology: {metadata['technology']}"
         
-    if metadata['caller_name'].upper() not in ['DEEPVARIANT', 'GATK', 'CLAIR3']:
+    if metadata['caller_name'].upper() not in ['DEEPVARIANT', 'GATK', 'CLAIR3','DRAGEN']:
         logger.error(f"Metadata validation failed: invalid caller '{metadata['caller_name']}'")
         return False, f"Invalid caller: {metadata['caller_name']}"
     
