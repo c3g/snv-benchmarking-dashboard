@@ -274,12 +274,16 @@ APP_CSS_STYLES <- "
       background-color: #f1f5ff;  /* More noticeable blue */
     }
     
-    .dataTables_wrapper tbody tr:nth-child(odd) {
+    .dataTables_wrapper tbody tr.odd {
       background-color: #ffffff;
     }
-    
-    .dataTables_wrapper tbody tr:hover {
-      background-color: #e0edff !important;  /* Blue hover */
+
+    .dataTables_wrapper tbody tr.even {
+      background-color: #f1f5ff;
+    }
+
+    .dataTables_wrapper tbody tr[class*='detail-row'] {
+    background-color: #fafbfc !important;
     }
     
     .btn-success {
