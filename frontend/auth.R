@@ -8,13 +8,11 @@ library(httr2)
 library(jose)
 library(jsonlite)
 
-source("admin_config.R")
-
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
 
-# load OIDC credentials from environment variables
+# Load OIDC credentials from environment variables
 OIDC_ISSUER <- Sys.getenv("OIDC_ISSUER", "")
 OIDC_CLIENT_ID <- Sys.getenv("OIDC_CLIENT_ID", "")
 OIDC_CLIENT_SECRET <- Sys.getenv("OIDC_CLIENT_SECRET", "")
@@ -39,12 +37,32 @@ get_oidc_config <- function() {
 OIDC_CONFIG <- get_oidc_config()
 
 # ============================================================================
+# ADMIN CONFIGURATION
+# ============================================================================
+
+# Load admin usernames from env
+admin_env <- Sys.getenv("ADMIN_USERNAMES", "")
+if (admin_env != "") {
+  ADMIN_USERNAMES <- trimws(strsplit(admin_env, ",")[[1]])
+} else {
+  ADMIN_USERNAMES <- c()
+}
+
+# check admin privileges 
+is_admin <- function(username) {
+  if (is.null(username) || username == "") return(FALSE)
+  tolower(username) %in% tolower(ADMIN_USERNAMES)
+}
+
+# ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
 
+# Generate random state token for CSRF protection
 random_string <- function() {
   paste0(sample(c(letters, LETTERS, 0:9), 32, replace = TRUE), collapse = "")
 }
+
 # Check if user is authenticated
 is_authenticated <- function(session) {
   !is.null(session$userData$user_email)
@@ -53,10 +71,14 @@ is_authenticated <- function(session) {
 # Get user information from session
 get_user_info <- function(session) {
   if (!is_authenticated(session)) return(NULL)
-  list(email = session$userData$user_email, name = session$userData$user_name, username = session$userData$user_username)
+  list(
+    email = session$userData$user_email, 
+    name = session$userData$user_name, 
+    username = session$userData$user_username
+  )
 }
 
-# Build OIDC authorization URL
+# Build OIDC authorization URL -------------------------------------------------------------
 create_login_url <- function(state) {
   if (is.null(OIDC_CONFIG)) return(NULL)
   params <- paste0(
@@ -73,7 +95,7 @@ create_login_url <- function(state) {
 get_user_from_code <- function(code) {
   if (is.null(OIDC_CONFIG)) return(NULL)
   tryCatch({
-    # Request JWT token from OIDC provider (keycloak)
+    # Request JWT token from OIDC provider
     token_response <- request(OIDC_CONFIG$token_endpoint) %>%
       req_body_form(
         grant_type = "authorization_code",
@@ -85,7 +107,7 @@ get_user_from_code <- function(code) {
       req_perform() %>%
       resp_body_json()
     
-    # Decode JWT payload to extract user claims
+    # Decode JWT to extract user claims
     token_parts <- strsplit(token_response$id_token, "\\.")[[1]]
     claims_json <- rawToChar(jose::base64url_decode(token_parts[2]))
     claims <- jsonlite::fromJSON(claims_json)
@@ -100,6 +122,16 @@ get_user_from_code <- function(code) {
     cat("ERROR getting user info:", e$message, "\n")
     return(list(success = FALSE, error = e$message))
   })
+}
+
+# Clear all session data and authentication state
+clear_session_data <- function(session, authenticated) {
+  session$userData$user_email <- NULL
+  session$userData$user_name <- NULL
+  session$userData$user_username <- NULL
+  session$userData$auth_state <- NULL
+  authenticated(FALSE)
+  runjs("sessionStorage.clear();")
 }
 
 # ============================================================================
@@ -131,7 +163,6 @@ auth_server <- function(input, output, session) {
   
   # Render login/logout button based on auth state
   output$auth_status <- renderUI({
-    auth_state <- authenticated()
     if (is_authenticated(session)) {
       user <- get_user_info(session)
       div(
@@ -149,19 +180,19 @@ auth_server <- function(input, output, session) {
         )
       )
     } else {
-      actionButton("login_btn", "Sign In", class = "btn-primary btn-sm", icon = icon("sign-in-alt"), style = "font-size: 13px; padding: 6px 16px;")
+      actionButton(
+        "login_btn", 
+        "Sign In", 
+        class = "btn-primary btn-sm", 
+        icon = icon("sign-in-alt"), 
+        style = "font-size: 13px; padding: 6px 16px;"
+      )
     }
   })
   
   # Handle login button click - redirect to OIDC provider
   observeEvent(input$login_btn, {
-    # Clear any existing session
-    session$userData$user_email <- NULL
-    session$userData$user_name <- NULL
-    session$userData$user_username <- NULL
-    session$userData$auth_state <- NULL
-    authenticated(FALSE)
-    runjs("sessionStorage.clear();")
+    clear_session_data(session, authenticated)
     
     if (!OIDC_ENABLED) {
       showNotification("Authentication not configured", type = "warning", duration = 5)
@@ -189,15 +220,14 @@ auth_server <- function(input, output, session) {
     if (!is.null(query$code) && !is.null(query$state)) {
       stored_state <- session$userData$auth_state
       
-      # Recover state from sessionStorage if server session lost it
+      # Trigger state recovery from sessionStorage if server session lost it
       if (is.null(stored_state)) {
         runjs("Shiny.setInputValue('recovered_state', sessionStorage.getItem('auth_state'));")
-        Sys.sleep(0.1)
-        stored_state <- input$recovered_state
+        return()
       }
       
       # Verify state token matches
-      if (is.null(stored_state) || query$state != stored_state) {
+      if (query$state != stored_state) {
         updateQueryString("?", mode = "replace")
         return()
       }
@@ -209,7 +239,7 @@ auth_server <- function(input, output, session) {
         session$userData$user_email <- result$email
         session$userData$user_name <- result$name
         session$userData$user_username <- result$username
-        authenticated(TRUE) 
+        authenticated(TRUE)
         runjs("sessionStorage.removeItem('auth_state');")
         updateQueryString("?", mode = "replace")
         showNotification(paste("Welcome", result$name), type = "message")
@@ -221,13 +251,30 @@ auth_server <- function(input, output, session) {
     }
   })
   
+  # Handle recovered state from sessionStorage
+  observe({
+    req(input$recovered_state)
+    stored_state <- input$recovered_state
+    query <- parseQueryString(session$clientData$url_search)
+    
+    if (!is.null(query$code) && !is.null(query$state) && query$state == stored_state) {
+      result <- get_user_from_code(query$code)
+      
+      if (result$success) {
+        session$userData$user_email <- result$email
+        session$userData$user_name <- result$name
+        session$userData$user_username <- result$username
+        authenticated(TRUE)
+        runjs("sessionStorage.removeItem('auth_state');")
+        updateQueryString("?", mode = "replace")
+        showNotification(paste("Welcome", result$name), type = "message")
+      }
+    }
+  })
+  
   # Handle logout button click
   observeEvent(input$logout_btn, {
-    session$userData$user_email <- NULL
-    session$userData$user_name <- NULL
-    session$userData$user_username <- NULL
-    session$userData$auth_state <- NULL
-    authenticated(FALSE) 
+    clear_session_data(session, authenticated)
     showNotification("Signed out", type = "message")
   })
   
@@ -242,16 +289,13 @@ auth_server <- function(input, output, session) {
   outputOptions(output, "user_authenticated", suspendWhenHidden = FALSE)
   
   # Expose admin status to UI
-output$user_is_admin <- reactive({
-  authenticated()
-  user <- get_user_info(session)
-  if (!is.null(user)) {
-    result <- is_admin(user$username)
-  } else {
-    result <- FALSE
-  }
-  return(result)
-})
+  output$user_is_admin <- reactive({
+    user <- get_user_info(session)
+    if (!is.null(user)) {
+      return(is_admin(user$username))
+    }
+    return(FALSE)
+  })
   outputOptions(output, "user_is_admin", suspendWhenHidden = FALSE)
   
   # Return reactive authentication state

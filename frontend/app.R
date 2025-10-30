@@ -87,7 +87,6 @@ source("table_functions.R")
 source("observers.R")
 source("ui_components.R")
 source("html_export.R") 
-source("admin_config.R")
 
 
 # global theme
