@@ -42,7 +42,7 @@ def validate_happy_file(file_path):
 
 def validate_happy_data(df):
     """Validate hap.py CSV has required columns and data"""
-    required_columns = ['Type', 'Subtype', 'Subset', 'Filter', 'METRIC.Recall', 'METRIC.Precision', 'METRIC.F1_Score']
+    required_columns = ['Type', 'Subtype', 'Subset', 'METRIC.Recall', 'METRIC.Precision', 'METRIC.F1_Score']
     
     missing_columns = [col for col in required_columns if col not in df.columns]
     if missing_columns:
