@@ -538,6 +538,28 @@ upload_modal_ui <- function() {
     "show_upload_modal", 
     size = "large",
     
+    div(
+      style = "background-color: #e7f3ff; border: 1px solid #4472ca; border-radius: 6px; 
+              padding: 16px; margin-bottom: 20px;",
+      div(
+        style = "display: flex; align-items: center; gap: 10px; margin-bottom: 10px;",
+        icon("info-circle", style = "color: #4472ca; font-size: 22px;"),
+        h5("File Requirements", style = "margin: 0; color: #4472ca; font-weight: 600;")
+      ),
+      p(
+        style = "margin: 0 0 8px 32px; color: #2c5282; font-size: 14px;",
+        "Upload must be a ", strong("hap.py CSV output file"), " containing the following columns:"
+      ),
+      tags$ul(
+        style = "margin: 0 0 0 45px; color: #2c5282; font-size: 13px;",
+        tags$li(code("Type"), " - Variant type (SNP/INDEL)"),
+        tags$li(code("Subtype"), " - Variant subtype"),
+        tags$li(code("Subset"), " - Genomic region"),
+        tags$li(code("METRIC.Recall"), " - Recall metric"),
+        tags$li(code("METRIC.Precision"), " - Precision metric"),
+        tags$li(code("METRIC.F1_Score"), " - F1 score metric")
+      )
+    ),
     # 1: File Upload
     wellPanel(
       style = "background-color: #f8f9fa; margin-bottom: 20px;",
@@ -648,7 +670,7 @@ upload_modal_ui <- function() {
       fluidRow(
         column(3,
                selectInput("truth_set_name", "Truth Set",
-                           choices = c("GIAB" = "giab", "CMRG" = "cmrg", "T2T" = "t2t"))
+                           choices = c("", "GIAB" = "giab", "CMRG" = "cmrg", "T2T" = "t2t"))
         ),
         column(3,
                selectInput("truth_set_sample", "Sample",
@@ -656,8 +678,7 @@ upload_modal_ui <- function() {
                            selected = "hg002")
         ),
         column(3,
-               textInput("truth_set_version", "Truth Set Version",
-                         value = "4.2.1")
+               textInput("truth_set_version", "Truth Set Version")
         ),
         column(3,
                selectInput("truth_set_reference", "Reference",
@@ -700,8 +721,7 @@ upload_modal_ui <- function() {
                            selected = "hap.py")
         ),
         column(6,
-               textInput("benchmark_tool_version", "Tool Version",
-                         value = "0.3.12")
+               textInput("benchmark_tool_version", "Tool Version")
         )
       ),
       
