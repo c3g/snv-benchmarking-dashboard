@@ -12,17 +12,16 @@ library(jsonlite)
 # CONFIGURATION
 # ============================================================================
 
-# Load OIDC credentials from environment variables
 OIDC_ISSUER <- Sys.getenv("OIDC_ISSUER", "")
 OIDC_CLIENT_ID <- Sys.getenv("OIDC_CLIENT_ID", "")
 OIDC_CLIENT_SECRET <- Sys.getenv("OIDC_CLIENT_SECRET", "")
 OIDC_REDIRECT_URI <- Sys.getenv("OIDC_REDIRECT_URI", "")
 
-# Check if authentication is properly configured
+
 OIDC_ENABLED <- (OIDC_ISSUER != "" && OIDC_CLIENT_ID != "" && 
                  OIDC_CLIENT_SECRET != "" && OIDC_REDIRECT_URI != "")
 
-# Fetch OIDC provider configuration
+# Fetch OIDC provider config
 get_oidc_config <- function() {
   if (!OIDC_ENABLED) return(NULL)
   tryCatch({
@@ -85,7 +84,7 @@ create_login_url <- function(state) {
     "client_id=", OIDC_CLIENT_ID,
     "&redirect_uri=", URLencode(OIDC_REDIRECT_URI, reserved = TRUE),
     "&response_type=code",
-    "&scope=openid+profile+email",
+    "&scope=openid+profile+email+org.cilogon.userinfo",
     "&state=", state
   )
   paste0(OIDC_CONFIG$authorization_endpoint, "?", params)
@@ -95,7 +94,7 @@ create_login_url <- function(state) {
 get_user_from_code <- function(code) {
   if (is.null(OIDC_CONFIG)) return(NULL)
   tryCatch({
-    # Request JWT token from OIDC provider
+    # Request JWT token
     token_response <- request(OIDC_CONFIG$token_endpoint) %>%
       req_body_form(
         grant_type = "authorization_code",
@@ -107,7 +106,7 @@ get_user_from_code <- function(code) {
       req_perform() %>%
       resp_body_json()
     
-    # Decode JWT to extract user claims
+    #  extract user claims
     token_parts <- strsplit(token_response$id_token, "\\.")[[1]]
     claims_json <- rawToChar(jose::base64url_decode(token_parts[2]))
     claims <- jsonlite::fromJSON(claims_json)
@@ -124,7 +123,7 @@ get_user_from_code <- function(code) {
   })
 }
 
-# Clear all session data and authentication state
+# Clear all
 clear_session_data <- function(session, authenticated) {
   session$userData$user_email <- NULL
   session$userData$user_name <- NULL
@@ -220,7 +219,6 @@ auth_server <- function(input, output, session) {
     if (!is.null(query$code) && !is.null(query$state)) {
       stored_state <- session$userData$auth_state
       
-      # Trigger state recovery from sessionStorage if server session lost it
       if (is.null(stored_state)) {
         runjs("Shiny.setInputValue('recovered_state', sessionStorage.getItem('auth_state'));")
         return()
