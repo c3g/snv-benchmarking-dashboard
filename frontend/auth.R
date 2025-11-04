@@ -20,6 +20,14 @@ OIDC_REDIRECT_URI <- Sys.getenv("OIDC_REDIRECT_URI", "")
 OIDC_ENABLED <- (OIDC_ISSUER != "" && OIDC_CLIENT_ID != "" && 
                  OIDC_CLIENT_SECRET != "" && OIDC_REDIRECT_URI != "")
 
+cat("=== OIDC Configuration ===\n")
+cat("OIDC_ENABLED:", OIDC_ENABLED, "\n")
+cat("OIDC_REDIRECT_URI:", OIDC_REDIRECT_URI, "\n")
+if (OIDC_ENABLED && !grepl("/callback$", OIDC_REDIRECT_URI)) {
+  cat("WARNING: OIDC_REDIRECT_URI should end with /callback\n")
+}
+cat("\n")
+
 # get OIDC provider config as JSON (mainly for authorization endpoint) 
 get_oidc_config <- function() {
   if (!OIDC_ENABLED) return(NULL)
@@ -33,6 +41,10 @@ get_oidc_config <- function() {
 }
 
 OIDC_CONFIG <- get_oidc_config()
+
+if (!is.null(OIDC_CONFIG)) {
+  cat("OIDC config loaded successfully\n\n")
+}
 
 # ============================================================================
 # ADMIN CONFIGURATION - TO BE CHANGED ACCORDING TO GROUPS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -93,6 +105,9 @@ create_login_url <- function(state) {
 # Exchange authorization code for user info
 get_user_from_code <- function(code) {
   if (is.null(OIDC_CONFIG)) return(NULL)
+  
+  cat("\n=== Token Exchange Started ===\n")
+  
   tryCatch({
     # Request JWT token
     token_response <- request(OIDC_CONFIG$token_endpoint) %>%
@@ -106,19 +121,33 @@ get_user_from_code <- function(code) {
       req_perform() %>% #send POST req to IODC provider
       resp_body_json() #parse JSON into R list
     
+    cat("Token received\n")
+    
     #  extract user claims
     token_parts <- strsplit(token_response$id_token, "\\.")[[1]]
     claims_json <- rawToChar(jose::base64url_decode(token_parts[2]))
     claims <- jsonlite::fromJSON(claims_json)
     
+    # Log all claims received
+    cat("\n=== RECEIVED CLAIMS ===\n")
+    cat("email:", claims$email %||% "NULL", "\n")
+    cat("name:", claims$name %||% "NULL", "\n")
+    cat("eppn:", claims$eppn %||% "NULL", "\n")
+    cat("sub:", claims$sub %||% "NULL", "\n")
+    cat("========================\n\n")
 
     # TO BE UPDATED WITH COMANAGE
-    return(list(
+    result <- list(
       email = claims$email,
-      name = claims$name %||% claims$preferred_username %||% claims$email,
-      username = claims$preferred_username %||% claims$sub,
+      name = claims$name %||% claims$given_name %||% claims$email,
+      username = claims$eppn %||% claims$sub, # eppn or fall back to sub
+      # GROUP TO BE ADDED HERE
       success = TRUE
-    ))
+    )
+    
+    cat("User extracted:", result$username, "\n")
+    return(result)
+    
   }, error = function(e) {
     cat("ERROR getting user info:", e$message, "\n")
     return(list(success = FALSE, error = e$message))
@@ -127,6 +156,7 @@ get_user_from_code <- function(code) {
 
 # store user info in session after successful authentication
 complete_authentication <- function(session, result, authenticated) {
+  cat("Completing authentication for:", result$name, "\n")
   session$userData$user_email <- result$email
   session$userData$user_name <- result$name
   session$userData$user_username <- result$username
@@ -134,7 +164,9 @@ complete_authentication <- function(session, result, authenticated) {
   runjs("sessionStorage.removeItem('auth_state');") # cleanup
   updateQueryString("?", mode = "replace")
   showNotification(paste("Welcome", result$name), type = "message")
+  cat("Authentication completed\n\n")
 }
+
 # Clear all
 clear_session_data <- function(session, authenticated) {
   session$userData$user_email <- NULL
@@ -203,6 +235,8 @@ auth_server <- function(input, output, session) {
   
   # Handle login button click - redirect to OIDC provider
   observeEvent(input$login_btn, {
+    
+    cat("\n=== Login Button Clicked ===\n")
 
     if (!OIDC_ENABLED) { #make sure OIDC is configured
     showNotification("Authentication not configured", type = "warning", duration = 5)
@@ -217,6 +251,7 @@ auth_server <- function(input, output, session) {
     # 2. Build login URL and Redirect to OIDC login page
     login_url <- create_login_url(state)
     if (!is.null(login_url)) {
+      cat("Redirecting to OIDC provider\n")
       runjs(sprintf("window.location.href = '%s';", login_url)) # redirect 
     } else {
       showNotification("Authentication service unavailable", type = "error")
@@ -228,18 +263,24 @@ auth_server <- function(input, output, session) {
     query <- parseQueryString(session$clientData$url_search)
     
     if (!is.null(query$code) && !is.null(query$state)) {
+      cat("\n=== OAuth Callback Received ===\n")
+      
       stored_state <- session$userData$auth_state
       
       if (is.null(stored_state)) {
+        cat("No stored state, attempting recovery\n")
         runjs("Shiny.setInputValue('recovered_state', sessionStorage.getItem('auth_state'));") # try to recover state from sessionStorage
         return()
       }
       
       # 3.1 Verify state token matches
       if (query$state != stored_state) {
+        cat("ERROR: State mismatch\n")
         updateQueryString("?", mode = "replace") # clean URL
         return()
       }
+      
+      cat("State validated\n")
       
       # 3.2 Exchange code for user info
       result <- get_user_from_code(query$code)
@@ -258,6 +299,7 @@ auth_server <- function(input, output, session) {
   # Handle recovered state from sessionStorage -------------------------------------------------------------------------------
   observe({
     req(input$recovered_state)
+    cat("\n=== Using Recovered State ===\n")
     stored_state <- input$recovered_state
     query <- parseQueryString(session$clientData$url_search)
     
