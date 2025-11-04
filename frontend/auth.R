@@ -1,8 +1,7 @@
 # ============================================================================
-# auth.R - OpenID Connect (OIDC) Authentication
+# auth.R - OpenID Connect (OIDC) Authentication - COManage
 # ============================================================================
 # Handles user authentication via OIDC provider
-# Manages session state and authorization
 
 library(httr2)
 library(jose)
@@ -21,7 +20,7 @@ OIDC_REDIRECT_URI <- Sys.getenv("OIDC_REDIRECT_URI", "")
 OIDC_ENABLED <- (OIDC_ISSUER != "" && OIDC_CLIENT_ID != "" && 
                  OIDC_CLIENT_SECRET != "" && OIDC_REDIRECT_URI != "")
 
-# Fetch OIDC provider config
+# get OIDC provider config as JSON (mainly for authorization endpoint) 
 get_oidc_config <- function() {
   if (!OIDC_ENABLED) return(NULL)
   tryCatch({
@@ -36,7 +35,7 @@ get_oidc_config <- function() {
 OIDC_CONFIG <- get_oidc_config()
 
 # ============================================================================
-# ADMIN CONFIGURATION
+# ADMIN CONFIGURATION - TO BE CHANGED ACCORDING TO GROUPS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # ============================================================================
 
 # Load admin usernames from env
@@ -77,7 +76,8 @@ get_user_info <- function(session) {
   )
 }
 
-# Build OIDC authorization URL -------------------------------------------------------------
+# Build OIDC log-in URL 
+# by combiniing parameters (scope, client_id, etc) with Authorization endpoint
 create_login_url <- function(state) {
   if (is.null(OIDC_CONFIG)) return(NULL)
   params <- paste0(
@@ -103,14 +103,16 @@ get_user_from_code <- function(code) {
         client_id = OIDC_CLIENT_ID,
         client_secret = OIDC_CLIENT_SECRET
       ) %>%
-      req_perform() %>%
-      resp_body_json()
+      req_perform() %>% #send POST req to IODC provider
+      resp_body_json() #parse JSON into R list
     
     #  extract user claims
     token_parts <- strsplit(token_response$id_token, "\\.")[[1]]
     claims_json <- rawToChar(jose::base64url_decode(token_parts[2]))
     claims <- jsonlite::fromJSON(claims_json)
     
+
+    # TO BE UPDATED WITH COMANAGE
     return(list(
       email = claims$email,
       name = claims$name %||% claims$preferred_username %||% claims$email,
@@ -123,6 +125,16 @@ get_user_from_code <- function(code) {
   })
 }
 
+# store user info in session after successful authentication
+complete_authentication <- function(session, result, authenticated) {
+  session$userData$user_email <- result$email
+  session$userData$user_name <- result$name
+  session$userData$user_username <- result$username
+  authenticated(TRUE) # set auth state to TRUE
+  runjs("sessionStorage.removeItem('auth_state');") # cleanup
+  updateQueryString("?", mode = "replace")
+  showNotification(paste("Welcome", result$name), type = "message")
+}
 # Clear all
 clear_session_data <- function(session, authenticated) {
   session$userData$user_email <- NULL
@@ -191,28 +203,27 @@ auth_server <- function(input, output, session) {
   
   # Handle login button click - redirect to OIDC provider
   observeEvent(input$login_btn, {
-    clear_session_data(session, authenticated)
+
+    if (!OIDC_ENABLED) { #make sure OIDC is configured
+    showNotification("Authentication not configured", type = "warning", duration = 5)
+    return()
+  }
     
-    if (!OIDC_ENABLED) {
-      showNotification("Authentication not configured", type = "warning", duration = 5)
-      return()
-    }
-    
-    # Generate and store state token
+    # 1. Generate and store state token and store in sessionStorage
     state <- random_string()
-    session$userData$auth_state <- state
+    session$userData$auth_state <- state 
     runjs(sprintf("sessionStorage.setItem('auth_state', '%s');", state))
     
-    # Redirect to OIDC login page
+    # 2. Build login URL and Redirect to OIDC login page
     login_url <- create_login_url(state)
     if (!is.null(login_url)) {
-      runjs(sprintf("window.location.href = '%s';", login_url))
+      runjs(sprintf("window.location.href = '%s';", login_url)) # redirect 
     } else {
       showNotification("Authentication service unavailable", type = "error")
     }
   })
   
-  # Handle OAuth callback - process authorization code
+  # 3. Handle OAuth callback - process authorization code
   observe({
     query <- parseQueryString(session$clientData$url_search)
     
@@ -220,27 +231,22 @@ auth_server <- function(input, output, session) {
       stored_state <- session$userData$auth_state
       
       if (is.null(stored_state)) {
-        runjs("Shiny.setInputValue('recovered_state', sessionStorage.getItem('auth_state'));")
+        runjs("Shiny.setInputValue('recovered_state', sessionStorage.getItem('auth_state'));") # try to recover state from sessionStorage
         return()
       }
       
-      # Verify state token matches
+      # 3.1 Verify state token matches
       if (query$state != stored_state) {
-        updateQueryString("?", mode = "replace")
+        updateQueryString("?", mode = "replace") # clean URL
         return()
       }
       
-      # Exchange code for user info
+      # 3.2 Exchange code for user info
       result <- get_user_from_code(query$code)
       
-      if (result$success) {
-        session$userData$user_email <- result$email
-        session$userData$user_name <- result$name
-        session$userData$user_username <- result$username
-        authenticated(TRUE)
-        runjs("sessionStorage.removeItem('auth_state');")
-        updateQueryString("?", mode = "replace")
-        showNotification(paste("Welcome", result$name), type = "message")
+      # 3.3 Complete authentication and get user info if successful
+      if (!is.null(result) && result$success) {
+        complete_authentication(session, result, authenticated)
       } else {
         showNotification("Login failed", type = "error")
         authenticated(FALSE)
@@ -249,7 +255,7 @@ auth_server <- function(input, output, session) {
     }
   })
   
-  # Handle recovered state from sessionStorage
+  # Handle recovered state from sessionStorage -------------------------------------------------------------------------------
   observe({
     req(input$recovered_state)
     stored_state <- input$recovered_state
@@ -258,14 +264,13 @@ auth_server <- function(input, output, session) {
     if (!is.null(query$code) && !is.null(query$state) && query$state == stored_state) {
       result <- get_user_from_code(query$code)
       
-      if (result$success) {
-        session$userData$user_email <- result$email
-        session$userData$user_name <- result$name
-        session$userData$user_username <- result$username
-        authenticated(TRUE)
-        runjs("sessionStorage.removeItem('auth_state');")
+      # Complete authentication and get user info if successful
+      if (!is.null(result) && result$success) {
+        complete_authentication(session, result, authenticated)
+      } else {
+        showNotification("Login failed", type = "error")
+        authenticated(FALSE)
         updateQueryString("?", mode = "replace")
-        showNotification(paste("Welcome", result$name), type = "message")
       }
     }
   })
