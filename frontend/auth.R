@@ -22,11 +22,7 @@ OIDC_ENABLED <- (OIDC_ISSUER != "" && OIDC_CLIENT_ID != "" &&
 
 cat("=== OIDC Configuration ===\n")
 cat("OIDC_ENABLED:", OIDC_ENABLED, "\n")
-cat("OIDC_REDIRECT_URI:", OIDC_REDIRECT_URI, "\n")
-if (OIDC_ENABLED && !grepl("/callback$", OIDC_REDIRECT_URI)) {
-  cat("WARNING: OIDC_REDIRECT_URI should end with /callback\n")
-}
-cat("\n")
+cat("OIDC_REDIRECT_URI:", OIDC_REDIRECT_URI, "\n\n")
 
 # get OIDC provider config as JSON (mainly for authorization endpoint) 
 get_oidc_config <- function() {
@@ -47,21 +43,13 @@ if (!is.null(OIDC_CONFIG)) {
 }
 
 # ============================================================================
-# ADMIN CONFIGURATION - TO BE CHANGED ACCORDING TO GROUPS +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+# ADMIN CONFIGURATION
 # ============================================================================
 
-# Load admin usernames from env
-admin_env <- Sys.getenv("ADMIN_USERNAMES", "")
-if (admin_env != "") {
-  ADMIN_USERNAMES <- trimws(strsplit(admin_env, ",")[[1]])
-} else {
-  ADMIN_USERNAMES <- c()
-}
-
-# check admin privileges 
-is_admin <- function(username) {
-  if (is.null(username) || username == "") return(FALSE)
-  tolower(username) %in% tolower(ADMIN_USERNAMES)
+# check admin privileges based on group membership
+is_admin <- function(user_group) {
+  if (is.null(user_group) || user_group == "") return(FALSE)
+  tolower(user_group) == "admin"
 }
 
 # ============================================================================
@@ -84,7 +72,8 @@ get_user_info <- function(session) {
   list(
     email = session$userData$user_email, 
     name = session$userData$user_name, 
-    username = session$userData$user_username
+    username = session$userData$user_username,
+    group = session$userData$user_group
   )
 }
 
@@ -134,14 +123,39 @@ get_user_from_code <- function(code) {
     cat("name:", claims$name %||% "NULL", "\n")
     cat("eppn:", claims$eppn %||% "NULL", "\n")
     cat("sub:", claims$sub %||% "NULL", "\n")
+    if(is.null(claims$groups)) {
+      cat("groups: NULL\n")
+    } else {
+      cat("groups:\n")
+      for(i in seq_along(claims$groups)) {
+        cat( claims$groups[i], "\n", sep="")
+      }
+    }
     cat("========================\n\n")
 
-    # TO BE UPDATED WITH COMANAGE
+    # filter for dashboard groups only
+    dashboard_group <- NULL
+    if (!is.null(claims$groups) && length(claims$groups) > 0) {
+      matching_groups <- claims$groups[grepl("snv-benchmarking-dashboard", claims$groups)]
+      
+      #determine highest role
+      if (length(matching_groups) > 0) {
+        if (any(grepl("admins", matching_groups))) {
+          dashboard_group <- "admin"
+        } else if (any(grepl("approvers", matching_groups))) {
+          dashboard_group <- "approver"
+        } else if (any(grepl("members", matching_groups))) {
+          dashboard_group <- "member"
+        }
+      }
+    }
+    cat("dashboard role:", dashboard_group %||% "none", "\n\n")
+
     result <- list(
       email = claims$email,
       name = claims$name %||% claims$given_name %||% claims$email,
-      username = claims$eppn %||% claims$sub, # eppn or fall back to sub
-      # GROUP TO BE ADDED HERE
+      username = claims$eppn %||% claims$sub,
+      group = dashboard_group,
       success = TRUE
     )
     
@@ -160,8 +174,9 @@ complete_authentication <- function(session, result, authenticated) {
   session$userData$user_email <- result$email
   session$userData$user_name <- result$name
   session$userData$user_username <- result$username
-  authenticated(TRUE) # set auth state to TRUE
-  runjs("sessionStorage.removeItem('auth_state');") # cleanup
+  session$userData$user_group <- result$group
+  authenticated(TRUE)
+  runjs("sessionStorage.removeItem('auth_state');")
   updateQueryString("?", mode = "replace")
   showNotification(paste("Welcome", result$name), type = "message")
   cat("Authentication completed\n\n")
@@ -172,6 +187,7 @@ clear_session_data <- function(session, authenticated) {
   session$userData$user_email <- NULL
   session$userData$user_name <- NULL
   session$userData$user_username <- NULL
+  session$userData$user_group <- NULL
   session$userData$auth_state <- NULL
   authenticated(FALSE)
   runjs("sessionStorage.clear();")
@@ -200,6 +216,7 @@ auth_server <- function(input, output, session) {
     session$userData$user_email <- NULL
     session$userData$user_name <- NULL
     session$userData$user_username <- NULL
+    session$userData$user_group <- NULL
     session$userData$auth_state <- NULL
     authenticated(FALSE)
   })
@@ -337,7 +354,11 @@ auth_server <- function(input, output, session) {
   output$user_is_admin <- reactive({
     user <- get_user_info(session)
     if (!is.null(user)) {
-      return(is_admin(user$username))
+      cat("=== ADMIN CHECK ===\n")
+      cat("User group:", user$group %||% "NULL", "\n")
+      cat("Is admin:", is_admin(user$group), "\n")
+      cat("===================\n")
+      return(is_admin(user$group))
     }
     return(FALSE)
   })
