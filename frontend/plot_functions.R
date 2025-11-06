@@ -17,7 +17,7 @@ Helper functions:
 - setup_plot_outputs() (creates all plot outputs with interactivity)
 
 "
-
+options(warn = -1) # Suppress warnings in this file
 # ============================================================================
 # CORE PLOT FUNCTIONS
 # ============================================================================
