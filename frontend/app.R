@@ -266,19 +266,18 @@ ui <- fluidPage(
                 "show_upload_modal", 
                 label = tagList(icon("upload"), "Upload Dataset"),
                 class = "btn-success btn-sm",
-                style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px;"
+                style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px; border-radius: 3px;"
               )
             ),
             
             # Delete button - ONLY VISIBLE TO ADMIN
-            textOutput("debug_admin_status"),
             conditionalPanel(
               condition = "output.user_is_admin",
               actionButton(
                 "show_delete_modal", 
                 label = tagList(icon("trash"), "Delete Datasets"),
                 class = "btn-danger btn-sm",
-                style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px;"
+                style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px; border: none !important;"
               )
             ),
             
@@ -287,7 +286,7 @@ ui <- fluidPage(
               "export_html_report", 
               label = "Download Report",
               class = "btn-primary btn-sm",
-              style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px;"
+              style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px; border: none !important"
             ),
              auth_ui()  # Authentication status/button from auth.R
           )
