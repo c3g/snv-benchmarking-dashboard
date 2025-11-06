@@ -69,11 +69,21 @@ is_authenticated <- function(session) {
 # Get user information from session
 get_user_info <- function(session) {
   if (!is_authenticated(session)) return(NULL)
+  
+  user_group <- session$userData$user_group
+  admin_status <- is_admin(user_group)
+  
+  cat("\n=== GET_USER_INFO DEBUG ===\n")
+  cat("User group:", user_group %||% "NULL", "\n")
+  cat("Admin status:", admin_status, "\n")
+  cat("===========================\n\n")
+  
   list(
     email = session$userData$user_email, 
     name = session$userData$user_name, 
     username = session$userData$user_username,
-    group = session$userData$user_group
+    group = user_group,
+    is_admin = admin_status
   )
 }
 
@@ -94,9 +104,7 @@ create_login_url <- function(state) {
 # Exchange authorization code for user info
 get_user_from_code <- function(code) {
   if (is.null(OIDC_CONFIG)) return(NULL)
-  
-  cat("\n=== Token Exchange Started ===\n")
-  
+
   tryCatch({
     # Request JWT token
     token_response <- request(OIDC_CONFIG$token_endpoint) %>%
@@ -117,7 +125,6 @@ get_user_from_code <- function(code) {
     claims_json <- rawToChar(jose::base64url_decode(token_parts[2]))
     claims <- jsonlite::fromJSON(claims_json)
     
-    # Log all claims received
     cat("\n=== RECEIVED CLAIMS ===\n")
     cat("email:", claims$email %||% "NULL", "\n")
     cat("name:", claims$name %||% "NULL", "\n")
@@ -176,6 +183,7 @@ complete_authentication <- function(session, result, authenticated) {
   session$userData$user_username <- result$username
   session$userData$user_group <- result$group
   authenticated(TRUE)
+  
   runjs("sessionStorage.removeItem('auth_state');")
   updateQueryString("?", mode = "replace")
   showNotification(paste("Welcome", result$name), type = "message")
@@ -198,7 +206,16 @@ clear_session_data <- function(session, authenticated) {
 # ============================================================================
 
 auth_ui <- function() {
-  uiOutput("auth_status")
+  tagList(
+    tags$script(HTML("
+      // Handle /callback route by redirecting to root with query params
+      if (window.location.pathname === '/callback' || window.location.pathname === '/callback/') {
+        const newUrl = window.location.origin + '/' + window.location.search;
+        window.history.replaceState({}, '', newUrl);
+      }
+    ")),
+    uiOutput("auth_status")
+  )
 }
 
 # ============================================================================
@@ -223,6 +240,9 @@ auth_server <- function(input, output, session) {
   
   # Render login/logout button based on auth state
   output$auth_status <- renderUI({
+    # trigger re-render when authenticated() changes
+    auth_state <- authenticated()
+    
     if (is_authenticated(session)) {
       user <- get_user_info(session)
       div(
@@ -236,7 +256,7 @@ auth_server <- function(input, output, session) {
           "logout_btn", 
           "Sign Out",
           class = "btn-sm",
-          style = "font-size: 13px; padding: 6px 12px; background-color: #ffffff; border: 1px solid #d1d5db; color: #556b78; font-weight: 500;"
+          style = "font-size: 13px; padding: 6px 12px; background-color: #ffffff; border: 1px solid #d1d5db; color: #556b78; font-weight: 500; min-width: 100px;"
         )
       )
     } else {
@@ -286,14 +306,14 @@ auth_server <- function(input, output, session) {
       
       if (is.null(stored_state)) {
         cat("No stored state, attempting recovery\n")
-        runjs("Shiny.setInputValue('recovered_state', sessionStorage.getItem('auth_state'));") # try to recover state from sessionStorage
+        runjs("Shiny.setInputValue('recovered_state', sessionStorage.getItem('auth_state'));")
         return()
       }
       
       # 3.1 Verify state token matches
       if (query$state != stored_state) {
         cat("ERROR: State mismatch\n")
-        updateQueryString("?", mode = "replace") # clean URL
+        updateQueryString("?", mode = "replace")
         return()
       }
       
@@ -352,13 +372,10 @@ auth_server <- function(input, output, session) {
   
   # Expose admin status to UI
   output$user_is_admin <- reactive({
+    auth_state <- authenticated()
     user <- get_user_info(session)
     if (!is.null(user)) {
-      cat("=== ADMIN CHECK ===\n")
-      cat("User group:", user$group %||% "NULL", "\n")
-      cat("Is admin:", is_admin(user$group), "\n")
-      cat("===================\n")
-      return(is_admin(user$group))
+      return(user$is_admin)
     }
     return(FALSE)
   })
