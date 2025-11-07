@@ -125,6 +125,10 @@ get_user_from_code <- function(code) {
     claims_json <- rawToChar(jose::base64url_decode(token_parts[2]))
     claims <- jsonlite::fromJSON(claims_json)
     
+    token_response_string <- jsonlite::toJSON(token_response, auto_unbox = TRUE)
+    cat("Token response length:", nchar(token_response_string), "\n")
+    cat("ID token:", nchar(token_response$id_token))
+
     cat("\n=== RECEIVED CLAIMS ===\n")
     cat("email:", claims$email %||% "NULL", "\n")
     cat("name:", claims$name %||% "NULL", "\n")
@@ -178,11 +182,24 @@ get_user_from_code <- function(code) {
 # store user info in session after successful authentication
 complete_authentication <- function(session, result, authenticated) {
   cat("Completing authentication for:", result$name, "\n")
+  
+  # Store in session
   session$userData$user_email <- result$email
   session$userData$user_name <- result$name
   session$userData$user_username <- result$username
   session$userData$user_group <- result$group
   authenticated(TRUE)
+  
+  # Store in localStorage for persistence across reloads
+  user_json <- jsonlite::toJSON(list(
+    email = result$email,
+    name = result$name,
+    username = result$username,
+    group = result$group
+  ), auto_unbox = TRUE)
+  
+  runjs(sprintf("localStorage.setItem('user_session', '%s');", 
+                gsub("'", "\\\\'", user_json)))
   
   runjs("sessionStorage.removeItem('auth_state');")
   updateQueryString("?", mode = "replace")
@@ -198,6 +215,9 @@ clear_session_data <- function(session, authenticated) {
   session$userData$user_group <- NULL
   session$userData$auth_state <- NULL
   authenticated(FALSE)
+  
+  # Clear localStorage
+  runjs("localStorage.removeItem('user_session');")
   runjs("sessionStorage.clear();")
 }
 
@@ -228,6 +248,44 @@ auth_server <- function(input, output, session) {
   # Track authentication state
   authenticated <- reactiveVal(FALSE)
   
+  # Restore session from localStorage on page load
+  observe(priority = 1000, {
+    cat("\n=== CHECKING FOR SAVED SESSION ===\n")
+    
+    # Trigger localStorage retrieval
+    runjs("Shiny.setInputValue('stored_user_session', localStorage.getItem('user_session'), {priority: 'event'});")
+  })
+  
+  # Handle retrieved localStorage value
+  observeEvent(input$stored_user_session, {
+    user_json <- input$stored_user_session
+    
+    cat("LocalStorage value:", if(is.null(user_json) || user_json == "") "NULL" else "FOUND", "\n")
+    
+    if (!is.null(user_json) && user_json != "" && user_json != "null") {
+      tryCatch({
+        user_data <- jsonlite::fromJSON(user_json)
+        
+        cat("Decoded user:", user_data$name, "\n")
+        
+        # Restore to session
+        session$userData$user_email <- user_data$email
+        session$userData$user_name <- user_data$name
+        session$userData$user_username <- user_data$username
+        session$userData$user_group <- user_data$group
+        authenticated(TRUE)
+        
+        cat("Session restored from localStorage for:", user_data$name, "\n")
+      }, error = function(e) {
+        cat("Failed to restore session:", e$message, "\n")
+        runjs("localStorage.removeItem('user_session');")
+      })
+    } else {
+      cat("No saved session found\n")
+    }
+    cat("==================================\n\n")
+  }, ignoreNULL = FALSE, ignoreInit = FALSE)
+  
   # Clear session data when user disconnects
   session$onSessionEnded(function() {
     session$userData$user_email <- NULL
@@ -256,7 +314,7 @@ auth_server <- function(input, output, session) {
           "logout_btn", 
           "Sign Out",
           class = "btn-sm",
-          style = "font-size: 13px; padding: 6px 12px; background-color: #ffffff; border: 1px solid #d1d5db; color: #556b78; font-weight: 500; min-width: 100px;"
+          style = "font-size: 13px; padding: 6px 12px; background-color: #ffffff; border: 1px solid #d1d5db; color: #556b78; font-weight: 500; min-width: 160px;"
         )
       )
     } else {
@@ -304,6 +362,10 @@ auth_server <- function(input, output, session) {
       
       stored_state <- session$userData$auth_state
       
+      full_callback_url <- session$clientData$url_search
+      cat("Callback URL length:", nchar(full_callback_url), "\n")
+      cat("Authorization code length:", nchar(query$code), "\n")
+    
       if (is.null(stored_state)) {
         cat("No stored state, attempting recovery\n")
         runjs("Shiny.setInputValue('recovered_state', sessionStorage.getItem('auth_state'));")
