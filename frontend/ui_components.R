@@ -481,6 +481,9 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
   
   # filename preview
   output$filename_preview <- renderText({
+
+    Sys.sleep(0.05) #to allow reactive chain to complete
+
     if (!is.null(input$exp_name) && input$exp_name != "" &&
         !is.null(input$technology) && input$technology != "" &&
         !is.null(input$platform_name) && input$platform_name != "" &&
@@ -524,6 +527,7 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       return("Fill required fields (*) to see filename preview")
     }
   })
+  outputOptions(output, "filename_preview", priority = 10)
 }
 
 # ============================================================================
