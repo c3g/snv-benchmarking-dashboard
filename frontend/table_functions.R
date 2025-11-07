@@ -245,10 +245,8 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
       df,
       selection = selection_config,
       escape = FALSE,
-      extensions = c('Responsive'),
       options = list(
         pageLength = 20,
-        responsive = TRUE,
         scrollX = TRUE,
         autoWidth = FALSE,
         initComplete = JS(

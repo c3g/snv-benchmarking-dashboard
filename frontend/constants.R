@@ -268,6 +268,7 @@ APP_CSS_STYLES <- "
       padding: 20px;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
       border: 1px solid #e4e7ea;
+      overflow-x: auto; 
     }
     
     .dataTables_wrapper tbody tr:nth-child(even) {
