@@ -236,6 +236,8 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
           plot.title = element_text(size = 12),
           panel.grid.major = element_line(color = "grey90", linewidth = 0.5),
           panel.grid.minor = element_line(color = "grey95", linewidth = 0.3),
+          panel.border = element_rect(color = "black", fill = NA, linewidth = 1),
+
           legend.position = "none"        
         )
       
@@ -250,7 +252,7 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
                  height = 500,
                  autosize = TRUE
           ) %>%    
-          #config(responsive = TRUE) %>%
+          config(responsive = TRUE) %>%
           event_register("plotly_click")
       })
       
@@ -337,6 +339,8 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
           plot.title = element_text(size = 12),
           panel.grid.major = element_line(color = "grey90", linewidth = 0.5),
           panel.grid.minor = element_line(color = "grey95", linewidth = 0.3),
+          panel.border = element_rect(color = "black", fill = NA, linewidth = 1),
+
           legend.position = "none"        
         )
       
@@ -351,7 +355,7 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
                  height = 500,
                  autosize = TRUE
           ) %>%    
-          #config(responsive = TRUE) %>%
+          config(responsive = TRUE) %>%
           event_register("plotly_click")
       })
       
