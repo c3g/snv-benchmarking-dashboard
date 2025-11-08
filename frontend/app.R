@@ -380,30 +380,37 @@ ui <- fluidPage(
             br(),
             fluidRow(
               column(12,
-                     div(
-                       class = "alert alert-info",
-                       h5(icon("chart-area"), " Performance Characterization Plots"),
-                       p(strong("Performance Plots:"), " Precision vs. recall scatter plots with ",
-                         a("F1-score", href = "https://en.wikipedia.org/wiki/F-score", target = "_blank"),
-                         " reference lines for visual comparison of variant calling performance. Each point represents one experiment, colored by sequencing technology (",
-                         a("Illumina", href = "https://www.illumina.com/", target = "_blank"), ", ",
-                         a("PacBio", href = "https://www.pacb.com/", target = "_blank"), ", ",
-                         a("ONT", href = "https://nanoporetech.com/", target = "_blank"), ", ",
-                         a("MGI", href = "https://en.mgi-tech.com/", target = "_blank"),
-                         ") and shaped by variant caller (",
-                         a("DeepVariant", href = "https://github.com/google/deepvariant", target = "_blank"), ", ",
-                         a("GATK", href = "https://gatk.broadinstitute.org/", target = "_blank"), ", ",
-                         a("Clair3", href = "https://github.com/HKU-BAL/Clair3", target = "_blank"), ", ",
-                         a("DRAGEN", href = "https://www.illumina.com/products/by-type/informatics-products/dragen-bio-it-platform.html", 
-                          target = "_blank"), 
-                          ")."),
-                         
-                       p(style = "font-size: 1em;", 
-                         strong("Interaction:"), " Click points to view detailed experiment metadata below.",
-                         strong("Hover"), " for quick performance metrics.", 
-                         br(),
-                         strong("Click and drag")," across any range to zoom in",strong("double-click"), " to reset view.")
-                     ),
+div(
+             class = "alert alert-info",
+             h5(icon("chart-area"), " Performance Characterization Plots"),
+             p(strong("Performance Plots:"), " Precision vs. recall scatter plots with ",
+               a("F1-score", href = "https://en.wikipedia.org/wiki/F-score", target = "_blank"),
+               " contour lines for visual comparison of variant calling performance. ",
+               "Curved lines represent constant F1-scores, helping identify optimal precision-recall balance. ",
+               "Each point represents one experiment, colored by sequencing technology (",
+               a("Illumina", href = "https://www.illumina.com/", target = "_blank"), ", ",
+               a("PacBio", href = "https://www.pacb.com/", target = "_blank"), ", ",
+               a("ONT", href = "https://nanoporetech.com/", target = "_blank"), ", ",
+               a("MGI", href = "https://en.mgi-tech.com/", target = "_blank"),
+               ") and shaped by variant caller (",
+               a("DeepVariant", href = "https://github.com/google/deepvariant", target = "_blank"), ", ",
+               a("GATK", href = "https://gatk.broadinstitute.org/", target = "_blank"), ", ",
+               a("Clair3", href = "https://github.com/HKU-BAL/Clair3", target = "_blank"), ", ",
+               a("DRAGEN", href = "https://www.illumina.com/products/by-type/informatics-products/dragen-bio-it-platform.html", 
+                target = "_blank"), 
+                ")."),
+             
+                      # interaction instructions
+                      div(
+                        style = "margin-top: 12px; padding: 10px; background-color: #dce6f2; border-left: 4px solid #4472C4; border-radius: 4px;",
+                        p(style = "margin: 0; font-size: 0.95em;",
+                          icon("mouse-pointer"), strong(" How to Interact:"), br(),
+                          "• Click and drag to zoom in | Double-click to reset view", br(),
+                          "• Hover for quick performance metrics", br(),
+                          "• Click points to view detailed experiment metadata",
+                        )
+                      )
+                    )
               )
             ),
             #truthset filter 
@@ -428,67 +435,52 @@ ui <- fluidPage(
               style = "background-color: #ffffff; padding: 25px; margin-bottom: 20px;",
               fluidRow(
                 column(4, class = "plot-column",
-                       style = "max-width: 33.33%; overflow: hidden;",
-                       # SNP Plot title
-                       div(
-                         style = "background: linear-gradient(135deg, #fefafa 0%, #fdf5f5 100%); 
-                         border: 1px solid #ef9a9a; border-radius: 8px; 
-                         padding: 10px 16px; margin-bottom: 18px; text-align: center;
-                         box-shadow: 0 1px 2px rgba(239, 154, 154, 0.1);",
-                         h4("SNP Performance", 
-                            style = "color: #d32f2f; font-weight: 600; margin: 0; 
-                          font-size: 17px; letter-spacing: 0.3px;")
-                       ),
-                   
-                       
-                       plotlyOutput("snp_plot", height = "500px")
+                  style = "max-width: 33.33%; overflow: hidden;",
+                  # SNP Plot title 
+                  div(
+                    style = "border-left: 3px solid #d32f2f; padding-left: 12px; margin-bottom: 5px; margin-left: 53px;",
+                    h4("SNP Performance", 
+                      style = "color: #d32f2f; font-weight: 600; margin: 0; 
+                        font-size: 17px; letter-spacing: 0.3px;")
+                  ),
+                  plotlyOutput("snp_plot", height = "500px")
                 ),
                 column(4, class = "plot-column",
-                       style = "max-width: 33.33%; overflow: hidden;",
-                       # INDEL plot title
-                       div(
-                         style = "background: linear-gradient(135deg, #fafbfd 0%, #f5f7fc 100%); 
-                         border: 1px solid #9fa8da; border-radius: 6px; 
-                         padding: 10px 16px; margin-bottom: 18px; text-align: center;
-                         box-shadow: 0 1px 2px rgba(159, 168, 218, 0.1);",
-                         h4("INDEL Performance", 
-                            style = "color: #1976d2; font-weight: 600; margin: 0; 
-                           font-size: 17px; letter-spacing: 0.3px;")
-                       ),
-                      
-                       #loading spinner
-                       conditionalPanel(
-                         condition = "!output.indel_plot",
-                         
-                         div(
-                           style = "display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px;",
-                           div(class = "custom-spinner", style = "margin: 0 auto;"),
-                           p("Loading plots...", 
-                             style = "color: #6c757d; margin-top: 15px; font-size: 14px; text-align: center; margin-bottom: 0;")
-                         )
-                       ),
-                       plotlyOutput("indel_plot", height = "500px") 
+                  style = "max-width: 33.33%; overflow: hidden;",
+                  # INDEL plot title
+                  div(
+                    style = "border-left: 3px solid #1976d2; padding-left: 12px; margin-bottom: 5px; margin-left: 53px;",
+                    h4("INDEL Performance", 
+                      style = "color: #1976d2; font-weight: 600; margin: 0; 
+                        font-size: 17px; letter-spacing: 0.3px;")
+                  ),
+                  # Loading spinner
+                  conditionalPanel(
+                    condition = "!output.indel_plot",
+                    div(
+                      style = "display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px;",
+                      div(class = "custom-spinner", style = "margin: 0 auto;"),
+                      p("Loading plots...", 
+                        style = "color: #6c757d; margin-top: 15px; font-size: 14px; text-align: center; margin-bottom: 0;")
+                    )
+                  ),
+                  plotlyOutput("indel_plot", height = "500px") 
                 ),
                 column(4,
-                       div(
-                           # header
-                           div(
-                             style = "background: linear-gradient(135deg, #fdfaff 0%, #fbf5ff 100%); 
-                             border: 1px solid #c4a1d6; border-radius: 8px; 
-                             padding: 10px 16px; margin-bottom: 18px; text-align: center;
-                             box-shadow: 0 1px 2px rgba(196, 161, 214, 0.1);",
-                             h4("Chart Reference", 
-                                style = "color: #7b2d8e; font-weight: 600; margin: 0; 
-                              font-size: 17px; letter-spacing: 0.3px;")
-                           ),
-                           br(), br(),
-                           htmlOutput("technology_legend"),
-                           br(),
-                           htmlOutput("caller_legend")
-                       )
+                  div(
+                    # Chart Reference header 
+                    div(
+                      style = "border-left: 3px solid #7b2d8e; padding-left: 12px; margin-bottom: 5px; margin-left: 5px;",
+                      h4("Chart Reference", 
+                        style = "color: #7b2d8e; font-weight: 600; margin: 0; 
+                          font-size: 17px; letter-spacing: 0.3px;")
+                    ),
+                    br(), br(),
+                    htmlOutput("technology_legend"),
+                    br(),
+                    htmlOutput("caller_legend")
+                  )
                 )
-                           
-              
               )
             ),
             # Selected experiment details
