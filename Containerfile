@@ -7,6 +7,9 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     python3-venv \
     curl \
+    libcairo2-dev \
+    libxt-dev \
+    libpango1.0-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Setup Python virtual environment
