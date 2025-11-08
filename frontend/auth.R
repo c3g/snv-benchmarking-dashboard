@@ -351,7 +351,7 @@ auth_server <- function(input, output, session) {
             "logout_btn", 
             "Sign Out",
             class = "btn-sm",
-            style = "font-size: 13px; padding: 6px 12px; background-color: #ffffff; border: 1px solid #d1d5db; color: #556b78; font-weight: 500; min-width: 160px;"
+            style = "font-size: 13px; padding: 6px 12px; background-color: #ffffff; border: 1px solid #d1d5db; color: #556b78; font-weight: 500; min-width: 80px;"
           )
         )
       } else {
