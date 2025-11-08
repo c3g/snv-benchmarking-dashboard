@@ -250,7 +250,30 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
                  margin = list(l = 5, r = 5, t = 45, b = 5),
                  width = NULL, 
                  height = 500,
-                 autosize = TRUE
+                 autosize = TRUE,
+                                  xaxis = list(
+                   showline = TRUE,
+                   linewidth = 1,
+                   linecolor = "black",
+                   mirror = TRUE
+                 ),
+                 yaxis = list(
+                   showline = TRUE,
+                   linewidth = 1,
+                   linecolor = "black",
+                   mirror = TRUE
+                 ),
+                 shapes = list(
+                   list(
+                     type = "rect",
+                     xref = "paper", yref = "paper",
+                     x0 = 0, y0 = 0,
+                     x1 = 1, y1 = 1,
+                     line = list(color = "black", width =1),
+                     fillcolor = "transparent",
+                     layer = "below"
+                   )
+                 )
           ) %>%    
           config(responsive = TRUE) %>%
           event_register("plotly_click")
@@ -353,7 +376,30 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
                  margin = list(l = 5, r = 5, t = 45, b = 5),
                  width = NULL, 
                  height = 500,
-                 autosize = TRUE
+                 autosize = TRUE,
+                 xaxis = list(
+                   showline = TRUE,
+                   linewidth = 1,
+                   linecolor = "black",
+                   mirror = TRUE
+                 ),
+                 yaxis = list(
+                   showline = TRUE,
+                   linewidth = 1,
+                   linecolor = "black",
+                   mirror = TRUE
+                 ),
+                 shapes = list(
+                   list(
+                     type = "rect",
+                     xref = "paper", yref = "paper",
+                     x0 = 0, y0 = 0,
+                     x1 = 1, y1 = 1,
+                     line = list(color = "black", width = 1),
+                     fillcolor = "transparent",
+                     layer = "below"
+                   )
+                 )
           ) %>%    
           config(responsive = TRUE) %>%
           event_register("plotly_click")
