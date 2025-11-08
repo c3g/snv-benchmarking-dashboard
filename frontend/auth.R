@@ -48,8 +48,12 @@ if (!is.null(OIDC_CONFIG)) {
 
 # check admin privileges based on group membership
 is_admin <- function(user_group) {
-  if (is.null(user_group) || user_group == "") return(FALSE)
-  tolower(user_group) == "admin"
+  if (is.null(user_group)) return(FALSE)
+  if (is.na(user_group)) return(FALSE)
+  if (length(user_group) == 0) return(FALSE)
+  if (nchar(as.character(user_group)) == 0) return(FALSE)
+  
+  tolower(as.character(user_group)) == "admin"
 }
 
 # ============================================================================
@@ -71,10 +75,18 @@ get_user_info <- function(session) {
   if (!is_authenticated(session)) return(NULL)
   
   user_group <- session$userData$user_group
+  
+  # Handle NULL, NA, or missing group
+  if (is.null(user_group) || is.na(user_group) || length(user_group) == 0) {
+    user_group <- NULL
+  } else if (nchar(as.character(user_group)) == 0) {
+    user_group <- NULL
+  }
+  
   admin_status <- is_admin(user_group)
   
   cat("\n=== GET_USER_INFO DEBUG ===\n")
-  cat("User group:", user_group %||% "NULL", "\n")
+  cat("User group:", if(is.null(user_group)) "NULL" else as.character(user_group), "\n")
   cat("Admin status:", admin_status, "\n")
   cat("===========================\n\n")
   
@@ -183,20 +195,26 @@ get_user_from_code <- function(code) {
 complete_authentication <- function(session, result, authenticated) {
   cat("Completing authentication for:", result$name, "\n")
   
-  # Store in session
+  # Store in session with safe defaults
   session$userData$user_email <- result$email
   session$userData$user_name <- result$name
-  session$userData$user_username <- result$username
-  session$userData$user_group <- result$group
+  session$userData$user_username <- result$username %||% result$email
+  session$userData$user_group <- result$group  # Can be NULL for non-admin users
   authenticated(TRUE)
   
   # Store in localStorage for persistence across reloads
-  user_json <- jsonlite::toJSON(list(
+  user_data_list <- list(
     email = result$email,
     name = result$name,
-    username = result$username,
-    group = result$group
-  ), auto_unbox = TRUE)
+    username = result$username %||% result$email
+  )
+  
+  # add group if not NULL
+  if (!is.null(result$group) && !is.na(result$group)) {
+    user_data_list$group <- result$group
+  }
+  
+  user_json <- jsonlite::toJSON(user_data_list, auto_unbox = TRUE, null = "null")
   
   runjs(sprintf("localStorage.setItem('user_session', '%s');", 
                 gsub("'", "\\\\'", user_json)))
@@ -266,13 +284,20 @@ auth_server <- function(input, output, session) {
       tryCatch({
         user_data <- jsonlite::fromJSON(user_json)
         
-        cat("Decoded user:", user_data$name, "\n")
+        cat("Decoded user:", user_data$name %||% "Unknown", "\n")
+        
+        # Validate user_data structure
+        if (is.null(user_data$email) || is.null(user_data$name)) {
+          cat("Invalid user data structure, clearing localStorage\n")
+          runjs("localStorage.removeItem('user_session');")
+          return()
+        }
         
         # Restore to session
         session$userData$user_email <- user_data$email
         session$userData$user_name <- user_data$name
-        session$userData$user_username <- user_data$username
-        session$userData$user_group <- user_data$group
+        session$userData$user_username <- user_data$username %||% user_data$email
+        session$userData$user_group <- user_data$group  # Can be NULL
         authenticated(TRUE)
         
         cat("Session restored from localStorage for:", user_data$name, "\n")
@@ -301,23 +326,46 @@ auth_server <- function(input, output, session) {
     # trigger re-render when authenticated() changes
     auth_state <- authenticated()
     
-    if (is_authenticated(session)) {
-      user <- get_user_info(session)
-      div(
-        style = "display: flex; gap: 8px; align-items: center; background-color: #f8f9fa; padding: 6px 12px; border-radius: 4px; border: 1px solid #e4e7ea;",
-        span(
-          style = "font-size: 13px; color: #4472ca; font-weight: 500; display: flex; align-items: center; gap: 5px;",
-          icon("user"),
-          span(user$name)
-        ),
-        actionButton(
-          "logout_btn", 
-          "Sign Out",
-          class = "btn-sm",
-          style = "font-size: 13px; padding: 6px 12px; background-color: #ffffff; border: 1px solid #d1d5db; color: #556b78; font-weight: 500; min-width: 160px;"
+    tryCatch({
+      if (is_authenticated(session)) {
+        user <- get_user_info(session)
+        
+        if (is.null(user)) {
+          return(actionButton(
+            "login_btn", 
+            "Sign In", 
+            class = "btn-primary btn-sm", 
+            icon = icon("sign-in-alt"), 
+            style = "font-size: 13px; padding: 6px 16px;"
+          ))
+        }
+        
+        div(
+          style = "display: flex; gap: 8px; align-items: center; background-color: #f8f9fa; padding: 6px 12px; border-radius: 4px; border: 1px solid #e4e7ea;",
+          span(
+            style = "font-size: 13px; color: #4472ca; font-weight: 500; display: flex; align-items: center; gap: 5px;",
+            icon("user"),
+            span(user$name %||% "User")
+          ),
+          actionButton(
+            "logout_btn", 
+            "Sign Out",
+            class = "btn-sm",
+            style = "font-size: 13px; padding: 6px 12px; background-color: #ffffff; border: 1px solid #d1d5db; color: #556b78; font-weight: 500; min-width: 160px;"
+          )
         )
-      )
-    } else {
+      } else {
+        actionButton(
+          "login_btn", 
+          "Sign In", 
+          class = "btn-primary btn-sm", 
+          icon = icon("sign-in-alt"), 
+          style = "font-size: 13px; padding: 6px 16px;"
+        )
+      }
+    }, error = function(e) {
+      cat("ERROR in auth_status renderUI:", e$message, "\n")
+      # Fallback to login button on error
       actionButton(
         "login_btn", 
         "Sign In", 
@@ -325,7 +373,7 @@ auth_server <- function(input, output, session) {
         icon = icon("sign-in-alt"), 
         style = "font-size: 13px; padding: 6px 16px;"
       )
-    }
+    })
   })
   
   # Handle login button click - redirect to OIDC provider
@@ -434,12 +482,23 @@ auth_server <- function(input, output, session) {
   
   # Expose admin status to UI
   output$user_is_admin <- reactive({
-    auth_state <- authenticated()
-    user <- get_user_info(session)
-    if (!is.null(user)) {
+    tryCatch({
+      auth_state <- authenticated()
+      
+      if (!auth_state) return(FALSE)
+      
+      user <- get_user_info(session)
+      
+      if (is.null(user)) return(FALSE)
+      
+      if (is.null(user$is_admin) || is.na(user$is_admin)) return(FALSE)
+      
       return(user$is_admin)
-    }
-    return(FALSE)
+      
+    }, error = function(e) {
+      cat("ERROR in user_is_admin reactive:", e$message, "\n")
+      return(FALSE)
+    })
   })
   outputOptions(output, "user_is_admin", suspendWhenHidden = FALSE)
   
