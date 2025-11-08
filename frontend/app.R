@@ -259,9 +259,9 @@ ui <- fluidPage(
           div(
             style = "display: flex; gap: 8px; align-items: center; padding-top: 5px;",
             
-            # Upload button - ONLY VISIBLE WHEN AUTHENTICATED
+            # Upload button - ONLY VISIBLE TO ADMIN _ FOR NOW
             conditionalPanel(
-              condition = "output.user_authenticated",
+              condition = "output.user_is_admin",
               actionButton(
                 "show_upload_modal", 
                 label = tagList(icon("upload"), "Upload Dataset"),
