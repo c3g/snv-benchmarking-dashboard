@@ -287,7 +287,6 @@ ui <- fluidPage(
           # TAB 1: EXPERIMENTS OVERVIEW
           tabPanel(
             "Experiments",
-            br(),
             div(class = "container-fluid", style = "width: 100%; padding: 0;",
                 div(
                   class = "alert alert-info",
@@ -335,7 +334,6 @@ ui <- fluidPage(
           # TAB 2: PERFORMANCE RESULTS
           tabPanel(
             "Performance Results", 
-            br(),
             div(
               class = "alert alert-info",
               style = "margin-bottom: 20px;",
@@ -388,7 +386,6 @@ ui <- fluidPage(
           # TAB 3: VISUALIZATIONS
           tabPanel(
             "Visualizations",
-            br(),
             fluidRow(
               column(12,
 div(
@@ -527,7 +524,6 @@ div(
           # TAB 4: STRATIFIED ANALYSIS
           tabPanel(
             "Stratified Analysis",
-            br(),
             div(
               class = "alert alert-info",
               style = "margin-bottom: 20px;",
