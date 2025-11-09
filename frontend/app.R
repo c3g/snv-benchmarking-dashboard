@@ -312,11 +312,19 @@ ui <- fluidPage(
                     a("DeepVariant", href = "https://github.com/google/deepvariant", target = "_blank"), " (ML-based), ",
                     a("GATK", href = "https://gatk.broadinstitute.org/", target = "_blank"), " (Traditional), ",
                     a("DRAGEN", href = "https://www.illumina.com/products/by-type/informatics-products/dragen-bio-it-platform.html", 
-                      target = "_blank"), " (Hardware-accelerated), and ",  # NEW
+                      target = "_blank"), " (Hardware-accelerated), and ", 
                     a("Clair3", href = "https://github.com/HKU-BAL/Clair3", target = "_blank"), " (Long-read optimized)."),
                 
-                  p(strong("Getting Started:"), " Use sidebar filters to focus on specific technologies or callers. Chose a comparison option to evaluate multiple approaches. Click ▶ to expand detailed metadata for each experiment. ",
-                    style = "margin-bottom: 0; font-size: 1em;")
+                    div(
+                    style = "margin-top: 12px; padding: 10px; background-color: #dce6f2; border-left: 4px solid #4472C4; border-radius: 4px;",
+                    p(style = "margin: 0; font-size: 0.95em;",
+                      icon("compass"), strong(" How to Navigate:"), br(),
+                      "• Use ", strong("sidebar filters"), " to narrow by technology or caller | Results update in all tabs", br(),
+                      "• Choose a ", strong("comparison option"), " to evaluate multiple experiments side-by-side", br(),
+                      "• Expand ", strong("▶ arrows"), " for detailed experiment metadata" , br(),
+                      "• To manually select: Click ", strong("Compare Specific Experiments"), " button, then", strong("select"), "table rows"    
+                    )
+                  )
                 ),
                 div(style = "width: 100%; overflow-x: auto;",
                     DT::dataTableOutput("experiments_table")
@@ -328,31 +336,34 @@ ui <- fluidPage(
           tabPanel(
             "Performance Results", 
             br(),
-          
             div(
               class = "alert alert-info",
               style = "margin-bottom: 20px;",
               h5(icon("chart-line"), " Variant Calling Performance Metrics"),
               
-              p(strong("Performance Overview:"), " Quantitative results from ",
+              p(strong("Performance Overview:"), " Quantitative ",
                 a("hap.py", href = "https://github.com/Illumina/hap.py", target = "_blank"),
-                " benchmarking showing ",
+                " benchmarking results showing ",
                 a("precision, recall, and F1-score", href = "https://en.wikipedia.org/wiki/Precision_and_recall", target = "_blank"),
-                " for each technology-caller combination. Metrics are calculated separately for ",
-                span(style = "color: #d73027; font-weight: bold;", "SNP variants"), " and ",
-                span(style = "color: #4575b4; font-weight: bold;", "INDEL variants"), 
-                " against validated ",
-                #a("GIAB", href = "https://www.nist.gov/programs-projects/genome-bottle", target = "_blank"), 
-                " truth sets."),
-              
+                " for each technology-caller combination against validated truth sets. ",
               p(strong("Key Metrics:"), " ",
                 strong("Precision"), " measures accuracy of called variants (% true positives), ",
                 strong("Recall"), " measures completeness (% of true variants detected), and ",
                 strong("F1-score"), " provides balanced performance assessment. Higher percentages indicate better performance across all metrics."),
               
-              p(strong("Usage:"), " Select truth sets to compare against. Compare SNP vs INDEL performance across different sequencing technologies and variant calling algorithms.
-              Sort by any metric to identify top performers.",
-                style = "margin-bottom: 0; font-size: 1em;")
+              div(
+                style = "margin-top: 12px; padding: 10px; background-color: #dce6f2; border-left: 4px solid #4472C4; border-radius: 4px;",
+                p(style = "margin: 0; font-size: 0.95em;",
+                  icon("search"), strong(" Exploring Results:"), br(),
+                  "• Results reflect experiments selected in ", strong("Tab 1"), " (filters or comparison modes)", br(),
+                  "• Use ", strong("truth set filter"), " above to focus on specific reference standards", br(),
+                  "• Click ", strong("column headers"), " to sort by any metric", br(),
+                  "• Each experiment shows two rows: ", 
+                  span(style = "color: #d73027; font-weight: bold;", "SNP"), " and ", 
+                  span(style = "color: #4575b4; font-weight: bold;", "INDEL"), " variants"
+                )
+              )
+              )
             ),
             #truthset filter 
             div(class = "truth-set-filter-panel",
@@ -405,9 +416,9 @@ div(
                         style = "margin-top: 12px; padding: 10px; background-color: #dce6f2; border-left: 4px solid #4472C4; border-radius: 4px;",
                         p(style = "margin: 0; font-size: 0.95em;",
                           icon("mouse-pointer"), strong(" How to Interact:"), br(),
-                          "• Click and drag to zoom in | Double-click to reset view", br(),
-                          "• Hover for quick performance metrics", br(),
-                          "• Click points to view detailed experiment metadata",
+                          "• ", strong("Click and drag")," to zoom in |", strong("Double-click"), " to reset view", br(),
+                          "• ", strong("Hover")," for quick performance metrics", br(),
+                          "• ", strong("Click")," points to view detailed experiment metadata",
                         )
                       )
                     )
@@ -528,9 +539,15 @@ div(
                 These stratifications follow ",
                 a("GIAB genome stratification standards", href = "https://github.com/genome-in-a-bottle/genome-stratifications", target = "_blank"), "."),
               
-              p(style = "font-size: 1em; margin-bottom: 0;", 
-                strong("Note:"), " Only experiments from your current selection (previous tabs) are analyzed. Select regions below and click 'Update Analysis' to generate results as plots or data tables. ",
-                strong("Hover over region names"), " for detailed descriptions and genomic context information.")
+              div(
+                style = "margin-top: 12px; padding: 10px; background-color: #dce6f2; border-left: 4px solid #4472C4; border-radius: 4px;",
+                p(style = "margin: 0; font-size: 0.95em;",
+                  icon("sliders-h"), strong(" How to Use:"), br(),
+                  "• Results reflect experiments selected in ", strong("Tab 1"), br(),
+                  "• Choose ", strong("genomic regions"), " below (expand ▶ sections for more options)", br(),
+                  "• Click ", strong("Update Analysis"), " to generate stratified results"
+                )
+              )
             ),
             #truthset filter 
             div(class = "truth-set-filter-panel",
