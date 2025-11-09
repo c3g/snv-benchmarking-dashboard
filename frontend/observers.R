@@ -364,7 +364,7 @@ setup_observers <- function(input, output, session, data_reactives) {
       } else if (file_info$size > 100 * 1024 * 1024) {  # 100MB limit
         output$file_status <- renderUI({
           div(class = "alert alert-warning", style = "padding: 8px; margin: 5px 0;",
-              "⚠️ Large file detected. Upload may take some time.")
+              "Large file detected. Upload may take some time.")
         })
       } else {
         output$file_status <- renderUI({
@@ -419,7 +419,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     
     # Show loading notification
     loading_id <- showNotification(
-      "🔄 Processing upload... Please wait", 
+      "Processing upload... Please wait", 
       type = "message", 
       duration = NULL,
       closeButton = FALSE
@@ -488,7 +488,8 @@ setup_observers <- function(input, output, session, data_reactives) {
         upload_handler$upload_experiment(
           file_path = input$upload_file$datapath,
           metadata_json = metadata_json,
-          username = user_info$username # check for user privileges
+          username = user_info$username,
+          is_admin = user_info$is_admin
         )
       }, error = function(e) {
         removeNotification(loading_id)
@@ -515,12 +516,20 @@ setup_observers <- function(input, output, session, data_reactives) {
         return(TRUE)
         
       } else {
-        # Error notification
-        showNotification(
-          HTML(paste("Upload Failed<br>", result$message)), 
-          type = "error", 
-          duration = 12
-        )
+        #error notifications
+        if (!is.null(result$unauthorized) && result$unauthorized) {
+          showNotification(
+            HTML(paste("Unauthorized<br>", result$error)), 
+            type = "error", 
+            duration = 10
+          )
+        } else {
+          showNotification(
+            HTML(paste("Upload Failed<br>", result$message)), 
+            type = "error", 
+            duration = 12
+          )
+        }
         
         return(FALSE)
       }
@@ -528,15 +537,6 @@ setup_observers <- function(input, output, session, data_reactives) {
     }, error = function(e) {
       # Remove loading notification
       removeNotification(loading_id)
-      
-      if (!result$success && !is.null(result$unauthorized) && result$unauthorized) {
-      showNotification(
-        HTML(paste("Unauthorized<br>", result$error)), 
-        type = "error", 
-        duration = 10
-      )
-      return(FALSE)
-    }
 
       # Show error
       showNotification(
@@ -553,175 +553,143 @@ setup_observers <- function(input, output, session, data_reactives) {
     })
   })
   
-  # ====================================================================
-  # DELETE FUNCTIONALITY OBSERVERS
-  # ====================================================================
-  
-  # Import the Python delete handler
-  delete_handler <- import("delete_handler")
-  
-  # Show selected experiments count in modal
-  output$selected_delete_count <- renderText({
-    selected_rows <- input$delete_experiments_table_rows_selected
-    if (length(selected_rows) == 0) {
-      "No experiments selected"
-    } else {
-      paste("Selected:", length(selected_rows), "experiments")
-    }
-  })
-  
-  # delete confirmation
-  observeEvent(input$confirm_delete_selected, {
-    selected_rows <- input$delete_experiments_table_rows_selected
-    
-    if (length(selected_rows) == 0) {
-      showNotification("Please select experiments to delete", type = "warning", duration = 4)
-      return()
-    }
-    
-    # Get experiment IDs from selected rows
-    all_experiments <- tryCatch({
-      db$get_experiments_overview()
-    }, error = function(e) {
-      data.frame()
-    })
-    
-    if (nrow(all_experiments) == 0) {
-      showNotification("Unable to load experiments", type = "error", duration = 4)
-      return()
-    }
-    
-    selected_ids <- all_experiments$id[selected_rows]
-    
-    # Show final confirmation
-    showModal(modalDialog(
-      title = "Final Confirmation",
-      div(
-        class = "alert alert-danger",
-        h5("Deleting the following experiments:"),
-        tags$ul(
-          lapply(selected_ids, function(id) {
-            exp_name <- all_experiments$name[all_experiments$id == id]
-            tags$li(paste("ID", id, "-", exp_name))
-          })
-        )
-      ),
-      footer = tagList(
-        modalButton("Cancel"),
-        actionButton("final_confirm_delete", "Delete Dataset(s)", 
-                     class = "btn-danger")
-      )
-    ))
-    
-    # Store selected IDs for final confirmation
-    session$userData$selected_delete_ids <- selected_ids
-  })
-  
-  # Handle final delete confirmation
-  observeEvent(input$final_confirm_delete, {
+# ====================================================================
+# DELETE FUNCTIONALITY OBSERVERS
+# ====================================================================
 
-      user_info <- get_user_info(session)
-  
-  # Check authorization
-  if (!is_authenticated(session) || !is_admin(user_info$username)) {
-    removeModal()
-    showNotification(
-      "Unauthorized: Admin privileges required", 
-      type = "error", 
-      duration = 5
-    )
+# Import the Python delete handler
+delete_handler <- import("delete_handler")
+
+# Show selected experiments count in modal
+output$selected_delete_count <- renderText({
+  selected_rows <- input$delete_experiments_table_rows_selected
+  if (length(selected_rows) == 0) {
+    "No experiments selected"
+  } else {
+    paste("Selected:", length(selected_rows), "experiments")
+  }
+})
+
+# Delete confirmation - select experiments and show final confirmation modal
+observeEvent(input$confirm_delete_selected, {
+  selected_rows <- input$delete_experiments_table_rows_selected
+
+  if (length(selected_rows) == 0) {
+    showNotification("Please select experiments to delete", type = "warning", duration = 4)
     return()
   }
   
-    selected_ids <- session$userData$selected_delete_ids
-    
-    if (is.null(selected_ids) || length(selected_ids) == 0) {
-      removeModal()
-      return()
-    }
-    
+  all_experiments <- tryCatch({
+    db$get_experiments_overview()
+  }, error = function(e) {
+    showNotification("Unable to load experiments", type = "error", duration = 4)
+    return(data.frame())
+  })
+  
+  if (nrow(all_experiments) == 0) return()
+  
+  selected_ids <- all_experiments$id[selected_rows]
+  session$userData$selected_delete_ids <- selected_ids
+  
+  showModal(modalDialog(
+    title = "Final Confirmation",
+    div(
+      class = "alert alert-danger",
+      h5("Deleting the following experiments:"),
+      tags$ul(
+        lapply(selected_ids, function(id) {
+          exp_name <- all_experiments$name[all_experiments$id == id]
+          tags$li(paste("ID", id, "-", exp_name))
+        })
+      )
+    ),
+    footer = tagList(
+      modalButton("Cancel"),
+      actionButton("final_confirm_delete", "Delete Dataset(s)", 
+                   class = "btn-danger")
+    )
+  ))
+})
+
+# Handle final delete confirmation
+observeEvent(input$final_confirm_delete, {
+  user_info <- get_user_info(session)
+  
+  if (!is_authenticated(session)) {
     removeModal()
-    
-    # Show loading notification
-    loading_id <- showNotification(
-      paste("Deleting", length(selected_ids), "experiments and rebuilding database."),
-      type = "message", 
-      duration = NULL,
-      closeButton = FALSE
+    showNotification("Please sign in", type = "error", duration = 5)
+    return()
+  }
+  
+  if (!is_admin(user_info$group)) {
+    removeModal()
+    showNotification("Admin privileges required", type = "error", duration = 5)
+    return()
+  }
+  
+  selected_ids <- session$userData$selected_delete_ids
+  
+  if (length(selected_ids) == 0) {
+    removeModal()
+    return()
+  }
+  
+  removeModal()
+  
+  loading_id <- showNotification(
+    paste("Deleting", length(selected_ids), "experiments and rebuilding database..."),
+    type = "message", 
+    duration = NULL,
+    closeButton = FALSE
+  )
+  
+  success_count <- 0
+  total_count <- length(selected_ids)
+  sorted_ids <- sort(selected_ids, decreasing = TRUE)
+  
+  for (exp_id in sorted_ids) {
+    result <- delete_handler$delete_experiment(
+      exp_id, 
+      username = user_info$username,
+      is_admin = user_info$is_admin
     )
     
-    # Perform deletion
-    tryCatch({
-      
-      # Delete experiments one by one (in reverse order to handle ID shifting)
-      success_count <- 0
-      total_count <- length(selected_ids)
-      
-      # Sort IDs in descending order to avoid indexing issues
-      sorted_ids <- sort(selected_ids, decreasing = TRUE)
-      
-      for (exp_id in sorted_ids) {
-        result <- delete_handler$delete_experiment(
-          exp_id, 
-          username = user_info$username
-          )
-        
-        if (result$success) {
-          success_count <- success_count + 1
-        } else {
-          # Log individual failures but continue
-          cat("Failed to delete experiment", exp_id, ":", result$error, "\n")
-        }
-      }
-      
-      # Remove loading notification
-      removeNotification(loading_id)
-      
-      #authorization check
-      if (!is.null(result$unauthorized) && result$unauthorized) {
-        removeNotification(loading_id)
-        showNotification(
-          paste("Unauthorized:", result$error),
-          type = "error",
-          duration = 10
-        )
-        return()
-      }
-      if (success_count == total_count) {
-        showNotification(
-          paste("Successfully deleted", success_count, "experiments and rebuilt database."),
-          type = "message",
-          duration = 6
-        )
-      } else {
-        showNotification(
-          paste("Deleted", success_count, "out of", total_count, "experiments. Some failures occurred."),
-          type = "warning",
-          duration = 8
-        )
-      }
-      
-      # Close modal and refresh data
-      toggleModal(session, "delete_modal", toggle = "close")
-        
-        #refresh data wituout reloading the page
-        data_refresh_trigger(data_refresh_trigger() + 1)
-      
-    }, error = function(e) {
+    if (result$success) {
+      success_count <- success_count + 1
+    } else if (!is.null(result$unauthorized) && result$unauthorized) {
       removeNotification(loading_id)
       showNotification(
-        paste("Delete operation failed:", e$message),
+        paste("Unauthorized:", result$error),
         type = "error",
         duration = 10
       )
-    })
-    
-    # Clean up
-    session$userData$selected_delete_ids <- NULL
-  })
+      return()
+    }
+  }
   
-  # Handle cancel delete
-  observeEvent(input$cancel_delete, {
-    toggleModal(session, "delete_modal", toggle = "close")
-  })
+  removeNotification(loading_id)
+  
+  if (success_count == total_count) {
+    showNotification(
+      paste("Successfully deleted", success_count, "experiments and rebuilt database."),
+      type = "message",
+      duration = 6
+    )
+  } else {
+    showNotification(
+      paste("Deleted", success_count, "out of", total_count, "experiments. Some failures occurred."),
+      type = "warning",
+      duration = 8
+    )
+  }
+  
+  toggleModal(session, "delete_modal", toggle = "close")
+  data_reactives$data_refresh_trigger(data_reactives$data_refresh_trigger() + 1)
+  session$userData$selected_delete_ids <- NULL
+})
+
+# Handle cancel delete
+observeEvent(input$cancel_delete, {
+  toggleModal(session, "delete_modal", toggle = "close")
+})
 }
