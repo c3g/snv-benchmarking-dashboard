@@ -383,18 +383,15 @@ def process_upload(temp_file_path, metadata_json_string):
 # PYTHON/R INTERFACE FUNCTION
 # ============================================================================
 
-@require_admin
-def upload_experiment(file_path, metadata_json,username=None):
+def upload_experiment(file_path, metadata_json, username=None, is_admin=False):
     """
     Upload experiment - ADMIN ONLY
     
     Args:
         file_path (str): Path to uploaded file
         metadata_json (str): JSON string containing experiment metadata
-        username: Username for authorization (required)
-        
-    Returns:
-        dict: Upload result with success status and message
+        username: Username for logging
+        is_admin: Admin status from COManage groups (required for authorization)
     """
     logger.info(f"Upload requested by: {username}")
     return process_upload(file_path, metadata_json)
