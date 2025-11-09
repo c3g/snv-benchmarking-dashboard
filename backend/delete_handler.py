@@ -41,13 +41,14 @@ def save_metadata():
 
 #---- MAIN DELETE FUNCTION ----#
 @require_admin
-def delete_experiment(experiment_id,username=None):
+def delete_experiment(experiment_id, username=None, is_admin=False):
    
    """
    Delete experiment - ADMIN ONLY
    Args:
        experiment_id (str): ID of the experiment to delete
-       username: Username for authorization (required)
+       username: Username for logging
+       is_admin: Admin status from COManage groups (required for authorization)
    Returns:
        dict: Deletion result with success status and message"""
    try:
