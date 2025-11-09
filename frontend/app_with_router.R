@@ -1034,23 +1034,14 @@ main_page <- fluidPage(
   )
 )
 
-#callack page
-callback_page <- fluidPage(
-  tags$script(HTML("
-    // Redirect to root with query params preserved
-    window.location.href = window.location.origin + '/' + window.location.search;
-  "))
-)
-
-# Create router
-router <- make_router(
-  route("/", main_page),           # Main dashboard
-  route("/callback", callback_page) # OAuth callback handler
-)
 
 # Wrap UI with router
 ui <- fluidPage(
-  router$ui
+  router_ui(
+    route("/", main_page),
+    route("/callback", main_page) # Same UI, but accepts /callback path
+
+  )
 )
 
 # ============================================================================
@@ -1059,7 +1050,7 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   
-  router$server(input, output, session)  # Initialize router
+  router_server()  # Initialize router
   # ====================================================================
   # INITIALIZE MODULES
   # ====================================================================
