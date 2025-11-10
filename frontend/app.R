@@ -301,7 +301,6 @@ ui <- fluidPage(
           # TAB 1: EXPERIMENTS OVERVIEW
           tabPanel(
             "Experiments",
-            br(),
             div(class = "container-fluid", style = "width: 100%; padding: 0;",
                 div(
                   class = "alert alert-info",
@@ -326,11 +325,19 @@ ui <- fluidPage(
                     a("DeepVariant", href = "https://github.com/google/deepvariant", target = "_blank"), " (ML-based), ",
                     a("GATK", href = "https://gatk.broadinstitute.org/", target = "_blank"), " (Traditional), ",
                     a("DRAGEN", href = "https://www.illumina.com/products/by-type/informatics-products/dragen-bio-it-platform.html", 
-                      target = "_blank"), " (Hardware-accelerated), and ",  # NEW
+                      target = "_blank"), " (Hardware-accelerated), and ", 
                     a("Clair3", href = "https://github.com/HKU-BAL/Clair3", target = "_blank"), " (Long-read optimized)."),
                 
-                  p(strong("Getting Started:"), " Use sidebar filters to focus on specific technologies or callers. Chose a comparison option to evaluate multiple approaches. Click ▶ to expand detailed metadata for each experiment. ",
-                    style = "margin-bottom: 0; font-size: 1em;")
+                    div(
+                    style = "margin-top: 12px; padding: 10px; background-color: #dce6f2; border-left: 4px solid #4472C4; border-radius: 4px;",
+                    p(style = "margin: 0; font-size: 0.95em;",
+                      icon("compass"), strong(" How to Navigate:"), br(),
+                      "• Use ", strong("sidebar filters"), " to narrow by technology or caller | Results update in all tabs", br(),
+                      "• Choose a ", strong("comparison option"), " to evaluate multiple experiments side-by-side", br(),
+                      "• Expand ", strong("▶ arrows"), " for detailed experiment metadata" , br(),
+                      "• To manually select: Click ", strong("Compare Specific Experiments"), " button, then", strong("select"), "table rows"    
+                    )
+                  )
                 ),
                 div(style = "width: 100%; overflow-x: auto;",
                     DT::dataTableOutput("experiments_table")
@@ -341,30 +348,51 @@ ui <- fluidPage(
           # TAB 2: PERFORMANCE RESULTS
           tabPanel(
             "Performance Results", 
-            br(),
             div(
               class = "alert alert-info",
               style = "margin-bottom: 20px;",
               h5(icon("chart-line"), " Variant Calling Performance Metrics"),
               
-              p(strong("Performance Overview:"), " Quantitative results from ",
+              p(strong("Performance Overview:"), " Quantitative ",
                 a("hap.py", href = "https://github.com/Illumina/hap.py", target = "_blank"),
-                " benchmarking showing ",
+                " benchmarking results showing ",
                 a("precision, recall, and F1-score", href = "https://en.wikipedia.org/wiki/Precision_and_recall", target = "_blank"),
-                " for each technology-caller combination. Metrics are calculated separately for ",
-                span(style = "color: #d73027; font-weight: bold;", "SNP variants"), " and ",
-                span(style = "color: #4575b4; font-weight: bold;", "INDEL variants"), 
-                " against validated ",
-                #a("GIAB", href = "https://www.nist.gov/programs-projects/genome-bottle", target = "_blank"), 
-                " truth sets."),
-              
+                " for each technology-caller combination against validated truth sets. ",
               p(strong("Key Metrics:"), " ",
                 strong("Precision"), " measures accuracy of called variants (% true positives), ",
                 strong("Recall"), " measures completeness (% of true variants detected), and ",
                 strong("F1-score"), " provides balanced performance assessment. Higher percentages indicate better performance across all metrics."),
               
-              p(strong("Usage:"), " Sort by any metric to identify top performers. Compare SNP vs INDEL performance patterns across different sequencing technologies and variant calling algorithms.",
-                style = "margin-bottom: 0; font-size: 1em;")
+              div(
+                style = "margin-top: 12px; padding: 10px; background-color: #dce6f2; border-left: 4px solid #4472C4; border-radius: 4px;",
+                p(style = "margin: 0; font-size: 0.95em;",
+                  icon("search"), strong(" Exploring Results:"), br(),
+                  "• Results reflect experiments selected in ", strong("Tab 1"), " (filters or comparison modes)", br(),
+                  "• Use ", strong("truth set filter"), " above to focus on specific reference standards", br(),
+                  "• Click ", strong("column headers"), " to sort by any metric", br(),
+                  "• Each experiment shows two rows: ", 
+                  span(style = "color: #d73027; font-weight: bold;", "SNP"), " and ", 
+                  span(style = "color: #4575b4; font-weight: bold;", "INDEL"), " variants"
+                )
+              )
+              )
+            ),
+            #truthset filter 
+            div(class = "truth-set-filter-panel",
+              tags$label("Choose Reference Standards for Comparison:"),
+              selectInput(
+                "truth_set_filter_tab2",
+                label = NULL,
+                choices = TRUTH_SET_OPTIONS,
+                selected = "All Truth Sets",
+                width = "100%"
+              ),
+              tags$span(
+                class = "info-icon",
+                icon("info-circle"),
+                title = "Filter experiments by benchmarking truth set",
+                `data-toggle` = "tooltip"
+              )
             ),
             DT::dataTableOutput("performance_table")
           ),
@@ -372,100 +400,109 @@ ui <- fluidPage(
           # TAB 3: VISUALIZATIONS
           tabPanel(
             "Visualizations",
-            br(),
             fluidRow(
               column(12,
-                     div(
-                       class = "alert alert-info",
-                       h5(icon("chart-area"), " Performance Characterization Plots"),
-                       p(strong("Performance Plots:"), " Precision vs. recall scatter plots with ",
-                         a("F1-score", href = "https://en.wikipedia.org/wiki/F-score", target = "_blank"),
-                         " reference lines for visual comparison of variant calling performance. Each point represents one experiment, colored by sequencing technology (",
-                         a("Illumina", href = "https://www.illumina.com/", target = "_blank"), ", ",
-                         a("PacBio", href = "https://www.pacb.com/", target = "_blank"), ", ",
-                         a("ONT", href = "https://nanoporetech.com/", target = "_blank"), ", ",
-                         a("MGI", href = "https://en.mgi-tech.com/", target = "_blank"),
-                         ") and shaped by variant caller (",
-                         a("DeepVariant", href = "https://github.com/google/deepvariant", target = "_blank"), ", ",
-                         a("GATK", href = "https://gatk.broadinstitute.org/", target = "_blank"), ", ",
-                         a("Clair3", href = "https://github.com/HKU-BAL/Clair3", target = "_blank"), ", ",
-                         a("DRAGEN", href = "https://www.illumina.com/products/by-type/informatics-products/dragen-bio-it-platform.html", 
-                          target = "_blank"), 
-                          ")."),
-                         
-                       p(style = "font-size: 1em;", 
-                         strong("Interaction:"), " Click points to view detailed experiment metadata below.",
-                         strong("Hover"), " for quick performance metrics.", strong("Drag")," to zoom and ",strong("double-click"), " to reset view.")
-                     ),
+div(
+             class = "alert alert-info",
+             h5(icon("chart-area"), " Performance Characterization Plots"),
+             p(strong("Performance Plots:"), " Precision vs. recall scatter plots with ",
+               a("F1-score", href = "https://en.wikipedia.org/wiki/F-score", target = "_blank"),
+               " contour lines for visual comparison of variant calling performance. ",
+               "Curved lines represent constant F1-scores, helping identify optimal precision-recall balance. ",
+               "Each point represents one experiment, colored by sequencing technology (",
+               a("Illumina", href = "https://www.illumina.com/", target = "_blank"), ", ",
+               a("PacBio", href = "https://www.pacb.com/", target = "_blank"), ", ",
+               a("ONT", href = "https://nanoporetech.com/", target = "_blank"), ", ",
+               a("MGI", href = "https://en.mgi-tech.com/", target = "_blank"),
+               ") and shaped by variant caller (",
+               a("DeepVariant", href = "https://github.com/google/deepvariant", target = "_blank"), ", ",
+               a("GATK", href = "https://gatk.broadinstitute.org/", target = "_blank"), ", ",
+               a("Clair3", href = "https://github.com/HKU-BAL/Clair3", target = "_blank"), ", ",
+               a("DRAGEN", href = "https://www.illumina.com/products/by-type/informatics-products/dragen-bio-it-platform.html", 
+                target = "_blank"), 
+                ")."),
+             
+                      # interaction instructions
+                      div(
+                        style = "margin-top: 12px; padding: 10px; background-color: #dce6f2; border-left: 4px solid #4472C4; border-radius: 4px;",
+                        p(style = "margin: 0; font-size: 0.95em;",
+                          icon("mouse-pointer"), strong(" How to Interact:"), br(),
+                          "• ", strong("Click and drag")," to zoom in |", strong("Double-click"), " to reset view", br(),
+                          "• ", strong("Hover")," for quick performance metrics", br(),
+                          "• ", strong("Click")," points to view detailed experiment metadata",
+                        )
+                      )
+                    )
               )
             ),
-            br(),
+            #truthset filter 
+            div(class = "truth-set-filter-panel",
+              tags$label("Choose Reference Standards for Comparison:"),
+              selectInput(
+                "truth_set_filter_tab3",
+                label = NULL,
+                choices = TRUTH_SET_OPTIONS,
+                selected = "All Truth Sets",
+                width = "100%"
+              ),
+              tags$span(
+                class = "info-icon",
+                icon("info-circle"),
+                title = "Filter experiments by benchmarking truth set",
+                `data-toggle` = "tooltip"
+              )
+            ),
             # Performance plots
             wellPanel(
               style = "background-color: #ffffff; padding: 25px; margin-bottom: 20px;",
               fluidRow(
                 column(4, class = "plot-column",
-                       style = "max-width: 33.33%; overflow: hidden;",
-                       # SNP Plot title
-                       div(
-                         style = "background: linear-gradient(135deg, #fefafa 0%, #fdf5f5 100%); 
-                         border: 1px solid #ef9a9a; border-radius: 8px; 
-                         padding: 10px 16px; margin-bottom: 18px; text-align: center;
-                         box-shadow: 0 1px 2px rgba(239, 154, 154, 0.1);",
-                         h4("SNP Performance", 
-                            style = "color: #d32f2f; font-weight: 600; margin: 0; 
-                          font-size: 17px; letter-spacing: 0.3px;")
-                       ),
-                   
-                       
-                       plotlyOutput("snp_plot", height = "500px")
+                  style = "max-width: 33.33%; overflow: hidden;",
+                  # SNP Plot title 
+                  div(
+                    style = "border-left: 3px solid #d32f2f; padding-left: 12px; margin-bottom: 5px; margin-left: 53px;",
+                    h4("SNP Performance", 
+                      style = "color: #d32f2f; font-weight: 600; margin: 0; 
+                        font-size: 17px; letter-spacing: 0.3px;")
+                  ),
+                  plotlyOutput("snp_plot", height = "500px")
                 ),
                 column(4, class = "plot-column",
-                       style = "max-width: 33.33%; overflow: hidden;",
-                       # INDEL plot title
-                       div(
-                         style = "background: linear-gradient(135deg, #fafbfd 0%, #f5f7fc 100%); 
-                         border: 1px solid #9fa8da; border-radius: 6px; 
-                         padding: 10px 16px; margin-bottom: 18px; text-align: center;
-                         box-shadow: 0 1px 2px rgba(159, 168, 218, 0.1);",
-                         h4("INDEL Performance", 
-                            style = "color: #1976d2; font-weight: 600; margin: 0; 
-                           font-size: 17px; letter-spacing: 0.3px;")
-                       ),
-                      
-                       #loading spinner
-                       conditionalPanel(
-                         condition = "!output.indel_plot",
-                         
-                         div(
-                           style = "display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px;",
-                           div(class = "custom-spinner", style = "margin: 0 auto;"),
-                           p("Loading plots...", 
-                             style = "color: #6c757d; margin-top: 15px; font-size: 14px; text-align: center; margin-bottom: 0;")
-                         )
-                       ),
-                       plotlyOutput("indel_plot", height = "500px") 
+                  style = "max-width: 33.33%; overflow: hidden;",
+                  # INDEL plot title
+                  div(
+                    style = "border-left: 3px solid #1976d2; padding-left: 12px; margin-bottom: 5px; margin-left: 53px;",
+                    h4("INDEL Performance", 
+                      style = "color: #1976d2; font-weight: 600; margin: 0; 
+                        font-size: 17px; letter-spacing: 0.3px;")
+                  ),
+                  # Loading spinner
+                  conditionalPanel(
+                    condition = "!output.indel_plot",
+                    div(
+                      style = "display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px;",
+                      div(class = "custom-spinner", style = "margin: 0 auto;"),
+                      p("Loading plots...", 
+                        style = "color: #6c757d; margin-top: 15px; font-size: 14px; text-align: center; margin-bottom: 0;")
+                    )
+                  ),
+                  plotlyOutput("indel_plot", height = "500px") 
                 ),
                 column(4,
-                       div(
-                           # header
-                           div(
-                             style = "background: linear-gradient(135deg, #fdfaff 0%, #fbf5ff 100%); 
-                             border: 1px solid #c4a1d6; border-radius: 8px; 
-                             padding: 10px 16px; margin-bottom: 18px; text-align: center;
-                             box-shadow: 0 1px 2px rgba(196, 161, 214, 0.1);",
-                             h4("Chart Reference", 
-                                style = "color: #7b2d8e; font-weight: 600; margin: 0; 
-                              font-size: 17px; letter-spacing: 0.3px;")
-                           ),
-                           br(), br(),
-                           htmlOutput("technology_legend"),
-                           br(),
-                           htmlOutput("caller_legend")
-                       )
+                  div(
+                    # Chart Reference header 
+                    div(
+                      style = "border-left: 3px solid #7b2d8e; padding-left: 12px; margin-bottom: 5px; margin-left: 5px;",
+                      h4("Chart Reference", 
+                        style = "color: #7b2d8e; font-weight: 600; margin: 0; 
+                          font-size: 17px; letter-spacing: 0.3px;")
+                    ),
+                    br(), br(),
+                    htmlOutput("technology_legend"),
+                    br(),
+                    htmlOutput("caller_legend")
+                  )
                 )
-                           
-              
               )
             ),
             # Selected experiment details
@@ -501,7 +538,6 @@ ui <- fluidPage(
           # TAB 4: STRATIFIED ANALYSIS
           tabPanel(
             "Stratified Analysis",
-            br(),
             div(
               class = "alert alert-info",
               style = "margin-bottom: 20px;",
@@ -513,11 +549,33 @@ ui <- fluidPage(
                 These stratifications follow ",
                 a("GIAB genome stratification standards", href = "https://github.com/genome-in-a-bottle/genome-stratifications", target = "_blank"), "."),
               
-              p(style = "font-size: 1em; margin-bottom: 0;", 
-                strong("Note:"), " Only experiments from your current selection (previous tabs) are analyzed. Select regions below and click 'Update Analysis' to generate results as plots or data tables. ",
-                strong("Hover over region names"), " for detailed descriptions and genomic context information.")
+              div(
+                style = "margin-top: 12px; padding: 10px; background-color: #dce6f2; border-left: 4px solid #4472C4; border-radius: 4px;",
+                p(style = "margin: 0; font-size: 0.95em;",
+                  icon("sliders-h"), strong(" How to Use:"), br(),
+                  "• Results reflect experiments selected in ", strong("Tab 1"), br(),
+                  "• Choose ", strong("genomic regions"), " below (expand ▶ sections for more options)", br(),
+                  "• Click ", strong("Update Analysis"), " to generate stratified results"
+                )
+              )
             ),
-            
+            #truthset filter 
+            div(class = "truth-set-filter-panel",
+              tags$label("Choose Reference Standards for Comparison:"),
+              selectInput(
+                "truth_set_filter_tab4",
+                label = NULL,
+                choices = TRUTH_SET_OPTIONS,
+                selected = "All Truth Sets",
+                width = "100%"
+              ),
+              tags$span(
+                class = "info-icon",
+                icon("info-circle"),
+                title = "Filter experiments by benchmarking truth set",
+                `data-toggle` = "tooltip"
+              )
+            ),
             # Region selection panel
             wellPanel(
               style = "background-color: #f8f9fa; margin-bottom: 20px;",
@@ -526,317 +584,320 @@ ui <- fluidPage(
               fluidRow(
                 column(12,
                        div(style = "background: white; border: 1px solid #dee2e6; border-radius: 5px; padding: 20px;",
-                           
-                           # Main Regions
-                           div(
-                             h6("Main Regions", 
-                                style = "margin-bottom: 10px; color: #495057; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
-                             checkboxGroupInput(
-                               "core_regions",
-                               NULL,
-                               choices = list(
-                                 "Overall" = "All Regions",
-                                 "Easy Regions" = "Easy Regions", 
-                                 "Difficult Regions" = "Difficult Regions"
-                               ),
-                               selected = c("All Regions"),
-                               inline = TRUE
-                             ),
-                             tags$script(HTML("
-                   $(document).ready(function(){
-                     $('input[value=\"Easy Regions\"]').parent().attr({
-                       'data-toggle': 'tooltip',
-                       'title': 'High-confidence regions with unique sequences and good mappability'
-                     });
-                     $('input[value=\"Difficult Regions\"]').parent().attr({
-                       'data-toggle': 'tooltip', 
-                       'title': 'Challenging regions with repetitive sequences, low complexity, or structural variations'
-                     });
-                   });
-                 "))
-                           ),
-                           
-                           # Functional Regions (Collapsible)
-                           div(
-                             style = "margin-top: 15px;",
-                             tags$a(
-                               href = "#functional_collapse",
-                               `data-toggle` = "collapse",
-                               style = "text-decoration: none; color: #495057;",
-                               h6("▶ Functional Regions",
-                                  style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
-                             ),
-                             div(
-                               id = "functional_collapse",
-                               class = "collapse",
-                               style = "margin-top: 6px;",
-                               checkboxGroupInput(
-                                 "functional_regions",
-                                 NULL,
-                                 choices = list(
-                                   "RefSeq CDS" = "RefSeq CDS",
-                                   "Non-CDS Regions" = "Non-CDS Regions"
-                                 ),
-                                 selected = character(0),
-                                 inline = TRUE
-                               ),
-                               tags$script(HTML("
-                     $(document).ready(function(){
-                       $('input[value=\"RefSeq CDS\"]').parent().attr({
-                         'data-toggle': 'tooltip',
-                         'title': 'Protein-coding DNA sequences from NCBI Reference Sequence database'
-                       });
-                       $('input[value=\"Non-CDS Regions\"]').parent().attr({
-                         'data-toggle': 'tooltip',
-                         'title': 'Non-coding genomic regions including introns, intergenic, and regulatory sequences'
-                       });
-                     });
-                   "))
-                             )
-                           ),
-                           
-                           # Homopolymer Regions
-                         
-                            div(
-                              style = "margin-top: 15px;",
-                              tags$a(
-                                href = "#homopolymer_collapse",
-                                `data-toggle` = "collapse",
-                                style = "text-decoration: none; color: #495057;",
-                                h6("▶ Homopolymer Regions",
-                                  style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
-                              ),
-                              div(
-                                id = "homopolymer_collapse",
-                                class = "collapse",
-                                style = "margin-top: 6px;",
-                                checkboxGroupInput(
-                                  "homopolymer_regions",
-                                  NULL,
-                                  choices = list(
-                                    "Homopolymer 4-6bp" = "Homopolymer 4-6bp",
-                                    "Homopolymer 7-11bp" = "Homopolymer 7-11bp",
-                                    "Homopolymer >12bp" = "Homopolymer >12bp",
-                                    "Homopolymer ≥21bp" = "Homopolymer ≥21bp",
-                                    "All Tandem Repeat & Homopolymers" = "All TR & Homopolymers",
-                                    "Non-Tandem Repeat & Non-Homopolymers" = "Non-TR & Non-Homopolymers"
-                                  ),
-                                  selected = character(0),
-                                  inline = TRUE
-                                ),
-                                # TOOLTIPS 
-                                tags$script(HTML("
-                                  $(document).ready(function(){
-                                    $('input[value=\"Homopolymer 4-6bp\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Short repetitive single-nucleotide runs (e.g., AAAA, TTTTT)'
-                                    });
-                                    $('input[value=\"Homopolymer 7-11bp\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Medium-length repetitive single-nucleotide runs'
-                                    });
-                                    $('input[value=\"Homopolymer >11bp\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Long repetitive single-nucleotide runs (≥12 consecutive identical bases)'
-                                    });
-                                    $('input[value=\"Homopolymer ≥21bp\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Very long repetitive single-nucleotide runs (≥21 consecutive identical bases)'
-                                    });
-                                    $('input[value=\"All TR & Homopolymers\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'All tandem repeats and homopolymer regions combined'
-                                    });
-                                    $('input[value=\"Non-TR & Non-Homopolymers\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Regions excluding all tandem repeats and homopolymers'
-                                    });
-                                    $('[data-toggle=\"tooltip\"]').tooltip();
-                                  });
-                                "))
-                              )
-                            ),
-                            # GC Content Regions
-                           div(
-                             style = "margin-top: 15px;",
-                             tags$a(
-                               href = "#gc_collapse",
-                               `data-toggle` = "collapse",
-                               style = "text-decoration: none; color: #495057;",
-                               h6("▶ GC Content Regions",
-                                  style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
-                             ),
-                             div(
-                               id = "gc_collapse",
-                               class = "collapse",
-                               style = "margin-top: 10px;",
-                               fluidRow(
-                                 column(4,
-                                        h6("Low GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
-                                        checkboxGroupInput(
-                                          "gc_low",
-                                          NULL,
-                                          choices = list(
-                                            "Very Low (<15%)" = "GC_<15",
-                                            "GC 15-20%" = "GC_15_20",
-                                            "GC 20-25%" = "GC_20_25",
-                                            "GC 25-30%" = "GC_25_30"
-                                          ),
-                                          selected = character(0)
-                                        )
-                                 ),
-                                 column(4,
-                                        h6("Normal GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
-                                        checkboxGroupInput(
-                                          "gc_normal",
-                                          NULL,
-                                          choices = list(
-                                            "GC 30-55%" = "GC_30_55",
-                                            "GC 55-60%" = "GC_55_60", 
-                                            "GC 60-65%" = "GC_60_65",
-                                            "GC 65-70%" = "GC_65_70"
-                                          ),
-                                          selected = character(0)
-                                        )
-                                 ),
-                                 column(4,
-                                        h6("High GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
-                                        checkboxGroupInput(
-                                          "gc_high",
-                                          NULL,
-                                          choices = list(
-                                            "GC 70-75%" = "GC_70_75",
-                                            "GC 75-80%" = "GC_75_80",
-                                            "GC 80-85%" = "GC_80_85",
-                                            "Very High (>85%)" = "GC_>85"
-                                          ),
-                                          selected = character(0)
-                                        )
-                                 )
-                               ),
-                                checkboxGroupInput(
-                                  "gc_extreme",
-                                  NULL,
-                                  choices = list(
-                                    "GC <25% or >65%" = "GC <25 or >65",
-                                    "GC <30% or >55%" = "GC <30 or >55"
-                                  ),
-                                  selected = character(0),
-                                  inline = FALSE
-                                ),
-                                tags$script(HTML("
-                                  $(document).ready(function(){
-                                    $('input[value=\"GC <25 or >65\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Extreme GC content regions: either very low (<25%) or very high (>65%)'
-                                    });
-                                    $('input[value=\"GC <30 or >55\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Moderate-extreme GC content regions: either low (<30%) or high (>55%)'
-                                    });
-                                    $('[data-toggle=\"tooltip\"]').tooltip();
-                                  });
-                                "))
-                              )
-                             
-                           ),
-                            # Complex Regions 
-                            div(
-                              style = "margin-top: 15px;",
-                              tags$a(
-                                href = "#complex_collapse",
-                                `data-toggle` = "collapse",
-                                style = "text-decoration: none; color: #495057;",
-                                h6("▶ Complex Regions",
-                                  style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
-                              ),
-                              div(
-                                id = "complex_collapse",
-                                class = "collapse",
-                                style = "margin-top: 6px;",
-                                checkboxGroupInput(
-                                  "complex_regions",
-                                  NULL,
-                                  choices = list(
-                                    "Segmental Duplications" = "Segmental Duplications",
-                                    "Non-Segmental Duplications" = "Non-Segmental Duplications",
-                                    "Low Mappability" = "Low Mappability",
-                                    "Non-Low Mappability" = "Non-Low Mappability",
-                                    "MHC Region" = "MHC Region"
-                                  ),
-                                  selected = character(0),
-                                  inline = TRUE
-                                ),
-                                # TOOLTIPS
-                                tags$script(HTML("
-                                  $(document).ready(function(){
-                                    $('input[value=\"Segmental Duplications\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Large blocks of duplicated DNA (≥1kb, >90% identity)'
-                                    });
-                                    $('input[value=\"Non-Segmental Duplications\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Regions excluding segmental duplications'
-                                    });
-                                    $('input[value=\"Low Mappability\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Difficult-to-sequence regions where reads map ambiguously'
-                                    });
-                                    $('input[value=\"Non-Low Mappability\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Regions with good read mappability'
-                                    });
-                                    $('input[value=\"MHC Region\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Major Histocompatibility Complex - highly polymorphic immune system genes'
-                                    });
-                                    $('[data-toggle=\"tooltip\"]').tooltip();
-                                  });
-                                "))
-                              )
-                            ),
 
-                           # Satellites Regions
-                            div(
-                              style = "margin-top: 15px;",
-                              tags$a(
-                                href = "#satellites_collapse",
-                                `data-toggle` = "collapse",
-                                style = "text-decoration: none; color: #495057;",
-                                h6("▶ Satellite Regions",
-                                  style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
+                        # Primary Stratifications
+                        div(
+                          h6("Primary Stratifications", 
+                            style = "margin-bottom: 10px; color: #495057; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px;"),
+                          checkboxGroupInput(
+                            "core_regions",
+                            NULL,
+                            choices = list(
+                              "Overall" = "All Regions",
+                              "Easy Regions" = "Easy Regions", 
+                              "Difficult Regions" = "Difficult Regions"
+                            ),
+                            selected = c("All Regions"),
+                            inline = TRUE
+                          ),
+                          tags$script(HTML("
+                $(document).ready(function(){
+                  $('input[value=\"Easy Regions\"]').parent().attr({
+                    'data-toggle': 'tooltip',
+                    'title': 'High-confidence regions with unique sequences and good mappability'
+                  });
+                  $('input[value=\"Difficult Regions\"]').parent().attr({
+                    'data-toggle': 'tooltip', 
+                    'title': 'Challenging regions with repetitive sequences, low complexity, or structural variations'
+                  });
+                });
+              "))
+                        ),
+                        
+                        # Functional regions
+                        div(
+                          style = "margin-top: 15px;",
+                          tags$a(
+                            href = "#functional_collapse",
+                            `data-toggle` = "collapse",
+                            style = "text-decoration: none; color: #495057;",
+                            h6("▶ Functional Regions",
+                              style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
+                          ),
+                          div(
+                            id = "functional_collapse",
+                            class = "collapse",
+                            style = "margin-top: 6px;",
+                            checkboxGroupInput(
+                              "functional_regions",
+                              NULL,
+                              choices = list(
+                                "RefSeq CDS" = "RefSeq CDS",
+                                "Non-CDS Regions" = "Non-CDS Regions"
                               ),
-                              div(
-                                id = "satellites_collapse",
-                                class = "collapse",
-                                style = "margin-top: 6px;",
-                                checkboxGroupInput(
-                                  "satellites_regions",
-                                  NULL,
-                                  choices = list(
-                                    "Satellites" = "Satellites",
-                                    "Non-Satellites" = "Non-Satellites"
-                                  ),
-                                  selected = character(0),
-                                  inline = TRUE
+                              selected = character(0),
+                              inline = TRUE
+                            ),
+                            tags$script(HTML("
+                            $(document).ready(function(){
+                              $('input[value=\"RefSeq CDS\"]').parent().attr({
+                                'data-toggle': 'tooltip',
+                                'title': 'Protein-coding DNA sequences from NCBI Reference Sequence database'
+                              });
+                              $('input[value=\"Non-CDS Regions\"]').parent().attr({
+                                'data-toggle': 'tooltip',
+                                'title': 'Non-coding genomic regions including introns, intergenic, and regulatory sequences'
+                              });
+                            });
+                          "))
+                          )
+                        ),
+                        
+                        # Repetitive DNA Regions
+                        div(
+                          style = "margin-top: 15px;",
+                          tags$a(
+                            href = "#repetitive_collapse",
+                            `data-toggle` = "collapse",
+                            style = "text-decoration: none; color: #495057;",
+                            h6("▶ Repetitive DNA Regions",
+                              style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
+                          ),
+                          div(
+                            id = "repetitive_collapse",
+                            class = "collapse",
+                            style = "margin-top: 6px;",
+                            
+                            # Simple Repeats subsection
+                            div(
+                              style = "margin-bottom: 10px;",
+                              h6("Simple Repeats:", style = "font-size: 13px; color: #6c757d; margin-bottom: 5px; font-weight: 600;"),
+                              checkboxGroupInput(
+                                "homopolymer_regions",
+                                NULL,
+                                choices = list(
+                                  "Homopolymer 4-6bp" = "Homopolymer 4-6bp",
+                                  "Homopolymer 7-11bp" = "Homopolymer 7-11bp",
+                                  "Homopolymer >12bp" = "Homopolymer >12bp",
+                                  "Homopolymer ≥21bp" = "Homopolymer ≥21bp"
                                 ),
-                                # TOOLTIPS
-                                tags$script(HTML("
-                                  $(document).ready(function(){
-                                    $('input[value=\"Satellites\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Repetitive DNA sequences often found in centromeric and pericentromeric regions'
-                                    });
-                                    $('input[value=\"Non-Satellites\"]').parent().attr({
-                                      'data-toggle': 'tooltip',
-                                      'title': 'Regions excluding satellite DNA sequences'
-                                    });
-                                    $('[data-toggle=\"tooltip\"]').tooltip();
-                                  });
-                                "))
+                                selected = character(0),
+                                inline = TRUE
                               )
                             ),
-                       )
+                            
+                            # Tandem Repeats subsection
+                            div(
+                              style = "margin-bottom: 10px;",
+                              h6("Tandem Repeats:", style = "font-size: 13px; color: #6c757d; margin-bottom: 5px; font-weight: 600;"),
+                              checkboxGroupInput(
+                                "satellites_regions",
+                                NULL,
+                                choices = list(
+                                  "Satellites" = "Satellites",
+                                  "All Tandem Repeat & Homopolymers" = "All TR & Homopolymers"
+                                ),
+                                selected = character(0),
+                                inline = TRUE
+                              )
+                            ),
+                            
+                            # Non-Repetitive subsection
+                            div(
+                              h6("Non-Repetitive:", style = "font-size: 13px; color: #6c757d; margin-bottom: 5px; font-weight: 600;"),
+                              checkboxGroupInput(
+                                "non_repetitive_regions",
+                                NULL,
+                                choices = list(
+                                  "Non-Satellites" = "Non-Satellites",
+                                  "Non-Tandem Repeat & Non-Homopolymers" = "Non-TR & Non-Homopolymers"
+                                ),
+                                selected = character(0),
+                                inline = TRUE
+                              )
+                            ),
+                            
+                            # Tooltips for repetitive regions
+                            tags$script(HTML("
+                              $(document).ready(function(){
+                                $('input[value=\"Homopolymer 4-6bp\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Short repetitive single-nucleotide runs (4-6 consecutive identical bases)'
+                                });
+                                $('input[value=\"Homopolymer 7-11bp\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Medium-length repetitive single-nucleotide runs (7-11 consecutive identical bases)'
+                                });
+                                $('input[value=\"Homopolymer >12bp\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Long repetitive single-nucleotide runs (>12 consecutive identical bases)'
+                                });
+                                $('input[value=\"Homopolymer ≥21bp\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Very long repetitive single-nucleotide runs (≥21 consecutive identical bases)'
+                                });
+                                $('input[value=\"Satellites\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Short tandem repeats often found in centromeric and pericentromeric regions'
+                                });
+                                $('input[value=\"All TR & Homopolymers\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'All tandem repeats and homopolymer regions combined'
+                                });
+                                $('input[value=\"Non-Satellites\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Regions excluding satellite DNA sequences'
+                                });
+                                $('input[value=\"Non-TR & Non-Homopolymers\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Regions excluding all tandem repeats and homopolymers'
+                                });
+                                $('[data-toggle=\"tooltip\"]').tooltip();
+                              });
+                            "))
+                          )
+                        ),
+                        
+                        # Structural Complexity
+                        div(
+                          style = "margin-top: 15px;",
+                          tags$a(
+                            href = "#complex_collapse",
+                            `data-toggle` = "collapse",
+                            style = "text-decoration: none; color: #495057;",
+                            h6("▶ Structural Complexity",
+                              style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
+                          ),
+                          div(
+                            id = "complex_collapse",
+                            class = "collapse",
+                            style = "margin-top: 6px;",
+                            checkboxGroupInput(
+                              "complex_regions",
+                              NULL,
+                              choices = list(
+                                "Segmental Duplications" = "Segmental Duplications",
+                                "Non-Segmental Duplications" = "Non-Segmental Duplications",
+                                "Low Mappability" = "Low Mappability",
+                                "Non-Low Mappability" = "Non-Low Mappability",
+                                "MHC Region" = "MHC Region"
+                              ),
+                              selected = character(0),
+                              inline = TRUE
+                            ),
+                            tags$script(HTML("
+                              $(document).ready(function(){
+                                $('input[value=\"Segmental Duplications\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Large blocks of duplicated DNA (≥1kb, >90% identity)'
+                                });
+                                $('input[value=\"Non-Segmental Duplications\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Regions excluding segmental duplications'
+                                });
+                                $('input[value=\"Low Mappability\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Difficult-to-sequence regions where reads map ambiguously'
+                                });
+                                $('input[value=\"Non-Low Mappability\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Regions with good read mappability'
+                                });
+                                $('input[value=\"MHC Region\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Major Histocompatibility Complex - highly polymorphic immune system genes'
+                                });
+                                $('[data-toggle=\"tooltip\"]').tooltip();
+                              });
+                            "))
+                          )
+                        ),
+                        
+                        # GC Composition
+                        div(
+                          style = "margin-top: 15px;",
+                          tags$a(
+                            href = "#gc_collapse",
+                            `data-toggle` = "collapse",
+                            style = "text-decoration: none; color: #495057;",
+                            h6("▶ GC Composition",
+                              style = "margin-bottom: 10px; font-weight: bold; border-bottom: 1px solid #dee2e6; padding-bottom: 5px; cursor: pointer;")
+                          ),
+                          div(
+                            id = "gc_collapse",
+                            class = "collapse",
+                            style = "margin-top: 10px;",
+                            fluidRow(
+                              column(4,
+                                    h6("Low GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
+                                    checkboxGroupInput(
+                                      "gc_low",
+                                      NULL,
+                                      choices = list(
+                                        "Very Low (<15%)" = "GC_<15",
+                                        "GC 15-20%" = "GC_15_20",
+                                        "GC 20-25%" = "GC_20_25",
+                                        "GC 25-30%" = "GC_25_30"
+                                      ),
+                                      selected = character(0)
+                                    )
+                              ),
+                              column(4,
+                                    h6("Normal GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
+                                    checkboxGroupInput(
+                                      "gc_normal",
+                                      NULL,
+                                      choices = list(
+                                        "GC 30-55%" = "GC_30_55",
+                                        "GC 55-60%" = "GC_55_60", 
+                                        "GC 60-65%" = "GC_60_65",
+                                        "GC 65-70%" = "GC_65_70"
+                                      ),
+                                      selected = character(0)
+                                    )
+                              ),
+                              column(4,
+                                    h6("High GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
+                                    checkboxGroupInput(
+                                      "gc_high",
+                                      NULL,
+                                      choices = list(
+                                        "GC 70-75%" = "GC_70_75",
+                                        "GC 75-80%" = "GC_75_80",
+                                        "GC 80-85%" = "GC_80_85",
+                                        "Very High (>85%)" = "GC_>85"
+                                      ),
+                                      selected = character(0)
+                                    )
+                              )
+                            ),
+                            h6("Extreme GC:", style = "font-size: 12px; color: #6c757d; margin-bottom: 8px;"),
+                            checkboxGroupInput(
+                              "gc_extreme",
+                              NULL,
+                              choices = list(
+                                "GC <25% or >65%" = "GC <25 or >65",
+                                "GC <30% or >55%" = "GC <30 or >55"
+                              ),
+                              selected = character(0),
+                              inline = FALSE
+                            ),
+                            tags$script(HTML("
+                              $(document).ready(function(){
+                                $('input[value=\"GC <25 or >65\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Extreme GC content regions: either very low (<25%) or very high (>65%)'
+                                });
+                                $('input[value=\"GC <30 or >55\"]').parent().attr({
+                                  'data-toggle': 'tooltip',
+                                  'title': 'Moderate-extreme GC content regions: either low (<30%) or high (>55%)'
+                                });
+                                $('[data-toggle=\"tooltip\"]').tooltip();
+                              });
+                            "))
+                          )
+                        ),
+                    )
                 )
               ),
               
@@ -877,7 +938,7 @@ ui <- fluidPage(
                        )
                 )
               ),
-              create_experiment_details_panel_ui(),
+        
               # Metric selection
               wellPanel(
                 style = "background-color: #f8f9fa; margin-bottom: 20px;",
@@ -929,7 +990,7 @@ ui <- fluidPage(
                   )
                 )
               ),
-              
+              create_experiment_details_panel_ui(),
               # Results tabs
               tabsetPanel(
                 tabPanel("📊 Performance Plots",

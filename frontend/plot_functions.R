@@ -187,8 +187,9 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
         "<br>• Technology:", snp_data$technology,
         "<br>• Platform:", ifelse(is.na(snp_data$platform_name) | is.null(snp_data$platform_name), "N/A", snp_data$platform_name),
         "<br>• Caller:", snp_data$caller,
+        "<br>• Caller Version:", ifelse(is.na(snp_data$caller_version) | is.null(snp_data$caller_version), "N/A", snp_data$caller_version),
         "<br>• Chemistry:", ifelse(is.na(snp_data$chemistry_name) | is.null(snp_data$chemistry_name), "N/A", snp_data$chemistry_name),
-          "<br>• Truth Set:", ifelse(is.na(snp_data$truth_set_name) | is.null(snp_data$truth_set_name), "N/A", snp_data$truth_set_name), 
+        "<br>• Truth Set:", ifelse(is.na(snp_data$truth_set_name) | is.null(snp_data$truth_set_name), "N/A", snp_data$truth_set_name), 
 
         "<br><br><b>Performance:</b>",
         "<br>• Precision:", paste0(round(as.numeric(snp_data$precision)*100, 2), "%"),
@@ -235,6 +236,8 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
           plot.title = element_text(size = 12),
           panel.grid.major = element_line(color = "grey90", linewidth = 0.5),
           panel.grid.minor = element_line(color = "grey95", linewidth = 0.3),
+          panel.border = element_rect(color = "black", fill = NA, linewidth = 1),
+
           legend.position = "none"        
         )
       
@@ -247,8 +250,32 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
                  margin = list(l = 5, r = 5, t = 45, b = 5),
                  width = NULL, 
                  height = 500,
-                 autosize = TRUE
+                 autosize = TRUE,
+                                  xaxis = list(
+                   showline = TRUE,
+                   linewidth = 1,
+                   linecolor = "black",
+                   mirror = TRUE
+                 ),
+                 yaxis = list(
+                   showline = TRUE,
+                   linewidth = 1,
+                   linecolor = "black",
+                   mirror = TRUE
+                 ),
+                 shapes = list(
+                   list(
+                     type = "rect",
+                     xref = "paper", yref = "paper",
+                     x0 = 0, y0 = 0,
+                     x1 = 1, y1 = 1,
+                     line = list(color = "black", width =1),
+                     fillcolor = "transparent",
+                     layer = "below"
+                   )
+                 )
           ) %>%    
+          config(responsive = TRUE) %>%
           event_register("plotly_click")
       })
       
@@ -286,6 +313,7 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
         "<br>• Technology:", indel_data$technology,
         "<br>• Platform:", ifelse(is.na(indel_data$platform_name) | is.null(indel_data$platform_name), "N/A", indel_data$platform_name),
         "<br>• Caller:", indel_data$caller,
+        "<br>• Caller Version:", ifelse(is.na(indel_data$caller_version) | is.null(indel_data$caller_version), "N/A", indel_data$caller_version),
         "<br>• Chemistry:", ifelse(is.na(indel_data$chemistry_name) | is.null(indel_data$chemistry_name), "N/A", indel_data$chemistry_name),
         "<br>• Truth Set:", ifelse(is.na(indel_data$truth_set_name) | is.null(indel_data$truth_set_name), "N/A", indel_data$truth_set_name),
 
@@ -334,6 +362,8 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
           plot.title = element_text(size = 12),
           panel.grid.major = element_line(color = "grey90", linewidth = 0.5),
           panel.grid.minor = element_line(color = "grey95", linewidth = 0.3),
+          panel.border = element_rect(color = "black", fill = NA, linewidth = 1),
+
           legend.position = "none"        
         )
       
@@ -346,8 +376,32 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
                  margin = list(l = 5, r = 5, t = 45, b = 5),
                  width = NULL, 
                  height = 500,
-                 autosize = TRUE
+                 autosize = TRUE,
+                 xaxis = list(
+                   showline = TRUE,
+                   linewidth = 1,
+                   linecolor = "black",
+                   mirror = TRUE
+                 ),
+                 yaxis = list(
+                   showline = TRUE,
+                   linewidth = 1,
+                   linecolor = "black",
+                   mirror = TRUE
+                 ),
+                 shapes = list(
+                   list(
+                     type = "rect",
+                     xref = "paper", yref = "paper",
+                     x0 = 0, y0 = 0,
+                     x1 = 1, y1 = 1,
+                     line = list(color = "black", width = 1),
+                     fillcolor = "transparent",
+                     layer = "below"
+                   )
+                 )
           ) %>%    
+          config(responsive = TRUE) %>%
           event_register("plotly_click")
       })
       

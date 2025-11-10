@@ -74,7 +74,7 @@ create_experiment_details_html <- function(metadata) {
 }
 
 # ------------------------------------------------
-# Create F1 score tables for stratified analysis
+# Create metrics tables for stratified analysis
 create_f1_table <- function(data) {
   if (nrow(data) == 0) {
     return(data.frame(Message = "No data available"))
@@ -99,7 +99,7 @@ create_f1_table <- function(data) {
 create_metric_table <- function(stratified_data, variant_filter, selected_metric) {
   # Filter for specific variant type
   filtered_data <- stratified_data %>%
-    filter(variant_type == variant_filter)
+    filter(variant_type == variant_filter) 
   
   if(nrow(filtered_data) == 0) {
     return(data.frame(Message = paste("No", variant_filter, "data available for selected regions")))
@@ -115,6 +115,7 @@ create_metric_table <- function(stratified_data, variant_filter, selected_metric
     #  chemistry_name = ifelse(is.na(chemistry_name) | chemistry_name == "" | chemistry_name == "NULL", 
     #                          "N/A", chemistry_name)
     ) %>%
+    arrange(experiment_id) %>% 
     rename(
       "ID" = experiment_id,
       "Experiment" = experiment_name,
@@ -139,7 +140,7 @@ create_metric_table <- function(stratified_data, variant_filter, selected_metric
   # Create the data table with highlighting
   dt <- DT::datatable(display_data,
                       options = list(
-                        pageLength = 10,
+                        pageLength = 20,
                         scrollX = TRUE,
                         dom = 'frtip',
                         columnDefs = list(
@@ -183,7 +184,7 @@ create_delete_experiments_table <- function(data) {
     delete_data,
     selection = list(mode = 'multiple'),
     options = list(
-      pageLength = 10,
+      pageLength = 20,
       scrollX = TRUE,
       dom = 'frtip',
       columnDefs = list(
@@ -244,9 +245,8 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
       df,
       selection = selection_config,
       escape = FALSE,
-      extensions = c('Responsive'),
       options = list(
-        responsive = TRUE,
+        pageLength = 20,
         scrollX = TRUE,
         autoWidth = FALSE,
         initComplete = JS(
@@ -290,7 +290,7 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
       df,
       selection = 'none',
       options = list(
-        pageLength = 15,
+        pageLength = 20,
         scrollX = TRUE,
         columnDefs = list(
           list(targets = 0, className = "dt-center", width = "50px"),     # ID column

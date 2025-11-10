@@ -13,7 +13,7 @@ Main sections:
    - Stratified analysis summaries
 
 2. upload_modal_ui() - Complete form for adding new experiments
-   - Multi-step upload process (file → metadata → submit)
+   - Multi-step upload process
    - Organized metadata sections (technology, caller, truth set, etc.)
    - Validation and filename preview
 
@@ -314,12 +314,13 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
     })
   })
   
+
   # ====================================================================
   # STRATIFIED ANALYSIS OUTPUTS (TAB 4)
   # ====================================================================
-  
-  # Stratified analysis summary
-  output$stratified_summary <- renderUI({
+
+  # Stratified analysis summary - not used for now 
+  'output$stratified_summary <- renderUI({
     data <- data_reactives$stratified_filtered_data()
     if (nrow(data) == 0) return(NULL)
     
@@ -329,28 +330,42 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       
       HTML(paste0(
         "<strong>Analysis Summary:</strong> ",
-        n_experiments, " experiments × ",
+        n_experiments, " experiments x",
         n_regions, " regions = ",
         n_results, " total results"
       ))
-    })
-    output$experiment_info_list <- renderUI({
-      data <- data_reactives$stratified_filtered_data()
+    })'
+
+  # Experiment count for stratified analysis
+  output$stratified_experiment_count <- renderText({
+    data <- data_reactives$stratified_filtered_data()
+    
+    if (nrow(data) == 0) {
+      return("")
+    }
+    
+    n_experiments <- length(unique(data$experiment_id))
+    paste0("(", n_experiments, " experiment", ifelse(n_experiments != 1, "s", ""), ")")
+  })
+  
+  # Experiment info list with technology-based colors
+  output$experiment_info_list <- renderUI({
+    data <- data_reactives$stratified_filtered_data()
+    
+    if (nrow(data) == 0) {
+      return(p("No experiments selected", style = "color: #6c757d;"))
+    }
+    
+    experiment_ids <- unique(data$experiment_id)
+    
+    # Use json_param for reliable JSON formatting
+    tryCatch({
+      ids_json <- json_param(experiment_ids)
+      metadata <- db$get_experiment_metadata(ids_json)
       
-      if (nrow(data) == 0) {
-        return(p("No experiments selected", style = "color: #6c757d;"))
+      if (nrow(metadata) == 0) {
+        return(p("Unable to load experiment metadata", style = "color: #dc3545;"))
       }
-      
-      experiment_ids <- unique(data$experiment_id)
-      metadata <- db$get_experiment_metadata(toJSON(experiment_ids))
-      
-      if (nrow(metadata) == 0) return(NULL)
-      
-      exp_colors <- setNames(
-        colorRampPalette(c("#e74c3c", "#3498db", "#2ecc71", "#f39c12", 
-                          "#9b59b6", "#1abc9c"))(length(experiment_ids)),
-        experiment_ids
-      )
       
       # Header row
       header <- div(
@@ -376,10 +391,16 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
         div(style = "width: 90px;", "Truth Set")
       )
       
-      # Data rows
+      # Data rows with technology-based colors
       rows <- lapply(1:nrow(metadata), function(i) {
         exp <- metadata[i, ]
-        exp_color <- exp_colors[as.character(exp$id)]
+        
+        # Get color from technology_colors mapping
+        tech <- exp$technology %||% "Unknown"
+        exp_color <- technology_colors[tech]
+        if (is.null(exp_color) || is.na(exp_color)) {
+          exp_color <- technology_colors["Unknown"]
+        }
         
         div(
           style = paste0("padding: 6px 10px; margin-bottom: 3px; 
@@ -443,13 +464,26 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       })
       
       return(div(header, rows))
+      
+    }, error = function(e) {
+      p(paste("Error loading experiment metadata:", e$message), 
+        style = "color: #dc3545; font-size: 12px;")
     })
+  })
+  
+  # Prevent suspension when container is hidden
+  outputOptions(output, "experiment_info_list", suspendWhenHidden = FALSE)
+  outputOptions(output, "stratified_experiment_count", suspendWhenHidden = FALSE)
+  
   # ====================================================================
   # UPLOAD FILENAME PREVIEW
   # ====================================================================
   
   # filename preview
   output$filename_preview <- renderText({
+
+    Sys.sleep(0.05) #to allow reactive chain to complete
+
     if (!is.null(input$exp_name) && input$exp_name != "" &&
         !is.null(input$technology) && input$technology != "" &&
         !is.null(input$platform_name) && input$platform_name != "" &&
@@ -493,6 +527,7 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       return("Fill required fields (*) to see filename preview")
     }
   })
+  outputOptions(output, "filename_preview", priority = 10)
 }
 
 # ============================================================================
@@ -507,6 +542,28 @@ upload_modal_ui <- function() {
     "show_upload_modal", 
     size = "large",
     
+    div(
+      style = "background-color: #e7f3ff; border: 1px solid #4472ca; border-radius: 6px; 
+              padding: 16px; margin-bottom: 20px;",
+      div(
+        style = "display: flex; align-items: center; gap: 10px; margin-bottom: 10px;",
+        icon("info-circle", style = "color: #4472ca; font-size: 22px;"),
+        h5("File Requirements", style = "margin: 0; color: #4472ca; font-weight: 600;")
+      ),
+      p(
+        style = "margin: 0 0 8px 32px; color: #2c5282; font-size: 14px;",
+        "Upload must be a ", strong("hap.py CSV output file"), " containing the following columns:"
+      ),
+      tags$ul(
+        style = "margin: 0 0 0 45px; color: #2c5282; font-size: 13px;",
+        tags$li(code("Type"), " - Variant type (SNP/INDEL)"),
+        tags$li(code("Subtype"), " - Variant subtype"),
+        tags$li(code("Subset"), " - Genomic region"),
+        tags$li(code("METRIC.Recall"), " - Recall metric"),
+        tags$li(code("METRIC.Precision"), " - Precision metric"),
+        tags$li(code("METRIC.F1_Score"), " - F1 score metric")
+      )
+    ),
     # 1: File Upload
     wellPanel(
       style = "background-color: #f8f9fa; margin-bottom: 20px;",
@@ -557,7 +614,7 @@ upload_modal_ui <- function() {
                textInput("platform_name", "Platform*")
         ),
         column(3,
-               selectInput("platform_type", "Platform Type",
+               selectInput("platform_type", "Platform Type*",
                            choices = c("","SRS" = "srs", "LRS" = "lrs"))
         ),
         column(3,
@@ -583,10 +640,10 @@ upload_modal_ui <- function() {
       fluidRow(
         column(3,
                selectInput("caller_name", "Caller*",
-                           choices = c("", "DEEPVARIANT", "GATK", "CLAIR3"))
+                           choices = c("", "DEEPVARIANT", "GATK", "CLAIR3", "DRAGEN"))
         ),
         column(3,
-               selectInput("caller_type", "Caller Type",
+               selectInput("caller_type", "Caller Type*",
                            choices = c("","ML" = "ml", "Traditional" = "traditional"))
         ),
         column(3,
@@ -617,8 +674,7 @@ upload_modal_ui <- function() {
       fluidRow(
         column(3,
                selectInput("truth_set_name", "Truth Set",
-                           choices = c("GIAB" = "giab", "CMRG" = "cmrg", "T2T" = "t2t"),
-                           selected = "giab")
+                           choices = c("", "GIAB" = "giab", "CMRG" = "cmrg", "T2T" = "t2t"))
         ),
         column(3,
                selectInput("truth_set_sample", "Sample",
@@ -626,8 +682,7 @@ upload_modal_ui <- function() {
                            selected = "hg002")
         ),
         column(3,
-               textInput("truth_set_version", "Truth Set Version",
-                         value = "4.2.1")
+               textInput("truth_set_version", "Truth Set Version")
         ),
         column(3,
                selectInput("truth_set_reference", "Reference",
@@ -670,8 +725,7 @@ upload_modal_ui <- function() {
                            selected = "hap.py")
         ),
         column(6,
-               textInput("benchmark_tool_version", "Tool Version",
-                         value = "0.3.12")
+               textInput("benchmark_tool_version", "Tool Version")
         )
       ),
       

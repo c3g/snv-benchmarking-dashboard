@@ -36,6 +36,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     data_reactives$display_experiment_ids(numeric(0))
     data_reactives$table_selected_ids(numeric(0))
     
+    
     # Reset other comparison selections
     updateCheckboxGroupInput(session, "selected_callers", selected = character(0))
     updateSelectInput(session, "caller_comparison_tech", selected = "ILLUMINA")
@@ -209,6 +210,45 @@ setup_observers <- function(input, output, session, data_reactives) {
   })
   
   # ====================================================================
+  # TRUTH SET FILTER SYNCHRONIZATION OBSERVERS
+  # ====================================================================
+  # Tab 2 filter
+  observeEvent(input$truth_set_filter_tab2, {
+    new_value <- input$truth_set_filter_tab2
+    if (!is.null(new_value) && new_value != data_reactives$active_truth_set_filter()) {
+      data_reactives$active_truth_set_filter(new_value)
+      
+      # Sync other tabs
+      updateSelectInput(session, "truth_set_filter_tab3", selected = new_value)
+      updateSelectInput(session, "truth_set_filter_tab4", selected = new_value)
+    }
+  })
+
+  # Tab 3 filter
+  observeEvent(input$truth_set_filter_tab3, {
+    new_value <- input$truth_set_filter_tab3
+    if (!is.null(new_value) && new_value != data_reactives$active_truth_set_filter()) {
+      data_reactives$active_truth_set_filter(new_value)
+      
+      # Sync other tabs
+      updateSelectInput(session, "truth_set_filter_tab2", selected = new_value)
+      updateSelectInput(session, "truth_set_filter_tab4", selected = new_value)
+    }
+  })
+
+  # Tab 4 filter
+  observeEvent(input$truth_set_filter_tab4, {
+    new_value <- input$truth_set_filter_tab4
+    if (!is.null(new_value) && new_value != data_reactives$active_truth_set_filter()) {
+      data_reactives$active_truth_set_filter(new_value)
+      
+      # Sync other tabs
+      updateSelectInput(session, "truth_set_filter_tab2", selected = new_value)
+      updateSelectInput(session, "truth_set_filter_tab3", selected = new_value)
+    }
+  })
+
+  # ====================================================================
   # EXPERIMENT DETAILS EXPANSION (TAB 1)
   # ====================================================================
   
@@ -245,6 +285,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     updateCheckboxGroupInput(session, "gc_extreme", selected = character(0))
     updateCheckboxGroupInput(session, "complex_regions", selected = character(0))
     updateCheckboxGroupInput(session, "satellites_regions", selected = character(0))
+    updateCheckboxGroupInput(session, "non_repetitive_regions", selected = character(0))
     
     
     showNotification("All selections cleared!", type = "message", duration = 2)
@@ -262,7 +303,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     }
     
     # Current experiment IDs (from previous tabs)
-    current_exp_ids <- data_reactives$performance_experiment_ids()
+    current_exp_ids <- data_reactives$performance_experiment_ids_filtered()
     
     if (length(current_exp_ids) == 0) {
       showNotification("No experiments selected.", 

@@ -32,6 +32,9 @@ setup_data_reactives <- function(input, output, session) {
   # experiments to show in main table (overrides filters)
   display_experiment_ids <- reactiveVal(numeric(0))
   
+  # Currently active truth set filter
+  active_truth_set_filter <- reactiveVal("All Truth Sets")
+
   # User-selected experiments from table clicks
   table_selected_ids <- reactiveVal(numeric(0))
   
@@ -131,11 +134,39 @@ setup_data_reactives <- function(input, output, session) {
     }
   })
   
+  # Filter performance experiment IDs by active truth set
+  performance_experiment_ids_filtered <- reactive({
+    ids <- performance_experiment_ids()
+    truth_set_filter <- active_truth_set_filter() 
+    
+    # If "All Truth Sets" selected, return all IDs
+    if (is.null(truth_set_filter) || truth_set_filter == "All Truth Sets") {
+      return(ids)
+    }
+    
+    # filter experiments by truth set
+    tryCatch({
+      overview <- db$get_experiments_overview(NULL, json_param(ids))
+      filtered <- overview %>%
+        filter(toupper(truth_set) == toupper(truth_set_filter)) %>%
+        pull(id)
+      
+      if (length(filtered) == 0) {
+        showNotification(paste("No experiments found with truth set:", truth_set_filter), 
+                        type = "warning", duration = 4)
+      }
+      return(filtered)
+    }, error = function(e) {
+      cat("Error filtering by truth set:", e$message, "\n")
+      return(ids)
+    })
+  })
+
   # Complete metadata and performance results for visualization
   viz_performance_data <- reactive({
 
     
-    ids <- performance_experiment_ids()
+    ids <- performance_experiment_ids_filtered()
     if (length(ids) == 0) return(data.frame())
     
     tryCatch({
@@ -235,7 +266,8 @@ setup_data_reactives <- function(input, output, session) {
       input$gc_high,
       input$gc_extreme,
       input$complex_regions,
-      input$satellites_regions
+      input$satellites_regions,
+      input$non_repetitive_regions
     )
     
     all_selected_regions <- unique(all_selected_regions[all_selected_regions != ""])
@@ -254,8 +286,9 @@ setup_data_reactives <- function(input, output, session) {
       mutate(
         exp_label = paste0("ID:", experiment_id, " (", 
                            coalesce(technology, "Unknown"), "-", 
-                           coalesce(caller, "Unknown"), "-",
-                           coalesce(chemistry_name, ""), ")")
+                           coalesce(caller, "Unknown"), 
+                           ")")
+                          # "-", coalesce(chemistry_name, ""),  ---------remove chemistry name from stratifed results
       ) %>%
       arrange(subset, variant_type, desc(experiment_id))
     
@@ -294,6 +327,7 @@ setup_data_reactives <- function(input, output, session) {
     # State management
     current_mode = current_mode,
     display_experiment_ids = display_experiment_ids,
+    active_truth_set_filter = active_truth_set_filter,
     table_selected_ids = table_selected_ids,
     plot_clicked_id = plot_clicked_id,
     comparison_submitted = comparison_submitted,
@@ -309,6 +343,7 @@ setup_data_reactives <- function(input, output, session) {
     experiment_ids = experiment_ids,
     experiments_data = experiments_data,
     performance_experiment_ids = performance_experiment_ids,
+    performance_experiment_ids_filtered = performance_experiment_ids_filtered,
     viz_performance_data = viz_performance_data,
     snp_plot_data = snp_plot_data,
     indel_plot_data = indel_plot_data,
