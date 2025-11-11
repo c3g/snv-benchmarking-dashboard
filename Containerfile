@@ -37,7 +37,11 @@ RUN install2.r --error \
     ggforce \
     dplyr \
     shinyBS \
-    scales
+    scales \
+    httr \
+    httr2 \
+    jose \
+    shinyjs
 
 # Install app in /app folder
 COPY backend/ /app/backend/

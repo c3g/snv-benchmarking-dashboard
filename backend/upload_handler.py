@@ -5,6 +5,9 @@
 File upload processing and validation for SNV Benchmarking Dashboard.
 
 Main components:
+
+*Require admin previleges for upload*
+
 - Hap.py CSV file validation
 - Metadata validation and processing
 - Filename generation and file handling
@@ -23,6 +26,7 @@ from pathlib import Path
 
 from config import DATA_FOLDER, METADATA_CSV_PATH
 from populate_metadata import populate_database_from_csv
+from authorization import require_admin
 
 logger = logging.getLogger(__name__)
 
@@ -379,15 +383,15 @@ def process_upload(temp_file_path, metadata_json_string):
 # PYTHON/R INTERFACE FUNCTION
 # ============================================================================
 
-def upload_experiment(file_path, metadata_json):
+def upload_experiment(file_path, metadata_json, username=None, is_admin=False):
     """
-    Simple interface for R Shiny integration.
+    Upload experiment - ADMIN ONLY
     
     Args:
         file_path (str): Path to uploaded file
         metadata_json (str): JSON string containing experiment metadata
-        
-    Returns:
-        dict: Upload result with success status and message
+        username: Username for logging
+        is_admin: Admin status from COManage groups (required for authorization)
     """
+    logger.info(f"Upload requested by: {username}")
     return process_upload(file_path, metadata_json)

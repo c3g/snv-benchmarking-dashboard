@@ -44,6 +44,7 @@ Module Files:
 # core and data manipulation
 library(reticulate)
 library(shiny)
+library(shinyjs) #for auth
 library(DT)
 library(dplyr)
 library(tidyr)
@@ -79,12 +80,14 @@ upload_handler <- import("upload_handler")
 # Import R modules
 source("constants.R")
 source("utils.R")
+source("auth.R")
 source("data_processing.R")
 source("plot_functions.R")
 source("table_functions.R")
 source("observers.R")
 source("ui_components.R")
 source("html_export.R") 
+
 
 # global theme
 theme_set(theme_bw())
@@ -95,6 +98,7 @@ theme_set(theme_bw())
 
 ui <- fluidPage(
   
+  useShinyjs(), #for auth
   # ====================================================================
   # HEAD SECTION - CSS and JavaScript
   # ====================================================================
@@ -249,35 +253,45 @@ ui <- fluidPage(
         # Header with download, upload, and delete buttons
         div(
           style = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 0; padding-bottom: 0;",
-          div(style = "flex-grow: 1;"),
+          
+          div(), #left side
+          # Right side - Action buttons
           div(
-            style = "margin-left: 20px; padding-top: 5px; display: flex; gap: 8px;",
+            style = "display: flex; gap: 8px; align-items: center; padding-top: 5px;",
             
-            # Upload button
-            actionButton(
-              "show_upload_modal", 
-              label = tagList(icon("upload"), "Upload Dataset"),
-              class = "btn-success btn-sm",
-              style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px;"
+            # Upload button - ONLY VISIBLE TO ADMIN _ FOR NOW
+            conditionalPanel(
+              condition = "output.user_is_admin",
+              actionButton(
+                "show_upload_modal", 
+                label = tagList(icon("upload"), "Upload Dataset"),
+                class = "btn-success btn-sm",
+                style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px; border-radius: 3px;"
+              )
             ),
             
-            # Delete button - comme3nted out for now 
-            #actionButton(
-             # "show_delete_modal", 
-             # label = tagList(icon("trash"), "Delete Datasets"),
-             # class = "btn-danger btn-sm",
-            #  style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px;"
-            #),
+            # Delete button - ONLY VISIBLE TO ADMIN
+            conditionalPanel(
+              condition = "output.user_is_admin",
+              actionButton(
+                "show_delete_modal", 
+                label = tagList(icon("trash"), "Delete Datasets"),
+                class = "btn-danger btn-sm",
+                style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px; border: none !important;"
+              )
+            ),
             
-            # Download button
+            # Download button - ALWAYS VISIBLE (anonymous users can download)
             downloadButton(
               "export_html_report", 
-              label = tagList( "Download Report"),
+              label = "Download Report",
               class = "btn-primary btn-sm",
-              style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px;"
-            )
+              style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px; border: none !important"
+            ),
+             auth_ui()  # Authentication status/button from auth.R
           )
         ),
+        
         
         br(),
         
@@ -1090,6 +1104,9 @@ server <- function(input, output, session) {
   # INITIALIZE MODULES
   # ====================================================================
   
+  # Initialize auth 
+  auth_server(input, output, session)
+
   # Setup core data processing (returns reactive values)
   data_reactives <- setup_data_reactives(input, output, session)
   
@@ -1098,7 +1115,7 @@ server <- function(input, output, session) {
   setup_table_outputs(input, output, session, data_reactives)
   setup_ui_outputs(input, output, session, data_reactives)
   setup_observers(input, output, session, data_reactives)
-  
+
   # ====================================================================
   # HTML EXPORT FUNCTIONALITY
   # ====================================================================
@@ -1131,5 +1148,4 @@ server <- function(input, output, session) {
 # ============================================================================
 # APPLICATION LAUNCH
 # ============================================================================
-
-shinyApp(ui = ui, server = server, options = list(launch.browser = TRUE))
+shinyApp(ui = ui, server = server)

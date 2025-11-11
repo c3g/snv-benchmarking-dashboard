@@ -23,6 +23,9 @@ setup_data_reactives <- function(input, output, session) {
   # REACTIVE VALUES FOR STATE MANAGEMENT
   # ====================================================================
   
+  # Trigger to refresh all data
+   data_refresh_trigger <- reactiveVal(0)
+
   # Current app mode: "filter", "tech_comparison", "caller_comparison", "manual_selection"
   current_mode <- reactiveVal("filter")
   
@@ -87,6 +90,8 @@ setup_data_reactives <- function(input, output, session) {
   
   # Get overview metadata for selected experiments
   experiments_data <- reactive({
+
+    data_refresh_trigger() #depend on refresh trigger
 
     if (comparison_submitted() && length(comparison_results()) > 0) {
       exp_ids_json <- json_param(comparison_results())
@@ -332,6 +337,7 @@ setup_data_reactives <- function(input, output, session) {
     stratified_raw_data = stratified_raw_data,
     stratified_filtered_data = stratified_filtered_data,
     stratified_triggered = stratified_triggered,
+    data_refresh_trigger = data_refresh_trigger,
     
     # Data processing functions
     experiment_ids = experiment_ids,
