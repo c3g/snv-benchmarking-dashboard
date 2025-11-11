@@ -85,11 +85,6 @@ get_user_info <- function(session) {
   
   admin_status <- is_admin(user_group)
   
-  cat("\n=== GET_USER_INFO DEBUG ===\n")
-  cat("User group:", if(is.null(user_group)) "NULL" else as.character(user_group), "\n")
-  cat("Admin status:", admin_status, "\n")
-  cat("===========================\n\n")
-  
   list(
     email = session$userData$user_email, 
     name = session$userData$user_name, 
@@ -136,6 +131,11 @@ get_user_from_code <- function(code) {
     token_parts <- strsplit(token_response$id_token, "\\.")[[1]]
     claims_json <- rawToChar(jose::base64url_decode(token_parts[2]))
     claims <- jsonlite::fromJSON(claims_json)
+
+    cat("\n=== ID TOKEN CLAIMS ===\n")
+    cat(jsonlite::toJSON(claims, auto_unbox = TRUE, pretty = TRUE), "\n")
+    cat("Available claim names:", paste(names(claims), collapse = ", "), "\n")
+    cat("=======================\n\n")
     
     token_response_string <- jsonlite::toJSON(token_response, auto_unbox = TRUE)
     cat("Token response length:", nchar(token_response_string), "\n")
@@ -268,7 +268,6 @@ auth_server <- function(input, output, session) {
   
   # Restore session from localStorage on page load
   observe(priority = 1000, {
-    cat("\n=== CHECKING FOR SAVED SESSION ===\n")
     
     # Trigger localStorage retrieval
     runjs("Shiny.setInputValue('stored_user_session', localStorage.getItem('user_session'), {priority: 'event'});")
@@ -277,15 +276,11 @@ auth_server <- function(input, output, session) {
   # Handle retrieved localStorage value
   observeEvent(input$stored_user_session, {
     user_json <- input$stored_user_session
-    
-    cat("LocalStorage value:", if(is.null(user_json) || user_json == "") "NULL" else "FOUND", "\n")
-    
+        
     if (!is.null(user_json) && user_json != "" && user_json != "null") {
       tryCatch({
         user_data <- jsonlite::fromJSON(user_json)
-        
-        cat("Decoded user:", user_data$name %||% "Unknown", "\n")
-        
+                
         # Validate user_data structure
         if (is.null(user_data$email) || is.null(user_data$name)) {
           cat("Invalid user data structure, clearing localStorage\n")
@@ -299,16 +294,16 @@ auth_server <- function(input, output, session) {
         session$userData$user_username <- user_data$username %||% user_data$email
         session$userData$user_group <- user_data$group  # Can be NULL
         authenticated(TRUE)
-        
+         cat("==================================\n\n")
         cat("Session restored from localStorage for:", user_data$name, "\n")
       }, error = function(e) {
         cat("Failed to restore session:", e$message, "\n")
         runjs("localStorage.removeItem('user_session');")
       })
     } else {
-      cat("No saved session found\n")
+      #cat("No saved session found\n")
     }
-    cat("==================================\n\n")
+  
   }, ignoreNULL = FALSE, ignoreInit = FALSE)
   
   # Clear session data when user disconnects
