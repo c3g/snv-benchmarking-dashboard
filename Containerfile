@@ -39,13 +39,13 @@ RUN install2.r --error \
     shinyBS \
     scales \
     httr \
+    httr2 \
     jose \
     shinyjs
 
 # Install app in /app folder
 COPY backend/ /app/backend/
 COPY frontend/ /app/frontend/
-COPY run.R /app/run.R
 
 # Environment variables
 ENV PYTHONPATH="/app/backend:/app"
@@ -58,7 +58,7 @@ EXPOSE 3838
 # Volume
 VOLUME ["/data"]
 
-WORKDIR /app
+WORKDIR /app/frontend
 
 # Start command
-CMD ["sh", "-c", "cd /app/backend && python3 create_database.py && cd /app && R -f run.R"]
+CMD ["sh", "-c", "cd /app/backend && python3 create_database.py && cd /app/frontend && R -e \"library(reticulate); use_python('/opt/venv/bin/python'); options(shiny.host='0.0.0.0', shiny.port=3838); shiny::runApp('.', launch.browser=FALSE)\""]
