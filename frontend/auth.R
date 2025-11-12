@@ -26,12 +26,26 @@ cat("OIDC_REDIRECT_URI:", OIDC_REDIRECT_URI, "\n\n")
 
 # get OIDC provider config as JSON (mainly for authorization endpoint) 
 get_oidc_config <- function() {
-  if (!OIDC_ENABLED) return(NULL)
+  if (!OIDC_ENABLED) {
+    cat("Skipping OIDC config fetch (OIDC disabled)\n")
+    return(NULL)
+  }
+  
   tryCatch({
     url <- paste0(OIDC_ISSUER, "/.well-known/openid-configuration")
-    request(url) %>% req_perform() %>% resp_body_json()
+    cat("Fetching OIDC config from:", url, "\n")
+    
+    config <- request(url) %>% req_perform() %>% resp_body_json()
+    
+    cat("✓ OIDC config retrieved successfully\n")
+    cat("  Authorization endpoint:", substr(config$authorization_endpoint, 1, 50), "...\n")
+    cat("  Token endpoint:", substr(config$token_endpoint, 1, 50), "...\n")
+    
+    return(config)
   }, error = function(e) {
-    cat("ERROR: Can't reach OIDC provider:", e$message, "\n")
+    cat("❌ ERROR: Can't reach OIDC provider\n")
+    cat("URL:", paste0(OIDC_ISSUER, "/.well-known/openid-configuration"), "\n")
+    cat("Error:", e$message, "\n")
     return(NULL)
   })
 }
@@ -110,9 +124,20 @@ create_login_url <- function(state) {
 
 # Exchange authorization code for user info
 get_user_from_code <- function(code) {
-  if (is.null(OIDC_CONFIG)) return(NULL)
+  if (is.null(OIDC_CONFIG)) {
+    cat("ERROR: OIDC_CONFIG is NULL\n")
+    return(NULL)
+  }
+
+  cat("\n=== TOKEN EXCHANGE START ===\n")
+  cat("Token endpoint:", OIDC_CONFIG$token_endpoint, "\n")
+  cat("Redirect URI:", OIDC_REDIRECT_URI, "\n")
+  cat("Client ID:", OIDC_CLIENT_ID, "\n")
+  cat("===========================\n\n")
 
   tryCatch({
+    cat("Sending token request...\n")
+    
     # Request JWT token
     token_response <- request(OIDC_CONFIG$token_endpoint) %>%
       req_body_form(
@@ -122,24 +147,32 @@ get_user_from_code <- function(code) {
         client_id = OIDC_CLIENT_ID,
         client_secret = OIDC_CLIENT_SECRET
       ) %>%
-      req_perform() %>% #send POST req to IODC provider
-      resp_body_json() #parse JSON into R list
+      req_perform() %>%
+      resp_body_json()
     
-    cat("Token received\n")
+    cat("✓ Token received successfully\n")
     
-    #  extract user claims
+    # Check if id_token exists
+    if (is.null(token_response$id_token)) {
+      cat("ERROR: No id_token in response\n")
+      cat("Response keys:", paste(names(token_response), collapse=", "), "\n")
+      return(list(success = FALSE, error = "No id_token in token response"))
+    }
+    
+    cat("✓ ID token present (length:", nchar(token_response$id_token), ")\n")
+    
+    # Extract user claims
     token_parts <- strsplit(token_response$id_token, "\\.")[[1]]
+    
+    if (length(token_parts) < 2) {
+      cat("ERROR: Invalid JWT format\n")
+      return(list(success = FALSE, error = "Invalid JWT token format"))
+    }
+    
     claims_json <- rawToChar(jose::base64url_decode(token_parts[2]))
     claims <- jsonlite::fromJSON(claims_json)
-
-    cat("\n=== ID TOKEN CLAIMS ===\n")
-    cat(jsonlite::toJSON(claims, auto_unbox = TRUE, pretty = TRUE), "\n")
-    cat("Available claim names:", paste(names(claims), collapse = ", "), "\n")
-    cat("=======================\n\n")
     
-    token_response_string <- jsonlite::toJSON(token_response, auto_unbox = TRUE)
-    cat("Token response length:", nchar(token_response_string), "\n")
-    cat("ID token:", nchar(token_response$id_token))
+    cat("✓ Claims decoded successfully\n")
 
     cat("\n=== RECEIVED CLAIMS ===\n")
     cat("email:", claims$email %||% "NULL", "\n")
@@ -149,19 +182,27 @@ get_user_from_code <- function(code) {
     if(is.null(claims$groups)) {
       cat("groups: NULL\n")
     } else {
-      cat("groups:\n")
+      cat("groups (", length(claims$groups), "):\n", sep="")
       for(i in seq_along(claims$groups)) {
-        cat( claims$groups[i], "\n", sep="")
+        cat("  - ", claims$groups[i], "\n", sep="")
       }
     }
     cat("========================\n\n")
 
-    # filter for dashboard groups only
+    # Filter for dashboard groups
     dashboard_group <- NULL
     if (!is.null(claims$groups) && length(claims$groups) > 0) {
       matching_groups <- claims$groups[grepl("snv-benchmarking-dashboard", claims$groups)]
       
-      #determine highest role
+      cat("Dashboard groups found:", length(matching_groups), "\n")
+      if (length(matching_groups) > 0) {
+        cat("Matching groups:\n")
+        for(g in matching_groups) {
+          cat("  - ", g, "\n", sep="")
+        }
+      }
+      
+      # Determine highest role
       if (length(matching_groups) > 0) {
         if (any(grepl("admins", matching_groups))) {
           dashboard_group <- "admin"
@@ -172,7 +213,7 @@ get_user_from_code <- function(code) {
         }
       }
     }
-    cat("dashboard role:", dashboard_group %||% "none", "\n\n")
+    cat("→ Final dashboard role:", dashboard_group %||% "none", "\n\n")
 
     result <- list(
       email = claims$email,
@@ -182,11 +223,29 @@ get_user_from_code <- function(code) {
       success = TRUE
     )
     
-    cat("User extracted:", result$username, "\n")
+    cat("✓ User extracted successfully:", result$username, "\n")
+    cat("=== TOKEN EXCHANGE COMPLETE ===\n\n")
     return(result)
     
   }, error = function(e) {
-    cat("ERROR getting user info:", e$message, "\n")
+    cat("\n=== TOKEN EXCHANGE ERROR ===\n")
+    cat("Error type:", class(e)[1], "\n")
+    cat("Error message:", e$message, "\n")
+    
+    # Try to get HTTP error details
+    if (inherits(e, "httr2_http")) {
+      tryCatch({
+        cat("HTTP status:", e$status, "\n")
+        if (!is.null(e$body)) {
+          cat("Response body:\n")
+          print(e$body)
+        }
+      }, error = function(e2) {
+        cat("Could not extract HTTP details\n")
+      })
+    }
+    
+    cat("============================\n\n")
     return(list(success = FALSE, error = e$message))
   })
 }
@@ -294,10 +353,10 @@ auth_server <- function(input, output, session) {
         session$userData$user_username <- user_data$username %||% user_data$email
         session$userData$user_group <- user_data$group  # Can be NULL
         authenticated(TRUE)
-         cat("==================================\n\n")
-        cat("Session restored from localStorage for:", user_data$name, "\n")
+        # cat("==================================\n\n")
+       # cat("Session restored from localStorage for:", user_data$name, "\n")
       }, error = function(e) {
-        cat("Failed to restore session:", e$message, "\n")
+       # cat("Failed to restore session:", e$message, "\n")
         runjs("localStorage.removeItem('user_session');")
       })
     } else {
