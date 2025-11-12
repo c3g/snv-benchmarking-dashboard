@@ -27,7 +27,7 @@ jobs:
     - name: Build and push image
       run: |
         # Build with version tag
-        docker build -f Containerfile -t ghcr.io/${{ github.repository_owner }}/snv-dashboard:${{ steps.tag.outputs.tag }} .
+        docker build --pull -f Containerfile -t ghcr.io/${{ github.repository_owner }}/snv-dashboard:${{ steps.tag.outputs.tag }} .
     
         # Push version tag
         docker push ghcr.io/${{ github.repository_owner }}/snv-dashboard:${{ steps.tag.outputs.tag }}
