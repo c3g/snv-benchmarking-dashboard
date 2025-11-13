@@ -61,6 +61,22 @@ library(htmlwidgets)
 library(shinyBS)
 
 # ============================================================================
+# SHINY OPTIONS
+# ============================================================================
+
+options(
+  shiny.maxRequestSize = 100*1024^2,     # 100MB upload limit
+  shiny.sanitize.errors = FALSE,          
+  shiny.autoreload = FALSE
+)
+
+# Session timeouts for OAuth flow
+shinyOptions(
+  session.timeout = 3600000,              # 1 hour
+  connection.timeout = 3600000
+)
+
+# ============================================================================
 # PYTHON BACKEND INTERFACE
 # ============================================================================
 
