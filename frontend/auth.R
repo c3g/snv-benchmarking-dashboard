@@ -7,6 +7,7 @@ library(httr2)
 library(jose)
 library(jsonlite)
 library(logger)
+
 log_threshold(INFO)
 
 # ============================================================================
@@ -27,9 +28,7 @@ log_info("OIDC issuer: {OIDC_ISSUER}")
 if (OIDC_CLIENT_ID != "") {
   log_info("Client ID configured: {substr(OIDC_CLIENT_ID, 1, 8)}...")
 }
-if (OIDC_CLIENT_SECRET != "") {
-  log_info("Client secret configured: {nchar(OIDC_CLIENT_SECRET)} chars")
-}
+
 
 # get OIDC provider config
 get_oidc_config <- function() {
@@ -140,14 +139,21 @@ get_user_from_code <- function(code) {
     return(NULL)
   }
 
-  log_info("Starting token exchange")
+  log_info("=== TOKEN EXCHANGE START ===")
   log_info("Token endpoint: {OIDC_CONFIG$token_endpoint}")
-  log_info("Redirect URI being sent: {OIDC_REDIRECT_URI}")
+  log_info("Redirect URI in env var: {OIDC_REDIRECT_URI}")
+  log_info("Redirect URI length: {nchar(OIDC_REDIRECT_URI)}")
   log_info("Client ID: {OIDC_CLIENT_ID}")
+  log_info("Auth code: {code}")
   log_info("Auth code length: {nchar(code)}")
 
   tryCatch({
-    log_info("Sending token request to provider...")
+    log_info("Building token request...")
+    log_info("Request parameters:")
+    log_info("  grant_type: authorization_code")
+    log_info("  code: {substr(code, 1, 20)}...")
+    log_info("  redirect_uri: {OIDC_REDIRECT_URI}")
+    log_info("  client_id: {OIDC_CLIENT_ID}")
     
     token_response <- request(OIDC_CONFIG$token_endpoint) %>%
       req_body_form(
@@ -161,6 +167,7 @@ get_user_from_code <- function(code) {
       resp_body_json()
     
     log_success("Token response received")
+    log_info("Response keys: {paste(names(token_response), collapse=', ')}")
     
     if (is.null(token_response$id_token)) {
       log_error("No id_token in response")
@@ -329,7 +336,24 @@ auth_ui <- function() {
 
 auth_server <- function(input, output, session) {
   
+  log_info("=== AUTH SERVER INITIALIZED ===")
+  log_info("Session ID: {session$token}")
+  
   authenticated <- reactiveVal(FALSE)
+  
+  # Log client data once available
+  observeEvent(session$clientData$url_hostname, {
+    log_info("Client URL hostname: {session$clientData$url_hostname}")
+    log_info("Client URL pathname: {session$clientData$url_pathname}")
+  }, once = TRUE)
+  
+  # Session lifecycle observer
+  observe({
+    invalidateLater(10000)
+    if (authenticated()) {
+      log_debug("Session alive - ID: {substr(session$token, 1, 12)}, authenticated: TRUE")
+    }
+  })
   
   # Restore session from localStorage on load
   observe(priority = 1000, {
@@ -439,7 +463,9 @@ auth_server <- function(input, output, session) {
   
   # Handle login button click
   observeEvent(input$login_btn, {
-    log_info("Login button clicked")
+    log_info("=== LOGIN INITIATED ===")
+    log_info("Session ID: {session$token}")
+    log_info("Client URL: {session$clientData$url_hostname}")
 
     if (!OIDC_ENABLED) {
       log_error("Login attempted but OIDC not configured")
@@ -451,16 +477,21 @@ auth_server <- function(input, output, session) {
     state <- random_string()
     session$userData$auth_state <- state
     
-    log_info("Generated state token: {substr(state, 1, 8)}... (stored in session$userData)")
+    log_info("Generated state token (full): {state}")
+    log_info("State length: {nchar(state)} chars")
+    log_info("State stored in session$userData$auth_state")
     
     runjs(sprintf("sessionStorage.setItem('auth_state', '%s');", state))
-    log_info("State token also stored in browser sessionStorage")
+    log_info("State stored in browser sessionStorage")
+    
+    # Verify storage immediately
+    log_info("Verifying session storage: session$userData$auth_state = {session$userData$auth_state}")
     
     # Build and redirect
     login_url <- create_login_url(state)
     if (!is.null(login_url)) {
       log_info("Redirecting to OIDC provider...")
-      log_debug("Full login URL: {login_url}")
+      log_info("Full login URL: {login_url}")
       runjs(sprintf("window.location.href = '%s';", login_url))
     } else {
       log_error("Failed to create login URL")
@@ -473,26 +504,43 @@ auth_server <- function(input, output, session) {
     query <- parseQueryString(session$clientData$url_search)
     
     if (!is.null(query$code) && !is.null(query$state)) {
-      log_info("OAuth callback received")
+      log_info("=== OAUTH CALLBACK RECEIVED ===")
+      log_info("New session ID: {session$token}")
+      log_info("Full callback URL: {session$clientData$url_search}")
       log_info("Callback query string length: {nchar(session$clientData$url_search)}")
+      log_info("Authorization code (full): {query$code}")
       log_info("Authorization code length: {nchar(query$code)}")
-      log_info("State from callback: {substr(query$state, 1, 8)}...")
+      log_info("State from callback (full): {query$state}")
+      log_info("State from callback length: {nchar(query$state)}")
       
       stored_state <- session$userData$auth_state
       
-      log_info("Stored state in session$userData: {if(is.null(stored_state)) 'NULL' else substr(stored_state, 1, 8)}")
+      log_info("Checking session$userData$auth_state...")
+      if (is.null(stored_state)) {
+        log_warn("session$userData$auth_state is NULL")
+      } else {
+        log_info("session$userData$auth_state (full): {stored_state}")
+        log_info("session$userData$auth_state length: {nchar(stored_state)}")
+      }
     
       if (is.null(stored_state)) {
         log_warn("State not found in session$userData, attempting sessionStorage recovery")
+        log_info("Triggering JavaScript to read sessionStorage...")
         runjs("Shiny.setInputValue('recovered_state', sessionStorage.getItem('auth_state'), {priority: 'event'});")
         return()
       }
       
       # Verify state
+      log_info("=== STATE VALIDATION ===")
+      log_info("Comparing states...")
+      log_info("  Stored:  {stored_state}")
+      log_info("  Received: {query$state}")
+      log_info("  Match: {query$state == stored_state}")
+      
       if (query$state != stored_state) {
-        log_error("STATE MISMATCH!")
-        log_error("Expected: {substr(stored_state, 1, 8)}...")
-        log_error("Received: {substr(query$state, 1, 8)}...")
+        log_error("STATE MISMATCH DETECTED!")
+        log_error("Expected (full): {stored_state}")
+        log_error("Received (full): {query$state}")
         updateQueryString("?", mode = "replace")
         showNotification("Login failed - security check failed", type = "error")
         return()
@@ -520,15 +568,20 @@ auth_server <- function(input, output, session) {
   observe({
     req(input$recovered_state)
     
-    log_info("State recovery from sessionStorage triggered")
+    log_info("=== SESSIONSTORAGE RECOVERY TRIGGERED ===")
     recovered_state <- input$recovered_state
-    log_info("Recovered state: {if(is.null(recovered_state) || recovered_state == '') 'NULL/empty' else substr(recovered_state, 1, 8)}")
+    
+    log_info("Recovered state value: {recovered_state}")
+    log_info("Recovered state type: {class(recovered_state)}")
+    log_info("Recovered state length: {nchar(recovered_state)} chars")
     
     query <- parseQueryString(session$clientData$url_search)
     
     if (!is.null(query$code) && !is.null(query$state)) {
-      log_info("Validating recovered state against callback state")
-      log_info("Callback state: {substr(query$state, 1, 8)}...")
+      log_info("=== VALIDATING RECOVERED STATE ===")
+      log_info("Callback state (full): {query$state}")
+      log_info("Recovered state (full): {recovered_state}")
+      log_info("Do they match? {query$state == recovered_state}")
       
       if (query$state == recovered_state) {
         log_success("Recovered state matches callback state")
@@ -540,18 +593,22 @@ auth_server <- function(input, output, session) {
           complete_authentication(session, result, authenticated)
         } else {
           log_error("Token exchange failed with recovered state")
+          log_error("Result details: {paste(capture.output(str(result)), collapse=' ')}")
           showNotification("Login failed", type = "error")
           authenticated(FALSE)
           updateQueryString("?", mode = "replace")
         }
       } else {
-        log_error("Recovered state doesn't match callback state")
-        log_error("Expected: {substr(recovered_state, 1, 8)}...")
-        log_error("Got: {substr(query$state, 1, 8)}...")
+        log_error("RECOVERED STATE MISMATCH!")
+        log_error("Expected from callback: {query$state}")
+        log_error("Got from sessionStorage: {recovered_state}")
+        log_error("Lengths - callback: {nchar(query$state)}, recovered: {nchar(recovered_state)}")
         updateQueryString("?", mode = "replace")
       }
     } else {
       log_warn("State recovered but no code/state in URL query")
+      log_info("query$code present: {!is.null(query$code)}")
+      log_info("query$state present: {!is.null(query$state)}")
     }
   })
   
