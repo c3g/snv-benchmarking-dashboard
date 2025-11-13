@@ -40,6 +40,7 @@ RUN install2.r --error \
     scales \
     httr \
     httr2 \
+    logger \
     jose \
     shinyjs
 
