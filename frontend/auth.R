@@ -14,10 +14,10 @@ log_threshold(INFO)
 # CONFIGURATION
 # ============================================================================
 
-OIDC_ISSUER <- Sys.getenv("OIDC_ISSUER", "")
-OIDC_CLIENT_ID <- Sys.getenv("OIDC_CLIENT_ID", "")
-OIDC_CLIENT_SECRET <- Sys.getenv("OIDC_CLIENT_SECRET", "")
-OIDC_REDIRECT_URI <- Sys.getenv("OIDC_REDIRECT_URI", "")
+OIDC_ISSUER <- trimws(Sys.getenv("OIDC_ISSUER", ""))
+OIDC_CLIENT_ID <- trimws(Sys.getenv("OIDC_CLIENT_ID", ""))
+OIDC_CLIENT_SECRET <- trimws(Sys.getenv("OIDC_CLIENT_SECRET", ""))
+OIDC_REDIRECT_URI <- trimws(Sys.getenv("OIDC_REDIRECT_URI", ""))
 
 OIDC_ENABLED <- (OIDC_ISSUER != "" && OIDC_CLIENT_ID != "" && 
                  OIDC_CLIENT_SECRET != "" && OIDC_REDIRECT_URI != "")
