@@ -129,6 +129,7 @@ ui <- fluidPage(
     tags$script(HTML(CUSTOM_MESSAGE_HANDLERS_JS)),
     tags$script(HTML(COLLAPSIBLE_HANDLERS_JS)),
     tags$script(HTML(METRIC_SELECTION_JS)),
+    tags$script(HTML(PLOTLY_REFRESH_JS))
   ),
   
   # ====================================================================
