@@ -71,6 +71,26 @@ APP_CSS_STYLES <- "
       z-index: 1002;
     }
     
+    .sidebar-header a {
+      text-decoration: none !important;
+      display: inline-block;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+      width: 100%;
+    }
+    
+    .sidebar-header a:hover {
+      transform: translateY(-1px);
+      opacity: 0.95;
+    }
+    
+    .sidebar-header a:hover img {
+      transform: scale(1.08);
+    }
+    
+    .sidebar-header a h4 {
+      color: white !important;
+    }
+    
     .sidebar-header h4 {
       margin: 0;
       font-weight: 600;
