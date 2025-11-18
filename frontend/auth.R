@@ -427,9 +427,9 @@ auth_server <- function(input, output, session) {
         }
         
         div(
-          style = "display: flex; gap: 8px; align-items: center; background-color: #f8f9fa; padding: 6px 12px; border-radius: 4px; border: 1px solid #e4e7ea;",
+          style = "display: flex; gap: 8px; align-items: center; background-color: #f8f9fa; padding: 6px 22px; border-radius: 4px; border: 1px solid #e4e7ea;",
           span(
-            style = "font-size: 13px; color: #4472ca; font-weight: 500; display: flex; align-items: center; gap: 5px;",
+            style = "font-size: 13px; color: #4472ca; font-weight: 500; display: flex; align-items: center; gap: 5px; white-space: nowrap;",
             icon("user"),
             span(user$name %||% "User")
           ),
