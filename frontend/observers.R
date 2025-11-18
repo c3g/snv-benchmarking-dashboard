@@ -38,6 +38,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     
     
     # Reset other comparison selections
+    updateTabsetPanel(session, "main_tabs", selected = "Experiments")
     updateCheckboxGroupInput(session, "selected_callers", selected = character(0))
     updateSelectInput(session, "caller_comparison_tech", selected = "ILLUMINA")
     
@@ -57,6 +58,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     data_reactives$table_selected_ids(numeric(0))
     
     # Reset submitted comparison states
+    updateTabsetPanel(session, "main_tabs", selected = "Experiments")
     data_reactives$comparison_submitted(FALSE)
     data_reactives$comparison_type(NULL)
     data_reactives$comparison_results(numeric(0))
@@ -80,6 +82,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     data_reactives$comparison_results(numeric(0))
     
     # Reset other comparison selections
+    updateTabsetPanel(session, "main_tabs", selected = "Experiments")
     updateCheckboxGroupInput(session, "selected_technologies", selected = character(0))
     updateCheckboxGroupInput(session, "selected_callers", selected = character(0))
     updateSelectInput(session, "tech_comparison_caller", selected = "DEEPVARIANT")
@@ -95,6 +98,41 @@ setup_observers <- function(input, output, session, data_reactives) {
     dataTableProxy('experiments_table') %>% selectRows(NULL)
     showNotification("Experiment selection cleared!", type = "message")
   })
+  
+  # Logo home/reset button
+  observeEvent(input$logo_home_btn, {
+    data_reactives$current_mode("filter")
+    data_reactives$display_experiment_ids(numeric(0))
+    data_reactives$table_selected_ids(numeric(0))
+    data_reactives$comparison_submitted(FALSE)
+    data_reactives$comparison_type(NULL)
+    data_reactives$comparison_results(numeric(0))
+    data_reactives$plot_clicked_id(NULL)
+    data_reactives$stratified_triggered(FALSE)
+    data_reactives$active_truth_set_filter("All Truth Sets")
+    
+    # Reset all filter controls
+    updateRadioButtons(session, "filter_type", selected = "none")
+    updateSelectInput(session, "filter_technology", selected = "ILLUMINA")
+    updateSelectInput(session, "filter_caller", selected = "DEEPVARIANT")
+    
+    # Reset comparison selections
+    updateCheckboxGroupInput(session, "selected_technologies", selected = character(0))
+    updateCheckboxGroupInput(session, "selected_callers", selected = character(0))
+    updateSelectInput(session, "tech_comparison_caller", selected = "DEEPVARIANT")
+    updateSelectInput(session, "caller_comparison_tech", selected = "ILLUMINA")
+    
+    # Reset truth set filters
+    updateSelectInput(session, "truth_set_filter_tab2", selected = "All Truth Sets")
+    updateSelectInput(session, "truth_set_filter_tab3", selected = "All Truth Sets")
+    updateSelectInput(session, "truth_set_filter_tab4", selected = "All Truth Sets")
+    
+    # Clear table selection
+    dataTableProxy('experiments_table') %>% selectRows(NULL)
+    
+    # Switch to Experiments tab
+    updateTabsetPanel(session, "main_tabs", selected = "Experiments")
+    })
 
 
   # ====================================================================
