@@ -279,6 +279,18 @@ ui <- fluidPage(
           div(
             style = "display: flex; gap: 8px; align-items: center; padding-top: 5px;",
             
+            # Beta feature notice
+            conditionalPanel(
+              condition = "output.user_authenticated && !output.user_is_admin",
+              div(
+                style = "display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; background-color: #fff8e1; border-left: 3px solid #ffc107; border-radius: 3px; font-size: 11px; margin-right: 8px;",
+                icon("info-circle", style = "color: #f57c00; font-size: 12px;"),
+                span(style = "font-size: 13px;",
+                  strong("Beta Access:"), " Authentication is active. Additional features for registered users will be available in upcoming releases."
+                )
+              )
+            ),
+            
             # Upload button - ONLY VISIBLE TO ADMIN _ FOR NOW
             conditionalPanel(
               condition = "output.user_is_admin",
@@ -306,7 +318,7 @@ ui <- fluidPage(
               "export_html_report", 
               label = "Download Report",
               class = "btn-primary btn-sm",
-              style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px; border: none !important"
+              style = "font-size: 13px; padding: 6px 22px; white-space: nowrap; min-width: 160px; border: none !important; height: auto;"
             ),
              auth_ui()  # Authentication status/button from auth.R
           )
