@@ -129,6 +129,18 @@ setup_observers <- function(input, output, session, data_reactives) {
     
     # Clear table selection
     dataTableProxy('experiments_table') %>% selectRows(NULL)
+        
+    # Reset stratified region selections
+    updateCheckboxGroupInput(session, "basic_regions", selected = "All Regions")
+    updateCheckboxGroupInput(session, "functional_regions", selected = character(0))
+    updateCheckboxGroupInput(session, "homopolymer_regions", selected = character(0))
+    updateCheckboxGroupInput(session, "satellites_regions", selected = character(0))
+    updateCheckboxGroupInput(session, "non_repetitive_regions", selected = character(0))
+    updateCheckboxGroupInput(session, "complex_regions", selected = character(0))
+    updateCheckboxGroupInput(session, "gc_low", selected = character(0))
+    updateCheckboxGroupInput(session, "gc_normal", selected = character(0))
+    updateCheckboxGroupInput(session, "gc_high", selected = character(0))
+    updateCheckboxGroupInput(session, "gc_extreme", selected = character(0))
     
     # Switch to Experiments tab
     updateTabsetPanel(session, "main_tabs", selected = "Experiments")
