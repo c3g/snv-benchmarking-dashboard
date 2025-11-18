@@ -188,21 +188,19 @@ setup_data_reactives <- function(input, output, session) {
   
   # SNP-specific plot data
   snp_plot_data <- reactive({
-    viz_data <- viz_performance_data()
-    if (nrow(viz_data) == 0) return(data.frame())
-    
-    viz_data %>% 
-      filter(variant_type == "SNP") %>%
+  req(nrow(viz_performance_data()) > 0) # request data to calculate
+  
+  viz_performance_data() %>%
+    filter(variant_type == "SNP") %>%
       mutate(plot_id = paste0("snp_", experiment_id))
   })
   
   # INDEL-specific plot data
   indel_plot_data <- reactive({
-    viz_data <- viz_performance_data()
-    if (nrow(viz_data) == 0) return(data.frame())
-    
-    viz_data %>% 
-      filter(variant_type == "INDEL") %>%
+  req(nrow(viz_performance_data()) > 0) # request data to calculate
+  
+  viz_performance_data() %>%
+    filter(variant_type == "INDEL") %>%
       mutate(plot_id = paste0("indel_", experiment_id))
   })
   
