@@ -667,6 +667,20 @@ TRUTH_SET_FILTER_CSS <- "
     font-size: 16px;
   }
 "
+# Plotly refresh on tab 3
+PLOTLY_REFRESH_JS <- "
+  // Force Plotly to recalculate layout when Visualizations tab is shown
+  $(document).on('shown.bs.tab', 'a[data-value=\"Visualizations\"]', function() {
+    setTimeout(function() {
+      if (window.Plotly) {
+        var plots = document.querySelectorAll('.plotly');
+        plots.forEach(function(plot) {
+          Plotly.Plots.resize(plot);
+        });
+      }
+    }, 100);
+  });
+"
 
 # Update APP_CSS_STYLES at the very end
 APP_CSS_STYLES <- paste0(APP_CSS_STYLES, TRUTH_SET_FILTER_CSS, REGION_INFO_CSS)
