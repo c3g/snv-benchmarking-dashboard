@@ -613,7 +613,7 @@ generate_metadata_section <- function(viz_data, experiment_ids) {
                 
                 <!-- CARD 1: Sequencing Technology & Platform -->
                 <div class="metadata-card">
-                    <h4>🧬 Sequencing Technology</h4>
+                    <h4>Sequencing Technology</h4>
                     <div class="metadata-item"><strong>Technology:</strong> ', safe_value(exp_data$technology), '</div>
                     <div class="metadata-item"><strong>Platform:</strong> ', safe_value(exp_data$platform_name), '</div>
                     <div class="metadata-item"><strong>Platform Type:</strong> ', safe_value(exp_data$platform_type), '</div>
@@ -625,7 +625,7 @@ generate_metadata_section <- function(viz_data, experiment_ids) {
                 
                 <!-- CARD 2: Analysis Pipeline -->
                 <div class="metadata-card">
-                    <h4>⚙️ Analysis Pipeline</h4>
+                    <h4>Analysis Pipeline</h4>
                     <div class="metadata-item"><strong>Variant Caller:</strong> ', safe_value(exp_data$caller), '</div>
                     <div class="metadata-item"><strong>Caller Version:</strong> ', safe_value(exp_data$caller_version), '</div>
                     <div class="metadata-item"><strong>Caller Type:</strong> ', safe_value(exp_data$caller_type), '</div>
@@ -636,7 +636,7 @@ generate_metadata_section <- function(viz_data, experiment_ids) {
                 
                 <!-- CARD 3: Quality Metrics -->
                 <div class="metadata-card">
-                    <h4>📊 Quality Metrics</h4>
+                    <h4>Quality Metrics</h4>
                     <div class="metadata-item"><strong>Mean Coverage:</strong> ', safe_coverage(exp_data$mean_coverage), '</div>
                     <div class="metadata-item"><strong>Read Length:</strong> ', 
                               ifelse(is.na(exp_data$read_length), 
@@ -650,7 +650,7 @@ generate_metadata_section <- function(viz_data, experiment_ids) {
                 
                 <!-- CARD 4: Variants & Truth Set -->
                 <div class="metadata-card">
-                    <h4>🎯 Variants & Truth Set</h4>
+                    <h4>Variants & Truth Set</h4>
                     <div class="metadata-item"><strong>Variant Type:</strong> ', safe_value(exp_data$variant_type_detail), '</div>
                     <div class="metadata-item"><strong>Variant Origin:</strong> ', safe_value(exp_data$variant_origin), '</div>
                     <div class="metadata-item"><strong>Variant Size:</strong> ', safe_value(exp_data$variant_size), '</div>
@@ -663,7 +663,7 @@ generate_metadata_section <- function(viz_data, experiment_ids) {
                 
                 <!-- CARD 5: SNP Performance Summary -->
                 <div class="metadata-card">
-                    <h4>🔴 SNP Performance</h4>')
+                    <h4>SNP Performance</h4>')
       
       if (nrow(snp_perf) > 0) {
         html_metadata <- paste0(html_metadata, '
@@ -684,7 +684,7 @@ generate_metadata_section <- function(viz_data, experiment_ids) {
                 
                 <!-- CARD 6: INDEL Performance Summary -->
                 <div class="metadata-card">
-                    <h4>🔵 INDEL Performance</h4>')
+                    <h4>INDEL Performance</h4>')
       
       if (nrow(indel_perf) > 0) {
         html_metadata <- paste0(html_metadata, '
