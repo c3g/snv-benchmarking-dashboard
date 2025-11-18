@@ -139,20 +139,20 @@ ui <- fluidPage(
     
     # SIDEBAR PANEL
     div(class = "sidebar",
-div(class = "sidebar-header",
-            # Logo and title container
-            actionLink("logo_home_btn",
-              div(style = "display: flex; align-items: center; gap: 12px; cursor: pointer;",
-                  # Logo
-                  img(src = "C3G_Logo.png", 
-                      alt = "Reset Dashboard", 
-                      style = "height: 50px; width: 55px; object-fit: contain;"),
-                  # Title
-                  h4("SNV Benchmarking Dashboard", 
-                     style = "margin: 0; font-size: 1.25em; font-weight: 600; line-height: 1.2; color: white;")
-              ),
+      div(class = "sidebar-header",
+                  # Logo and title container
+                  actionLink("logo_home_btn",
+                    div(style = "display: flex; align-items: center; gap: 12px; cursor: pointer;",
+                        # Logo
+                        img(src = "C3G_Logo.png", 
+                            alt = "Reset Dashboard", 
+                            style = "height: 50px; width: 55px; object-fit: contain;"),
+                        # Title
+                        h4("SNV Benchmarking Dashboard", 
+                          style = "margin: 0; font-size: 1.25em; font-weight: 600; line-height: 1.2; color: white;")
+                    ),
 
-            )
+                  )
         ),
         div(class = "sidebar-content",
             
@@ -316,7 +316,7 @@ div(class = "sidebar-header",
         
         # Main tab panel
         tabsetPanel(
-          
+          id = "main_tabs",
           # TAB 1: EXPERIMENTS OVERVIEW
           tabPanel(
             "Experiments",
