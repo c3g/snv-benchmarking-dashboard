@@ -461,7 +461,7 @@ div(
                           icon("mouse-pointer"), strong(" How to Interact:"), br(),
                           "• ", strong("Click and drag")," to zoom in |", strong("Double-click"), " to reset view", br(),
                           "• ", strong("Hover")," for quick performance metrics", br(),
-                          "• ", strong("Click")," points to view detailed experiment metadata",
+                          "• ", strong("Click")," points and", strong("scroll down"),"to view detailed experiment metadata",
                         )
                       )
                     )
