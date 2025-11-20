@@ -1154,23 +1154,29 @@ server <- function(input, output, session) {
   
   output$export_html_report <- downloadHandler(
     filename = function() {
+      disable("export_html_report")
+      html("export_html_report", 
+          '<i class="fa fa-spinner fa-spin"></i> Generating...')
+      
       paste0("benchmarking_report_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".html")
     },
     
     content = function(file) {
-      # Get main visualization data
+      on.exit({
+        enable("export_html_report")
+        html("export_html_report", 
+            'Download Report')
+      })
+      
       viz_data <- data_reactives$viz_performance_data()
       
-      # Get stratified data 
       stratified_data <- NULL
       current_metric <- input$selected_metric %||% "f1_score"
       
-      # Use tab 4 data 
       if (data_reactives$stratified_triggered() && nrow(data_reactives$stratified_filtered_data()) > 0) {
         stratified_data <- data_reactives$stratified_filtered_data()
       }
       
-      # Generate report using html_export.R functions
       html_content <- create_html_report(viz_data, stratified_data, current_metric)
       writeLines(html_content, file)
     }
