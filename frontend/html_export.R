@@ -238,11 +238,11 @@ generate_stratified_plots <- function(stratified_data, selected_metric = "f1_sco
       theme_bw() +
       theme(
         strip.background = element_rect(fill = "#f8f9fa", color = "#dee2e6"),
-        strip.text = element_text(face = "bold", size = 12),
-        axis.text.y = element_text(face = "bold", size = 9),
-        axis.text.x = element_text(face = "bold", size = 9),
+        strip.text = element_text(face = "bold", size = 14),
+        axis.text.y = element_text(face = "bold", size = 10),
+        axis.text.x = element_text(face = "bold", size = 10),
         legend.position = "bottom",
-        legend.text = element_text(size = 8),
+        legend.text = element_text(size =10),
         panel.grid.major.y = element_blank(),
         panel.grid.minor = element_blank()
       ) +
@@ -259,7 +259,12 @@ generate_stratified_plots <- function(stratified_data, selected_metric = "f1_sco
   
   n_regions <- length(unique(stratified_data$subset))
   n_experiments <- length(unique(stratified_data$experiment_id))
-  plot_height <- max(8, n_regions * 2 + n_experiments * 0.5)
+
+  height_per_region <- 3
+  height_per_experiment <- 0.4
+  base_height <- 4
+  
+  plot_height <- base_height + (n_regions * height_per_region) + (n_experiments * height_per_experiment) 
   
   ggsave(temp_snp, snp_plot, width = 12, height = plot_height, dpi = 300)
   ggsave(temp_indel, indel_plot, width = 12, height = plot_height, dpi = 300)
@@ -356,7 +361,7 @@ add_stratified_section <- function(stratified_data, selected_metric = "f1_score"
     </p>
     
     <div style="background: #e9ecef; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
-        <strong>Analysis Summary:</strong> ', n_experiments, ' experiments × ', n_regions, ' regions = ', n_results, ' total results
+        <strong>Analysis Summary:</strong> ', n_experiments, ' experiments x ', n_regions, ' regions = ', n_results, ' total results
     </div>')
   
   plots <- generate_stratified_plots(stratified_data, selected_metric)
@@ -464,7 +469,7 @@ generate_html_header <- function() {
             border-bottom: 1px solid #ddd; 
         }
         th { 
-            background-color: #f8f9fa; 
+            background-color: #e3f2fd; 
             font-weight: bold;
             color: #495057;
         }
@@ -546,18 +551,21 @@ generate_performance_table <- function(data, variant_type) {
         <p>No ', variant_type, ' data available</p>'))
   }
   
+  data <- data %>% arrange(experiment_id)
+  
   html_table <- paste0('
-        <h2>', variant_type, ' Performance Results (Best to Worst F1 Score)</h2>
+        <h2>', variant_type, ' Performance Results</h2>
         <table>
             <thead>
                 <tr>
-                    <th>Rank</th>
                     <th>ID</th>
                     <th>Experiment</th>
                     <th>Technology</th>
                     <th>Platform</th>
                     <th>Chemistry</th>
                     <th>Caller</th>
+                    <th>Version</th>
+                    <th>Coverage</th>
                     <th>Precision (%)</th>
                     <th>Recall (%)</th>
                     <th>F1 Score (%)</th>
@@ -567,20 +575,20 @@ generate_performance_table <- function(data, variant_type) {
   
   for (i in 1:nrow(data)) {
     row <- data[i, ]
-    row_class <- if(i == 1) "best-performer" else ""
     
     html_table <- paste0(html_table, '
-                <tr class="', row_class, '">
-                    <td>', i, '</td>
-                    <td><strong>', safe_value(row$experiment_id), '</strong></td>
+                <tr>
+                    <td>', safe_value(row$experiment_id), '</td>
                     <td>', safe_value(row$experiment_name), '</td>
                     <td>', safe_value(row$technology), '</td>
                     <td>', safe_value(row$platform_name), '</td>
                     <td>', safe_value(row$chemistry_name), '</td>
                     <td>', safe_value(row$caller), '</td>
+                    <td>', safe_value(row$caller_version), '</td>
+                    <td>', safe_coverage(row$mean_coverage), '</td>
                     <td>', safe_percent(row$precision), '</td>
                     <td>', safe_percent(row$recall), '</td>
-                    <td><strong>', safe_percent(row$f1_score), '</strong></td>
+                    <td>', safe_percent(row$f1_score), '</td>
                 </tr>')
   }
   
