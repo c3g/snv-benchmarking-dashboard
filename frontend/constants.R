@@ -29,10 +29,35 @@ FILTER_TYPES <- list(
 )
 
 # Available options for dropdowns
-TECHNOLOGY_OPTIONS <- c("ILLUMINA", "PACBIO", "ONT", "MGI")
-CALLER_OPTIONS <- c("DEEPVARIANT", "GATK", "CLAIR3", "DRAGEN")
+TECHNOLOGY_OPTIONS <- c("ILLUMINA", "PACBIO", "ONT", "MGI", "10X")
+CALLER_OPTIONS <- c("DEEPVARIANT", "GATK", "CLAIR3", "DRAGEN", 
+                    "GATK3", "GATK4", "LONGRANGER", "MEGABOLT", 
+                    "NANOCALLER", "PARABRICK", "PEPPER")
 VARIANT_TYPES <- c("SNP", "INDEL")
 TRUTH_SET_OPTIONS <- c("All Truth Sets", "T2T", "GIAB", "CMRG")
+
+# Display names for UI dropdowns
+TECHNOLOGY_DISPLAY_NAMES <- c(
+  "ILLUMINA" = "Illumina",
+  "PACBIO" = "PacBio",
+  "ONT" = "ONT",
+  "MGI" = "MGI",
+  "10X" = "10X"
+)
+
+CALLER_DISPLAY_NAMES <- c(
+  "DEEPVARIANT" = "DeepVariant",
+  "GATK" = "GATK",
+  "CLAIR3" = "Clair3",
+  "DRAGEN" = "DRAGEN",
+  "GATK3" = "GATK3",
+  "GATK4" = "GATK4",
+  "LONGRANGER" = "LongRanger",
+  "MEGABOLT" = "Megabolt",
+  "NANOCALLER" = "NanoCaller",
+  "PARABRICK" = "Parabrick",
+  "PEPPER" = "Pepper"
+)
 
 # ============================================================================
 # CSS STYLING CONSTANTS
