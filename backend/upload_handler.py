@@ -101,11 +101,13 @@ def validate_metadata(metadata):
             return False, f"Required field '{field}' is missing"
     
     # Validate enums
-    if metadata['technology'].upper() not in ['ILLUMINA', 'PACBIO', 'ONT', 'MGI']:
+    if metadata['technology'].upper() not in ['ILLUMINA', 'PACBIO', 'ONT', 'MGI', '10X']:
         logger.error(f"Metadata validation failed: invalid technology '{metadata['technology']}'")
         return False, f"Invalid technology: {metadata['technology']}"
         
-    if metadata['caller_name'].upper() not in ['DEEPVARIANT', 'GATK', 'CLAIR3','DRAGEN']:
+    if metadata['caller_name'].upper() not in ['DEEPVARIANT', 'GATK', 'CLAIR3', 'DRAGEN', 
+                                                'GATK3', 'GATK4', 'LONGRANGER', 'MEGABOLT', 
+                                                'NANOCALLER', 'PARABRICK', 'PEPPER']:
         logger.error(f"Metadata validation failed: invalid caller '{metadata['caller_name']}'")
         return False, f"Invalid caller: {metadata['caller_name']}"
     
