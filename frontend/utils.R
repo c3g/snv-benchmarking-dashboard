@@ -19,43 +19,109 @@ technology_colors <- c(
   "PACBIO" = "#C77CFF",      # Purple
   "ONT" = "#00BFC4",         # Cyan
   "MGI" = "#7CAE00",         # Green
+  "10X" = "#FFA500",         # Orange
   "Unknown" = "#E76BF3"      # Fallback color
 )
 
 # Caller shape mapping for scatter plots
 caller_shapes <- c(
-  "DEEPVARIANT" = 16,        # Circle 
-  "GATK" = 17,               # Triangle
-  "CLAIR3" = 15,             # Square 
-  "DRAGEN" = 18, 
-  "Unknown" = 4              # X shape
+  "DEEPVARIANT" = 16,   # ●
+  "GATK"         = 17,   # ▲
+  "CLAIR3"       = 15,   # ■
+  "DRAGEN"       = 18,   # ◆
+  "GATK3"        = 8,    # ✶
+  "GATK4"        = 4,    # ✕
+  "LONGRANGER"   = 3,    # ＋
+  "MEGABOLT"     = 10,   # ⊕
+  "NANOCALLER"   = 12,   # ⊞
+  "PARABRICK"    = 1,    # ○
+  "PEPPER"       = 0,    # □
+  "Unknown"      = 4     # ✕ (fallback)
 )
 
-# Shape symbols for HTML legend display
-shape_symbols <- c("16" = "●", "17" = "▲", "15" = "■", "18" = "◆", "4" = "✕")
+
+# Matching HTML legend symbols
+shape_symbols <- c(
+  "16" = "●",
+  "17" = "▲",
+  "15" = "■",
+  "18" = "◆",
+  "8"  = "✶",
+  "4"  = "✕",
+  "3"  = "+",
+  "10" = "⊕",
+  "12" = "⊞",
+  "1"  = "○",
+  "0"  = "□"
+)
+
 
 # Technology-caller gradient combinations for stratified plots
 tech_caller_colors <- c(
   # ILLUMINA family (Red variations)
-  "ILLUMINA-DEEPVARIANT" = "#F8766D",
-  "ILLUMINA-GATK" = "#E55A5A",
-  "ILLUMINA-CLAIR3" = "#FF9999",
-  "ILLUMINA-DRAGEN" = "#CC3333", 
+  "ILLUMINA-DEEPVARIANT" = "#F42D1F",
+  "ILLUMINA-GATK" = "#F53B2F",
+  "ILLUMINA-CLAIR3" = "#F54A3E",
+  "ILLUMINA-DRAGEN" = "#F6584E",
+  "ILLUMINA-GATK3" = "#F7675D",
+  "ILLUMINA-GATK4" = "#F8756C",
+  "ILLUMINA-LONGRANGER" = "#F8847C",
+  "ILLUMINA-MEGABOLT" = "#F9938B",
+  "ILLUMINA-NANOCALLER" = "#FAA19B",
+  "ILLUMINA-PARABRICK" = "#FAB0AA",
+  "ILLUMINA-PEPPER" = "#FBBEBA",
   
   # PACBIO family (Purple variations)
-  "PACBIO-DEEPVARIANT" = "#C77CFF",
-  "PACBIO-GATK" = "#B366FF",
-  "PACBIO-CLAIR3" = "#D999FF",
+  "PACBIO-DEEPVARIANT" = "#A42AFE",
+  "PACBIO-GATK" = "#AB3BFF",
+  "PACBIO-CLAIR3" = "#B24BFF",
+  "PACBIO-DRAGEN" = "#B95BFF",
+  "PACBIO-GATK3" = "#C06BFF",
+  "PACBIO-GATK4" = "#C77CFF",
+  "PACBIO-LONGRANGER" = "#CD8CFE",
+  "PACBIO-MEGABOLT" = "#D49CFE",
+  "PACBIO-NANOCALLER" = "#DBACFF",
+  "PACBIO-PARABRICK" = "#E2BCFF",
+  "PACBIO-PEPPER" = "#E9CCFE",
   
   # ONT family (Cyan variations)
-  "ONT-DEEPVARIANT" = "#00BFC4",
-  "ONT-GATK" = "#00A5A8",
-  "ONT-CLAIR3" = "#33CCCC",
+  "ONT-DEEPVARIANT" = "#006F72",
+  "ONT-GATK" = "#007F83",
+  "ONT-CLAIR3" = "#008F93",
+  "ONT-DRAGEN" = "#009FA3",
+  "ONT-GATK3" = "#00AFB3",
+  "ONT-GATK4" = "#00BEC4",
+  "ONT-LONGRANGER" = "#00CED4",
+  "ONT-MEGABOLT" = "#00DEE4",
+  "ONT-NANOCALLER" = "#00EEF4",
+  "ONT-PARABRICK" = "#05F8FF",
+  "ONT-PEPPER" = "#16F9FF",
   
   # MGI family (Green variations)
-  "MGI-DEEPVARIANT" = "#7CAE00",
-  "MGI-GATK" = "#6B9500",
-  "MGI-CLAIR3" = "#99CC33"
+  "MGI-DEEPVARIANT" = "#486600",
+  "MGI-GATK" = "#4D6D00",
+  "MGI-CLAIR3" = "#597D00",
+  "MGI-DRAGEN" = "#648D00",
+  "MGI-GATK3" = "#709D00",
+  "MGI-GATK4" = "#7CAE00",
+  "MGI-LONGRANGER" = "#87BE00",
+  "MGI-MEGABOLT" = "#93CE00",
+  "MGI-NANOCALLER" = "#9EDE00",
+  "MGI-PARABRICK" = "#AAEE00",
+  "MGI-PEPPER" = "#B5FF00",
+  
+  # 10X family (Orange variations)
+  "10X-DEEPVARIANT" = "#AD7000",
+  "10X-GATK" = "#BE7B00",
+  "10X-CLAIR3" = "#CE8500",
+  "10X-DRAGEN" = "#DE9000",
+  "10X-GATK3" = "#EE9A00",
+  "10X-GATK4" = "#FFA500",
+  "10X-LONGRANGER" = "#FEAA10",
+  "10X-MEGABOLT" = "#FEB020",
+  "10X-NANOCALLER" = "#FFB630",
+  "10X-PARABRICK" = "#FFBB40",
+  "10X-PEPPER" = "#FFC151"
 )
 
 # ============================================================================
