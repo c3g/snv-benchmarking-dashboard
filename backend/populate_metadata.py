@@ -93,6 +93,8 @@ ENUM_MAPPINGS = {
         'mgi': SeqTechName.MGI,
         'ont': SeqTechName.ONT,
         'pacbio': SeqTechName.PACBIO,
+        '10x': SeqTechName.TENX,             
+        '10x genomics': SeqTechName.TENX,     
     },
     'target': {
         'wgs': SeqTechTarget.WGS,
@@ -100,13 +102,21 @@ ENUM_MAPPINGS = {
     },
     'platform_type': {
         'srs': SeqTechPlatformType.SRS,
-        'lrs': SeqTechPlatformType.LRS
+        'lrs': SeqTechPlatformType.LRS,
+        'synthetic': SeqTechPlatformType.SYNTHETIC, 
     },
     'caller_name': {
         'deepvariant': CallerName.DEEPVARIANT,
         'gatk': CallerName.GATK,
+        'gatk3': CallerName.GATK3,     
+        'gatk4': CallerName.GATK4,         
         'clair3': CallerName.CLAIR3,
         'dragen': CallerName.DRAGEN,
+        'longranger': CallerName.LONGRANGER, 
+        'megabolt': CallerName.MEGABOLT,     
+        'nanocaller': CallerName.NANOCALLER, 
+        'parabrick': CallerName.PARABRICK,     
+        'pepper': CallerName.PEPPER,          
     },
     'caller_type': {
         'ml': CallerType.ML,
