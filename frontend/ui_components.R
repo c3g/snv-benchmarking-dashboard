@@ -479,30 +479,38 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
   # UPLOAD FILENAME PREVIEW
   # ====================================================================
   
-  # filename preview
+    # filename preview
   output$filename_preview <- renderText({
 
-    Sys.sleep(0.05) #to allow reactive chain to complete
+    # Helper function to clean values
+    strip_value <- function(value) {
+      if (is.null(value) || is.na(value) || value == "") {
+        return("")
+      }
+      return(trimws(as.character(value)))
+    }
 
+    # Check all required fields are filled
     if (!is.null(input$exp_name) && input$exp_name != "" &&
         !is.null(input$technology) && input$technology != "" &&
         !is.null(input$platform_name) && input$platform_name != "" &&
         !is.null(input$caller_name) && input$caller_name != "" &&
         !is.null(input$truth_set_name) && input$truth_set_name != "") {
       
-      # Helper function to clean values
-      strip_value <- function(value) {
-        if (is.null(value) || is.na(value) || value == "") {
-          return("")
-        }
-        return(trimws(as.character(value)))
-      }
-      
       tryCatch({
-        # Get next experiment ID 
-        overview <- db$get_experiments_overview()
-        next_id <- max(overview$id, na.rm = TRUE) +1 
-        preview_id <- sprintf("%03d", next_id)  # Format with 3 digits
+        # Get next experiment ID with fallback
+        next_id <- tryCatch({
+          overview <- db$get_experiments_overview()
+          if (is.null(overview) || nrow(overview) == 0) {
+            1
+          } else {
+            max(overview$id, na.rm = TRUE) + 1
+          }
+        }, error = function(e) {
+          1  # Default to 1 if database call fails
+        })
+        
+        preview_id <- sprintf("%03d", next_id)
         
         # Extract sample name
         sample <- strsplit(strip_value(input$exp_name), "_")[[1]][1]
@@ -520,16 +528,15 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
         return(paste("Preview:", filename))
         
       }, error = function(e) {
-        return("Error generating preview")
+        return(paste("Preview error:", e$message))
       })
       
     } else {
       return("Fill required fields (*) to see filename preview")
     }
   })
-  outputOptions(output, "filename_preview", priority = 10)
+  outputOptions(output, "filename_preview", suspendWhenHidden = FALSE, priority = 10)
 }
-
 # ============================================================================
 # UPLOAD UI COMPONENTS
 # ============================================================================
@@ -607,16 +614,15 @@ upload_modal_ui <- function() {
       h5("Sequencing Technology", style = "color: #4472ca; margin-top: 20px; font-weight: 600;"),
       fluidRow(
         column(3,
-               selectInput("technology", "Technology*",
-                           choices = c("", "ILLUMINA", "PACBIO", "ONT", "MGI"))
+          selectInput("technology", "Technology*",
+                      choices = c("", "ILLUMINA", "PACBIO", "ONT", "MGI", "10X"))
         ),
         column(3,
                textInput("platform_name", "Platform*")
         ),
         column(3,
                selectInput("platform_type", "Platform Type*",
-                           choices = c("","SRS" = "srs", "LRS" = "lrs"))
-        ),
+                choices = c("", "SRS" = "srs", "LRS" = "lrs", "Synthetic" = "synthetic"))        ),
         column(3,
                textInput("platform_version", "Platform Version",
                          placeholder = "Optional")
@@ -639,8 +645,10 @@ upload_modal_ui <- function() {
       h5("Variant Caller", style = "color: #4472ca; margin-top: 20px; font-weight: 600;"),
       fluidRow(
         column(3,
-               selectInput("caller_name", "Caller*",
-                           choices = c("", "DEEPVARIANT", "GATK", "CLAIR3", "DRAGEN"))
+          selectInput("caller_name", "Caller*",
+                      choices = c("", "DEEPVARIANT", "GATK", "CLAIR3", "DRAGEN",
+                                  "GATK3", "GATK4", "LONGRANGER", "MEGABOLT",
+                                  "NANOCALLER", "PARABRICK", "PEPPER"))
         ),
         column(3,
                selectInput("caller_type", "Caller Type*",
@@ -673,7 +681,7 @@ upload_modal_ui <- function() {
       h5("Truth Set", style = "color: #4472ca; margin-top: 20px; font-weight: 600;"),
       fluidRow(
         column(3,
-               selectInput("truth_set_name", "Truth Set",
+               selectInput("truth_set_name", "Truth Set*",
                            choices = c("", "GIAB" = "giab", "CMRG" = "cmrg", "T2T" = "t2t"))
         ),
         column(3,
