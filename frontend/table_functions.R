@@ -394,5 +394,6 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
     
     create_delete_experiments_table(all_experiments)
   })
+  outputOptions(output, "delete_experiments_table", suspendWhenHidden = FALSE)
   
 }
