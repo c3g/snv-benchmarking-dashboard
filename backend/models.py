@@ -28,6 +28,7 @@ class SeqTechName(enum.Enum):
     MGI = "MGI"
     ONT = "ONT"
     PACBIO = "PACBIO"
+    TENX = "10X"
 
 class SeqTechTarget(enum.Enum):
     """Sequencing targets"""
@@ -38,13 +39,21 @@ class SeqTechPlatformType(enum.Enum):
     """Sequencing Platform types"""
     SRS = "SRS"  # Short Read Sequencing
     LRS = "LRS" # Long Read Sequencing
+    SYNTHETIC = "SYNTHETIC" 
 
 class CallerName(enum.Enum):
     """Variant caller names"""
     DEEPVARIANT = "DEEPVARIANT"
     GATK = "GATK"
+    GATK3 = "GATK3"      
+    GATK4 = "GATK4"       
     CLAIR3 = "CLAIR3"
     DRAGEN = "DRAGEN"
+    LONGRANGER = "LONGRANGER"
+    MEGABOLT = "MEGABOLT"   
+    NANOCALLER = "NANOCALLER"
+    PARABRICK = "PARABRICK"
+    PEPPER = "PEPPER"     
 
 class CallerType(enum.Enum):
     """Variant caller types"""
