@@ -224,8 +224,8 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
               text = tooltip_text,
               customdata = plot_id),
           color = "black",
-          stroke = 0.15,
-          size = 3 ###-----------------SNP PLOT POINT SIZE
+          stroke = 0.3,
+          size = 2.8 ###-----------------SNP PLOT POINT SIZE
         ) +
         scale_fill_manual(values = technology_colors) + 
         scale_shape_manual(values = caller_shapes) +       
@@ -350,8 +350,8 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
               text = tooltip_text,
               customdata = plot_id),
           color = "black",
-          size = 3, ###-----------------INDEL PLOT POINT SIZE
-          stroke = 0.15
+          size = 2.8, ###-----------------INDEL PLOT POINT SIZE
+          stroke = 0.3
         ) +
         scale_fill_manual(values = technology_colors) +   
         scale_shape_manual(values = caller_shapes) +       
