@@ -196,7 +196,7 @@ ui <- fluidPage(
               condition = "output.comparison_mode == 'tech_comparison'",
               hr(),
               h5("Technology Comparison Setup:"),
-              checkboxGroupInput("selected_technologies", "Select technologies (2 or more):",
+              checkboxGroupInput("selected_technologies", "Select technologies (1 or more):",
                                 choices = setNames(names(TECHNOLOGY_DISPLAY_NAMES), 
                                                   TECHNOLOGY_DISPLAY_NAMES)),
               selectInput("tech_comparison_caller", "Choose a caller (for all):",
@@ -204,13 +204,13 @@ ui <- fluidPage(
                                             CALLER_DISPLAY_NAMES),
                           selected = names(CALLER_DISPLAY_NAMES)[1]),
               conditionalPanel(
-                condition = "input.selected_technologies && input.selected_technologies.length >= 2",
+                condition = "input.selected_technologies && input.selected_technologies.length >= 1",
                 actionButton("submit_tech_comparison", "Submit Technology Comparison",
                              class = "btn-primary", style = "width: 100%;")
               ),
               conditionalPanel(
-                condition = "!input.selected_technologies || input.selected_technologies.length < 2",
-                p("Please select at least 2 technologies", style = "color: red; font-size: 12px;")
+                condition = "!input.selected_technologies || input.selected_technologies.length < 1",
+                p("Please select at least 1 technology", style = "color: red; font-size: 12px;")
               )
             ),
             
@@ -219,7 +219,7 @@ ui <- fluidPage(
               condition = "output.comparison_mode == 'caller_comparison'",
               hr(),
               h5("Caller Comparison Setup:"),
-              checkboxGroupInput("selected_callers", "Select callers (2 or more):",
+              checkboxGroupInput("selected_callers", "Select callers (1 or more):",
                                 choices = setNames(names(CALLER_DISPLAY_NAMES), 
                                                   CALLER_DISPLAY_NAMES)),
               selectInput("caller_comparison_tech", "Choose a technology (for all):",
@@ -227,13 +227,13 @@ ui <- fluidPage(
                                             TECHNOLOGY_DISPLAY_NAMES),
                           selected = names(TECHNOLOGY_DISPLAY_NAMES)[1]),
               conditionalPanel(
-                condition = "input.selected_callers && input.selected_callers.length >= 2",
+                condition = "input.selected_callers && input.selected_callers.length >= 1",
                 actionButton("submit_caller_comparison", "Submit Caller Comparison",
                              class = "btn-success", style = "width: 100%;")
               ),
               conditionalPanel(
-                condition = "!input.selected_callers || input.selected_callers.length < 2",
-                p("Please select at least 2 callers", style = "color: red; font-size: 12px;")
+                condition = "!input.selected_callers || input.selected_callers.length < 1",
+                p("Please select at least 1 caller", style = "color: red; font-size: 12px;")
               )
             ),
             
