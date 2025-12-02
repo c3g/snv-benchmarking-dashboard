@@ -123,7 +123,7 @@ APP_CSS_STYLES <- "
     }
     
     .sidebar-content {
-      padding: 20px 20px 100px 20px;
+      padding: 20px 20px 120px 20px;
       height: calc(100vh - 72px);
       overflow-y: auto;
     }
@@ -205,7 +205,7 @@ APP_CSS_STYLES <- "
     }
     
     .sidebar-content .btn-comparison-active::before {
-      content: '●   ';
+      content: '●  ';
       font-size: 10px;
     }
     
@@ -217,7 +217,6 @@ APP_CSS_STYLES <- "
       padding: 6px 10px !important;
       font-size: 13px !important;
     }
-    
     /* Fix dropdown menu overflow in sidebar */
     .sidebar-content .selectize-dropdown {
       max-height: 400px !important;
@@ -550,7 +549,7 @@ TABLE_INTERACTION_JS <- "
     }
 "
 
-# Custom message handlers for dynamic content insertion
+# Custom message handlers for dynamic content insertion - handle reset with JS
 CUSTOM_MESSAGE_HANDLERS_JS <- "
     Shiny.addCustomMessageHandler('insertDetailsRow', function(data) {
       var experimentId = data.experimentId;
@@ -566,6 +565,26 @@ CUSTOM_MESSAGE_HANDLERS_JS <- "
           break;
         }
       }
+    });
+    
+    Shiny.addCustomMessageHandler('resetHierarchyCheckboxes', function(data) {
+      // Uncheck all technology checkboxes
+      $('.tech-parent-checkbox').prop('checked', false);
+      $('.tech-child-checkbox').prop('checked', false);
+      
+      // Uncheck all caller checkboxes
+      $('.caller-parent-checkbox').prop('checked', false);
+      $('.caller-child-checkbox').prop('checked', false);
+      
+      // Collapse all expanded sections
+      $('.tech-children-container').slideUp(150);
+      $('.caller-children-container').slideUp(150);
+      $('.tech-expand-arrow').text('▶');
+      $('.caller-expand-arrow').text('▶');
+      
+      // Reset Shiny input values
+      Shiny.setInputValue('tech_hierarchy_selection', {}, {priority: 'event'});
+      Shiny.setInputValue('caller_hierarchy_selection', {}, {priority: 'event'});
     });
 "
 

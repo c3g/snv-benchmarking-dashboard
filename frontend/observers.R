@@ -192,6 +192,9 @@ setup_observers <- function(input, output, session, data_reactives) {
     updateSelectInput(session, "tech_comparison_caller", selected = "DEEPVARIANT")
     updateSelectInput(session, "caller_comparison_tech", selected = "ILLUMINA")
     
+    #  Reset hierarchical checkboxes via JavaScript
+    session$sendCustomMessage("resetHierarchyCheckboxes", list())
+
     # Reset truth set filters
     updateSelectInput(session, "truth_set_filter_tab2", selected = "All Truth Sets")
     updateSelectInput(session, "truth_set_filter_tab3", selected = "All Truth Sets")
