@@ -132,7 +132,8 @@ ui <- fluidPage(
     tags$script(HTML(COLLAPSIBLE_HANDLERS_JS)),
     tags$script(HTML(METRIC_SELECTION_JS)),
     tags$script(HTML(PLOTLY_REFRESH_JS)),
-    tags$script(HTML(HIERARCHICAL_CHECKBOX_JS))
+    tags$script(HTML(HIERARCHICAL_CHECKBOX_JS)),
+    tags$script(HTML(COMPARISON_BUTTON_JS))
   ),
   
   # ====================================================================
