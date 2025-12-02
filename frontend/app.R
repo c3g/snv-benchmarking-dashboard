@@ -97,6 +97,7 @@ upload_handler <- import("upload_handler")
 source("constants.R")
 source("utils.R")
 source("auth.R")
+source("dynamic_options.R")
 source("data_processing.R")
 source("plot_functions.R")
 source("table_functions.R")
@@ -123,13 +124,15 @@ ui <- fluidPage(
     # CSS styles
     tags$style(HTML(APP_CSS_STYLES)),
     tags$style(HTML(METADATA_CSS_STYLES)),
+    tags$style(HTML(HIERARCHICAL_CHECKBOX_CSS)),
     
     # JavaScript 
     tags$script(HTML(TABLE_INTERACTION_JS)),
     tags$script(HTML(CUSTOM_MESSAGE_HANDLERS_JS)),
     tags$script(HTML(COLLAPSIBLE_HANDLERS_JS)),
     tags$script(HTML(METRIC_SELECTION_JS)),
-    tags$script(HTML(PLOTLY_REFRESH_JS))
+    tags$script(HTML(PLOTLY_REFRESH_JS)),
+    tags$script(HTML(HIERARCHICAL_CHECKBOX_JS))
   ),
   
   # ====================================================================
@@ -195,46 +198,36 @@ ui <- fluidPage(
             conditionalPanel(
               condition = "output.comparison_mode == 'tech_comparison'",
               hr(),
-              h5("Technology Comparison Setup:"),
-              checkboxGroupInput("selected_technologies", "Select technologies (1 or more):",
-                                choices = setNames(names(TECHNOLOGY_DISPLAY_NAMES), 
-                                                  TECHNOLOGY_DISPLAY_NAMES)),
-              selectInput("tech_comparison_caller", "Choose a caller (for all):",
-                          choices = setNames(names(CALLER_DISPLAY_NAMES), 
-                                            CALLER_DISPLAY_NAMES),
-                          selected = names(CALLER_DISPLAY_NAMES)[1]),
-              conditionalPanel(
-                condition = "input.selected_technologies && input.selected_technologies.length >= 1",
-                actionButton("submit_tech_comparison", "Submit Technology Comparison",
-                             class = "btn-primary", style = "width: 100%;")
+              h5("Technology Comparison Setup:", style = "margin-bottom: 8px;"),
+              p("Select technologies (expand ▶ for platforms):", 
+                style = "font-size: 11px; color: #888; margin-bottom: 6px;"),
+              
+              uiOutput("tech_hierarchy_ui"),
+              
+              div(style = "margin-top: 10px;",
+                selectInput("tech_comparison_caller", "Filter by caller:",
+                            choices = NULL, selected = NULL)
               ),
-              conditionalPanel(
-                condition = "!input.selected_technologies || input.selected_technologies.length < 1",
-                p("Please select at least 1 technology", style = "color: red; font-size: 12px;")
-              )
+              
+              uiOutput("tech_comparison_submit_ui")
             ),
             
             # Caller comparison panel
             conditionalPanel(
               condition = "output.comparison_mode == 'caller_comparison'",
               hr(),
-              h5("Caller Comparison Setup:"),
-              checkboxGroupInput("selected_callers", "Select callers (1 or more):",
-                                choices = setNames(names(CALLER_DISPLAY_NAMES), 
-                                                  CALLER_DISPLAY_NAMES)),
-              selectInput("caller_comparison_tech", "Choose a technology (for all):",
-                          choices = setNames(names(TECHNOLOGY_DISPLAY_NAMES), 
-                                            TECHNOLOGY_DISPLAY_NAMES),
-                          selected = names(TECHNOLOGY_DISPLAY_NAMES)[1]),
-              conditionalPanel(
-                condition = "input.selected_callers && input.selected_callers.length >= 1",
-                actionButton("submit_caller_comparison", "Submit Caller Comparison",
-                             class = "btn-success", style = "width: 100%;")
+              h5("Caller Comparison Setup:", style = "margin-bottom: 8px;"),
+              p("Select callers (expand ▶ for versions):", 
+                style = "font-size: 11px; color: #888; margin-bottom: 6px;"),
+              
+              uiOutput("caller_hierarchy_ui"),
+              
+              div(style = "margin-top: 10px;",
+                selectInput("caller_comparison_tech", "Filter by technology:",
+                            choices = NULL, selected = NULL)
               ),
-              conditionalPanel(
-                condition = "!input.selected_callers || input.selected_callers.length < 1",
-                p("Please select at least 1 caller", style = "color: red; font-size: 12px;")
-              )
+              
+              uiOutput("caller_comparison_submit_ui")
             ),
             
             # Manual experiment selection panel
