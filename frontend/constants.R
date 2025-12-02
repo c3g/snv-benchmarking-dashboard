@@ -123,7 +123,7 @@ APP_CSS_STYLES <- "
     }
     
     .sidebar-content {
-      padding: 20px 20px;
+      padding: 20px 20px 100px 20px;
       height: calc(100vh - 72px);
       overflow-y: auto;
     }
@@ -198,6 +198,17 @@ APP_CSS_STYLES <- "
       transform: translateY(-1px) !important;
     }
     
+    /* Active state for comparison mode buttons */
+    .sidebar-content .btn-comparison-active {
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.3), 0 0 0 3px rgba(255,255,255,0.3) !important;
+      transform: scale(0.98) !important;
+    }
+    
+    .sidebar-content .btn-comparison-active::before {
+      content: '●   ';
+      font-size: 10px;
+    }
+    
     .sidebar-content .form-group {
       margin-bottom: 12px !important;
     }
@@ -205,6 +216,12 @@ APP_CSS_STYLES <- "
     .sidebar-content .form-control {
       padding: 6px 10px !important;
       font-size: 13px !important;
+    }
+    
+    /* Fix dropdown menu overflow in sidebar */
+    .sidebar-content .selectize-dropdown {
+      max-height: 400px !important;
+      overflow-y: auto !important;
     }
     
     .sidebar-content .checkbox {
@@ -481,6 +498,27 @@ METADATA_CSS_STYLES <- "
 # ============================================================================
 # JAVASCRIPT INTERACTION HANDLERS
 # ============================================================================
+
+# Comparison button active state handler
+COMPARISON_BUTTON_JS <- "
+$(document).ready(function() {
+  // Button IDs for comparison modes
+  var comparisonButtons = ['#compare_techs', '#compare_callers', '#compare_experiments'];
+  
+  // Handle comparison button clicks - toggle active state
+  $(comparisonButtons.join(',')).on('click', function() {
+    // Remove active class from all comparison buttons
+    $(comparisonButtons.join(',')).removeClass('btn-comparison-active');
+    // Add active class to clicked button
+    $(this).addClass('btn-comparison-active');
+  });
+  
+  // Handle logo/home button click - remove all active states
+  $('#logo_home_btn').on('click', function() {
+    $(comparisonButtons.join(',')).removeClass('btn-comparison-active');
+  });
+});
+"
 
 # Table row expansion functionality
 TABLE_INTERACTION_JS <- "
