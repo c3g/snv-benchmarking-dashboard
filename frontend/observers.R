@@ -145,7 +145,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     data_reactives$display_experiment_ids(numeric(0))
     data_reactives$table_selected_ids(numeric(0))
     
-    # Reset filters 
+    # Reset filters --- not applied ot manual selection mode
     #updateRadioButtons(session, "filter_type", selected = "none")
     
     # Reset submitted comparison states
