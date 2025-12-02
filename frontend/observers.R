@@ -106,6 +106,9 @@ setup_observers <- function(input, output, session, data_reactives) {
     data_reactives$display_experiment_ids(numeric(0))
     data_reactives$table_selected_ids(numeric(0))
     
+    # Reset filters 
+    updateRadioButtons(session, "filter_type", selected = "none")
+    
     # Reset other comparison selections
     updateTabsetPanel(session, "main_tabs", selected = "Experiments")
     
@@ -124,6 +127,9 @@ setup_observers <- function(input, output, session, data_reactives) {
     data_reactives$display_experiment_ids(numeric(0))
     data_reactives$table_selected_ids(numeric(0))
     
+    # Reset filters
+    updateRadioButtons(session, "filter_type", selected = "none")
+    
     # Reset submitted comparison states
     updateTabsetPanel(session, "main_tabs", selected = "Experiments")
     data_reactives$comparison_submitted(FALSE)
@@ -138,6 +144,9 @@ setup_observers <- function(input, output, session, data_reactives) {
     data_reactives$current_mode("manual_selection")
     data_reactives$display_experiment_ids(numeric(0))
     data_reactives$table_selected_ids(numeric(0))
+    
+    # Reset filters 
+    #updateRadioButtons(session, "filter_type", selected = "none")
     
     # Reset submitted comparison states
     data_reactives$comparison_submitted(FALSE)
