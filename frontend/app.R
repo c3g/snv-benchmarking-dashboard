@@ -183,7 +183,6 @@ ui <- fluidPage(
             ),
             
             # Comparison Options Section
-            hr(),
             h4("Comparison Options:"),
             
             # Comparison mode buttons

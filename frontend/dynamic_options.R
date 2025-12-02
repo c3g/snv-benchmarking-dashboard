@@ -4,6 +4,8 @@
 # Helper functions to fetch dropdown options dynamically from database.
 # Includes hierarchical checkbox generation for nested tech/caller selection.
 
+source("constants.R")
+
 # ============================================================================
 # FETCH FUNCTIONS
 # ============================================================================
@@ -13,23 +15,22 @@ get_technology_choices <- function() {
  tryCatch({
     techs <- db$get_distinct_technologies()
     if (length(techs) == 0) {
-      return(c("ILLUMINA", "PACBIO", "ONT", "MGI"))
+      return(TECHNOLOGY_DISPLAY_NAMES)
     }
     
+    #get display names from constants.r 
     display_names <- sapply(techs, function(t) {
-      switch(t,
-        "ILLUMINA" = "Illumina",
-        "PACBIO" = "PacBio", 
-        "ONT" = "ONT",
-        "MGI" = "MGI",
-        "10X" = "10X",
-        t
-      )
-    })
+          if (t %in% names(TECHNOLOGY_DISPLAY_NAMES)) {
+            TECHNOLOGY_DISPLAY_NAMES[[t]]
+          } else {
+            t
+          }
+        })
+
     setNames(techs, display_names)
   }, error = function(e) {
     warning(paste("Error fetching technologies:", e$message))
-    c("ILLUMINA" = "Illumina", "PACBIO" = "PacBio", "ONT" = "ONT", "MGI" = "MGI")
+    CALLER_DISPLAY_NAMES
   })
 }
 
@@ -38,29 +39,21 @@ get_caller_choices <- function() {
   tryCatch({
     callers <- db$get_distinct_callers()
     if (length(callers) == 0) {
-      return(c("DEEPVARIANT", "GATK", "CLAIR3"))
+      return(CALLER_DISPLAY_NAMES)
     }
-    
+    # get display names from constants.r
     display_names <- sapply(callers, function(c) {
-      switch(c,
-        "DEEPVARIANT" = "DeepVariant",
-        "GATK" = "GATK",
-        "CLAIR3" = "Clair3",
-        "DRAGEN" = "DRAGEN",
-        "GATK3" = "GATK3",
-        "GATK4" = "GATK4",
-        "LONGRANGER" = "LongRanger",
-        "MEGABOLT" = "Megabolt",
-        "NANOCALLER" = "NanoCaller",
-        "PARABRICK" = "Parabrick",
-        "PEPPER" = "Pepper",
-        c
-      )
-    })
+          if (c %in% names(CALLER_DISPLAY_NAMES)) {
+            CALLER_DISPLAY_NAMES[[c]]
+          } else {
+            c
+          }
+        })
+
     setNames(callers, display_names)
   }, error = function(e) {
     warning(paste("Error fetching callers:", e$message))
-    c("DEEPVARIANT" = "DeepVariant", "GATK" = "GATK", "CLAIR3" = "Clair3")
+    CALLER_DISPLAY_NAMES
   })
 }
 
@@ -90,6 +83,7 @@ get_version_choices <- function(caller) {
   })
 }
 
+# not used yet --------------------------------------------------------------------------
 get_chemistry_choices <- function(technology) {
   if (is.null(technology) || technology == "") return(character(0))
   
@@ -117,14 +111,12 @@ get_technology_hierarchy <- function() {
       db$get_platforms_for_technology(tech)
     }, error = function(e) character(0))
     
-    display_name <- switch(tech,
-      "ILLUMINA" = "Illumina",
-      "PACBIO" = "PacBio", 
-      "ONT" = "ONT",
-      "MGI" = "MGI",
-      "10X" = "10X",
-      tech
-    )
+    # get display name from constants.r
+    display_name <- if (tech %in% names(TECHNOLOGY_DISPLAY_NAMES)) {
+          TECHNOLOGY_DISPLAY_NAMES[[tech]]
+        } else {
+          tech
+        }
     
     hierarchy[[tech]] <- list(
       display_name = display_name,
@@ -143,21 +135,13 @@ get_caller_hierarchy <- function() {
     versions <- tryCatch({
       db$get_versions_for_caller(caller)
     }, error = function(e) character(0))
-    
-    display_name <- switch(caller,
-      "DEEPVARIANT" = "DeepVariant",
-      "GATK" = "GATK",
-      "CLAIR3" = "Clair3",
-      "DRAGEN" = "DRAGEN",
-      "GATK3" = "GATK3",
-      "GATK4" = "GATK4",
-      "LONGRANGER" = "LongRanger",
-      "MEGABOLT" = "Megabolt",
-      "NANOCALLER" = "NanoCaller",
-      "PARABRICK" = "Parabrick",
-      "PEPPER" = "Pepper",
-      caller
-    )
+
+    # get display name from constants.r
+    display_name <- if (caller %in% names(CALLER_DISPLAY_NAMES)) {
+          CALLER_DISPLAY_NAMES[[caller]]
+        } else {
+          caller
+        }
     
     hierarchy[[caller]] <- list(
       display_name = display_name,
@@ -329,6 +313,7 @@ create_hierarchical_caller_ui <- function(input_id_prefix = "caller") {
     )
   )
 }
+    # to be moved to css/js file---------------------------------------------------------------------------------------------
 
 # ============================================================================
 # JAVASCRIPT FOR HIERARCHICAL CHECKBOXES
