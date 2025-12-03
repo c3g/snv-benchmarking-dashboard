@@ -123,7 +123,7 @@ APP_CSS_STYLES <- "
     }
     
     .sidebar-content {
-      padding: 20px 20px 120px 20px;
+      padding: 20px 20px 20px 20px;
       height: calc(100vh - 72px);
       overflow-y: auto;
     }
@@ -502,7 +502,7 @@ METADATA_CSS_STYLES <- "
 COMPARISON_BUTTON_JS <- "
 $(document).ready(function() {
   // Button IDs for comparison modes
-  var comparisonButtons = ['#compare_techs', '#compare_callers', '#compare_experiments'];
+  var comparisonButtons = ['#compare_advanced', '#compare_experiments'];
   
   // Handle comparison button clicks - toggle active state
   $(comparisonButtons.join(',')).on('click', function() {

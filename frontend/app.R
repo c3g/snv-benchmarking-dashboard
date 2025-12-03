@@ -165,7 +165,7 @@ ui <- fluidPage(
             h4("Filter Options:"),
             radioButtons(
               "filter_type",
-              "Filter by:",
+              NULL,
               choices = FILTER_TYPES,
               selected = "none"
             ),
@@ -182,52 +182,42 @@ ui <- fluidPage(
               selectInput("filter_caller", "Choose Caller:",
                           choices = CALLER_OPTIONS, selected = "DEEPVARIANT")
             ),
-            
             # Comparison Options Section
             h4("Comparison Options:"),
             
             # Comparison mode buttons
-            actionButton("compare_techs", "Compare Sequencing Technologies",
+            actionButton("compare_advanced", "Advanced Comparison",
                          class = "btn-primary", style = "width: 100%; margin-bottom: 10px;"),
-            actionButton("compare_callers", "Compare Variant Callers",
-                         class = "btn-success", style = "width: 100%; margin-bottom: 10px;"),
-            actionButton("compare_experiments", "Compare Specific Experiments", 
-                         class = "btn-warning", style = "width: 100%; margin-bottom: 10px;"),
+            actionButton("compare_experiments", "Manual Selection", 
+                         class = "btn-primary", style = "width: 100%; margin-bottom: 10px;"),
             
-            # Technology comparison panel
+            # Advanced comparison panel
             conditionalPanel(
-              condition = "output.comparison_mode == 'tech_comparison'",
-              hr(),
-              h5("Technology Comparison Setup:", style = "margin-bottom: 8px;"),
-              p("Select technologies (expand ▶ for platforms):", 
-                style = "font-size: 11px; color: #888; margin-bottom: 6px;"),
+              condition = "output.comparison_mode == 'advanced_comparison'",
+              hr(style = "margin: 8px 0;"),
               
-              uiOutput("tech_hierarchy_ui"),
+              # Compact header
+              h5("Advanced Comparison", 
+                 style = "margin-bottom: 8px; font-weight: 600; font-size: 13px;"),
               
-              div(style = "margin-top: 10px;",
-                selectInput("tech_comparison_caller", "Filter by caller:",
-                            choices = NULL, selected = NULL)
+              # Tech section
+              div(
+                style = "margin-bottom: 10px;",
+                h6("Technologies (Click ▶ for Platforms):", 
+                   style = "font-size: 12px; font-weight: 600; color: #4472ca; margin-bottom: 4px;"),
+                uiOutput("tech_hierarchy_ui")
               ),
               
-              uiOutput("tech_comparison_submit_ui")
-            ),
-            
-            # Caller comparison panel
-            conditionalPanel(
-              condition = "output.comparison_mode == 'caller_comparison'",
-              hr(),
-              h5("Caller Comparison Setup:", style = "margin-bottom: 8px;"),
-              p("Select callers (expand ▶ for versions):", 
-                style = "font-size: 11px; color: #888; margin-bottom: 6px;"),
-              
-              uiOutput("caller_hierarchy_ui"),
-              
-              div(style = "margin-top: 10px;",
-                selectInput("caller_comparison_tech", "Filter by technology:",
-                            choices = NULL, selected = NULL)
+              # Caller section
+              div(
+                style = "margin-bottom: 10px;",
+                h6("Callers (Click ▶ for Versions):", 
+                   style = "font-size: 12px; font-weight: 600; color: #4472ca; margin-bottom: 4px;"),
+                uiOutput("caller_hierarchy_ui")
               ),
               
-              uiOutput("caller_comparison_submit_ui")
+              # Submit button
+              uiOutput("advanced_comparison_submit_ui")
             ),
             
             # Manual experiment selection panel
@@ -260,6 +250,7 @@ ui <- fluidPage(
                 )
               )
             )
+
         )),
     
     # MAIN CONTENT PANEL
