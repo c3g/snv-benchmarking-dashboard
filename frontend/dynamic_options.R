@@ -319,89 +319,143 @@ create_hierarchical_caller_ui <- function(input_id_prefix = "caller") {
 # JAVASCRIPT FOR HIERARCHICAL CHECKBOXES
 # ============================================================================
 
-HIERARCHICAL_CHECKBOX_CSS <- '
-.hierarchical-checkbox-container {
-  max-height: 110px;
-  overflow-y: auto;
-  padding: 4px 6px;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  background: #fff;
-  font-size: 11px;
-}
-
-.hierarchical-checkbox-container::-webkit-scrollbar {
-  width: 4px;
-}
-
-.hierarchical-checkbox-container::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 2px;
-}
-
-/* Different heights for tech vs caller */
-#tech_hierarchy_container.hierarchical-checkbox-container {
-  max-height: 50px;
-}
-
-#caller_hierarchy_container.hierarchical-checkbox-container {
-  max-height: 50px;
-}
-.tech-parent-item, .caller-parent-item {
-  padding: 1px 0;
-  line-height: 1.2;
-}
-
-.tech-parent-item label, .caller-parent-item label {
-  font-size: 11px !important;
-  font-weight: 500 !important;
-  margin-bottom: 0 !important;
-}
-
-.tech-parent-item input[type="checkbox"],
-.caller-parent-item input[type="checkbox"] {
-  margin-right: 5px !important;
-  transform: scale(0.85);
-}
-
-.tech-children-container, .caller-children-container {
-  margin-left: 14px !important;
-  margin-top: 1px !important;
-  margin-bottom: 2px !important;
-  padding-left: 5px !important;
-  border-left: 1.5px solid #e8e8e8 !important;
-}
-
-.tech-children-container label, .caller-children-container label {
-  font-size: 10px !important;
-  font-weight: 400 !important;
-  color: #555 !important;
-  margin-bottom: 0 !important;
-}
-
-.tech-children-container input[type="checkbox"],
-.caller-children-container input[type="checkbox"] {
-  margin-right: 4px !important;
-  transform: scale(0.8);
-}
-
-.tech-children-container > div, .caller-children-container > div {
-  padding: 0 !important;
-  margin-bottom: 0 !important;
-}
-
-.tech-expand-arrow, .caller-expand-arrow {
-  user-select: none;
-  width: 8px;
-  text-align: center;
-  font-size: 8px !important;
-  color: #888 !important;
-  margin-right: 3px !important;
-}
-
-.tech-expand-arrow:hover, .caller-expand-arrow:hover {
-  color: #5084d1 !important;
-}
+HIERARCHICAL_CHECKBOX_JS <- '
+$(document).ready(function() {
+  
+  // Toggle expand/collapse for technology platforms
+  $(document).on("click", ".tech-expand-arrow", function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var tech = $(this).data("tech");
+    var container = $(".tech-children-container[data-tech=\'" + tech + "\']");
+    
+    if (container.is(":visible")) {
+      container.slideUp(150);
+      $(this).text("▶");
+    } else {
+      container.slideDown(150);
+      $(this).text("▼");
+    }
+  });
+  
+  // Toggle expand/collapse for caller versions  
+  $(document).on("click", ".caller-expand-arrow", function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var caller = $(this).data("caller");
+    var container = $(".caller-children-container[data-caller=\'" + caller + "\']");
+    
+    if (container.is(":visible")) {
+      container.slideUp(150);
+      $(this).text("▶");
+    } else {
+      container.slideDown(150);
+      $(this).text("▼");
+    }
+  });
+  
+  // Technology parent checkbox change
+  $(document).on("change", ".tech-parent-checkbox", function() {
+    var tech = $(this).data("tech");
+    var isChecked = $(this).is(":checked");
+    
+    // If parent checked, uncheck all children (means "all platforms")
+    // If parent unchecked, uncheck all children too
+    $(".tech-child-checkbox[data-tech=\'" + tech + "\']").prop("checked", false);
+    
+    updateTechSelection();
+  });
+  
+  // Technology child checkbox change
+  $(document).on("change", ".tech-child-checkbox", function() {
+    var tech = $(this).data("tech");
+    var anyChildChecked = $(".tech-child-checkbox[data-tech=\'" + tech + "\']:checked").length > 0;
+    
+    // If any child is checked, uncheck the parent (specific platforms selected)
+    // Parent checked = all platforms, children checked = specific platforms
+    if (anyChildChecked) {
+      $(".tech-parent-checkbox[data-tech=\'" + tech + "\']").prop("checked", false);
+    }
+    
+    updateTechSelection();
+  });
+  
+  // Caller parent checkbox change
+  $(document).on("change", ".caller-parent-checkbox", function() {
+    var caller = $(this).data("caller");
+    
+    // Uncheck all children when parent changes
+    $(".caller-child-checkbox[data-caller=\'" + caller + "\']").prop("checked", false);
+    
+    updateCallerSelection();
+  });
+  
+  // Caller child checkbox change
+  $(document).on("change", ".caller-child-checkbox", function() {
+    var caller = $(this).data("caller");
+    var anyChildChecked = $(".caller-child-checkbox[data-caller=\'" + caller + "\']:checked").length > 0;
+    
+    if (anyChildChecked) {
+      $(".caller-parent-checkbox[data-caller=\'" + caller + "\']").prop("checked", false);
+    }
+    
+    updateCallerSelection();
+  });
+  
+  // Update technology selection and send to Shiny
+  function updateTechSelection() {
+    var selection = {};
+    
+    // Get parent selections (all platforms for that tech)
+    $(".tech-parent-checkbox:checked").each(function() {
+      var tech = $(this).data("tech");
+      selection[tech] = null; // null means all platforms
+    });
+    
+    // Get child selections (specific platforms)
+    $(".tech-child-checkbox:checked").each(function() {
+      var tech = $(this).data("tech");
+      var platform = $(this).data("platform");
+      
+      if (!selection[tech]) {
+        selection[tech] = [];
+      }
+      if (selection[tech] !== null) {
+        selection[tech].push(platform);
+      }
+    });
+    
+    // Send to Shiny
+    Shiny.setInputValue("tech_hierarchy_selection", selection, {priority: "event"});
+  }
+  
+  // Update caller selection and send to Shiny
+  function updateCallerSelection() {
+    var selection = {};
+    
+    // Get parent selections (all versions for that caller)
+    $(".caller-parent-checkbox:checked").each(function() {
+      var caller = $(this).data("caller");
+      selection[caller] = null; // null means all versions
+    });
+    
+    // Get child selections (specific versions)
+    $(".caller-child-checkbox:checked").each(function() {
+      var caller = $(this).data("caller");
+      var version = $(this).data("version");
+      
+      if (!selection[caller]) {
+        selection[caller] = [];
+      }
+      if (selection[caller] !== null) {
+        selection[caller].push(version);
+      }
+    });
+    
+    // Send to Shiny
+    Shiny.setInputValue("caller_hierarchy_selection", selection, {priority: "event"});
+  }
+});
 '
 
 # CSS for hierarchical checkboxes
