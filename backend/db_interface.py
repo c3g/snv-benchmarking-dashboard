@@ -642,3 +642,182 @@ def get_caller(experiment_id):
     except Exception as e:
         logger.error(f"Error getting caller for experiment {experiment_id}: {e}")
         return None
+
+# ============================================================================
+# DYNAMIC DROPDOWN OPTIONS
+# ============================================================================
+
+def get_distinct_technologies():
+    """
+    Get all unique technology names from database.
+    
+    Returns:
+        list: Sorted list of technology names (e.g., ["ILLUMINA", "ONT", "PACBIO"])
+    """
+    try:
+        with get_db_session() as session:
+            results = session.query(
+                SequencingTechnology.technology
+            ).distinct().all()
+            
+            technologies = [r[0].value for r in results if r[0] is not None]
+            return sorted(set(technologies))
+            
+    except Exception as e:
+        logger.error(f"Error getting distinct technologies: {e}")
+        return []
+
+def get_distinct_callers():
+    """
+    Get all unique caller names from database.
+    
+    Returns:
+        list: Sorted list of caller names (e.g., ["CLAIR3", "DEEPVARIANT", "GATK"])
+    """
+    try:
+        with get_db_session() as session:
+            results = session.query(
+                VariantCaller.name
+            ).distinct().all()
+            
+            callers = [r[0].value for r in results if r[0] is not None]
+            return sorted(set(callers))
+            
+    except Exception as e:
+        logger.error(f"Error getting distinct callers: {e}")
+        return []
+
+def get_platforms_for_technology(technology):
+    """
+    Get distinct platform names for a given technology.
+    
+    Args:
+        technology (str): Technology name (e.g., "ILLUMINA")
+        
+    Returns:
+        list: Sorted list of platform names (e.g., ["HiSeq", "NovaSeq X"])
+    """
+    try:
+        with get_db_session() as session:
+            tech_enum = SeqTechName(technology.upper())
+            
+            results = session.query(
+                SequencingTechnology.platform_name
+            ).filter(
+                SequencingTechnology.technology == tech_enum
+            ).distinct().all()
+            
+            platforms = [r[0] for r in results if r[0] is not None and r[0] != ""]
+            return sorted(set(platforms))
+            
+    except ValueError:
+        logger.error(f"Invalid technology: {technology}")
+        return []
+    except Exception as e:
+        logger.error(f"Error getting platforms for technology {technology}: {e}")
+        return []
+
+def get_versions_for_caller(caller):
+    """
+    Get distinct versions for a given caller.
+    
+    Args:
+        caller (str): Caller name (e.g., "DEEPVARIANT")
+        
+    Returns:
+        list: Sorted list of versions (e.g., ["1.5", "1.6.1"])
+    """
+    try:
+        with get_db_session() as session:
+            caller_enum = CallerName(caller.upper())
+            
+            results = session.query(
+                VariantCaller.version
+            ).filter(
+                VariantCaller.name == caller_enum
+            ).distinct().all()
+            
+            versions = [r[0] for r in results if r[0] is not None and r[0] != ""]
+            return sorted(set(versions))
+            
+    except ValueError:
+        logger.error(f"Invalid caller: {caller}")
+        return []
+    except Exception as e:
+        logger.error(f"Error getting versions for caller {caller}: {e}")
+        return []
+
+def get_chemistries_for_technology(technology):
+    """
+    Get distinct chemistry names for a given technology.
+    
+    Args:
+        technology (str): Technology name (e.g., "PACBIO")
+        
+    Returns:
+        list: Sorted list of chemistry names (e.g., ["SPRQ", "Sequel II"])
+    """
+    try:
+        with get_db_session() as session:
+            tech_enum = SeqTechName(technology.upper())
+            
+            results = session.query(
+                Chemistry.name
+            ).filter(
+                Chemistry.sequencing_technology == tech_enum
+            ).distinct().all()
+            
+            chemistries = [r[0] for r in results if r[0] is not None and r[0] != ""]
+            return sorted(set(chemistries))
+            
+    except ValueError:
+        logger.error(f"Invalid technology: {technology}")
+        return []
+    except Exception as e:
+        logger.error(f"Error getting chemistries for technology {technology}: {e}")
+        return []
+
+def get_experiments_filtered(technology=None, platform=None, caller=None, version=None):
+    """
+    Get experiment IDs matching the specified filters.
+    
+    Args:
+        technology (str): Technology name filter (optional)
+        platform (str): Platform name filter (optional)
+        caller (str): Caller name filter (optional)
+        version (str): Caller version filter (optional)
+        
+    Returns:
+        list: List of matching experiment IDs
+    """
+    try:
+        with get_db_session() as session:
+            query = session.query(Experiment.id)
+            
+            if technology:
+                tech_enum = SeqTechName(technology.upper())
+                query = query.join(SequencingTechnology).filter(
+                    SequencingTechnology.technology == tech_enum
+                )
+                
+                if platform:
+                    query = query.filter(SequencingTechnology.platform_name == platform)
+            
+            if caller:
+                caller_enum = CallerName(caller.upper())
+                query = query.join(VariantCaller).filter(
+                    VariantCaller.name == caller_enum
+                )
+                
+                if version:
+                    query = query.filter(VariantCaller.version == version)
+            
+            results = query.all()
+            return [r[0] for r in results]
+            
+    except ValueError as e:
+        logger.error(f"Invalid enum value: {e}")
+        return []
+    except Exception as e:
+        logger.error(f"Error in get_experiments_filtered: {e}")
+        return []

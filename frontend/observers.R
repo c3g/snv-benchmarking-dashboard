@@ -25,52 +25,98 @@ Observer functions:
 setup_observers <- function(input, output, session, data_reactives) {
   
   # ====================================================================
+  # DYNAMIC DROPDOWN INITIALIZATION
+  # ====================================================================
+  
+  # ====================================================================
+  # DYNAMIC DROPDOWN INITIALIZATION
+  # ====================================================================
+  
+  # Populate simple dropdowns with database values on startup
+  observe({
+    tech_choices <- get_technology_choices()
+    caller_choices <- get_caller_choices()
+    
+    # Update filter dropdowns in sidebar
+    updateSelectInput(session, "filter_technology", choices = tech_choices,
+                      selected = if(length(tech_choices) > 0) tech_choices[1] else NULL)
+    updateSelectInput(session, "filter_caller", choices = caller_choices,
+                      selected = if(length(caller_choices) > 0) caller_choices[1] else NULL)
+  }) |> bindEvent(data_reactives$data_refresh_trigger(), ignoreNULL = FALSE)
+
+   # ====================================================================
+  # HIERARCHICAL CHECKBOX UI OUTPUTS
+  # ====================================================================
+  
+  # Render hierarchical technology checkboxes
+  output$tech_hierarchy_ui <- renderUI({
+    data_reactives$data_refresh_trigger()
+    create_hierarchical_tech_ui("tech")
+  })
+  
+  # Render hierarchical caller checkboxes
+  output$caller_hierarchy_ui <- renderUI({
+    data_reactives$data_refresh_trigger()
+    create_hierarchical_caller_ui("caller")
+  })
+  
+  # Render submit button for advanced comparison
+  output$advanced_comparison_submit_ui <- renderUI({
+    tech_selection <- input$tech_hierarchy_selection
+    caller_selection <- input$caller_hierarchy_selection
+    
+    # Check if either tech or caller has selections
+    has_tech_selection <- !is.null(tech_selection) && length(names(tech_selection)) > 0
+    has_caller_selection <- !is.null(caller_selection) && length(names(caller_selection)) > 0
+    
+    if (has_tech_selection || has_caller_selection) {
+      tech_count <- if(has_tech_selection) length(names(tech_selection)) else 0
+      caller_count <- if(has_caller_selection) length(names(caller_selection)) else 0
+      
+      label_text <- if (has_tech_selection && has_caller_selection) {
+        paste0("Compare (", tech_count, " tech × ", caller_count, " caller)")
+      } else if (has_tech_selection) {
+        paste0("Compare (", tech_count, " tech selected)")
+      } else {
+        paste0("Compare (", caller_count, " caller selected)")
+      }
+      
+      actionButton("submit_advanced_comparison", 
+                   label_text,
+                   class = "btn-primary", 
+                   style = "width: 100%; font-weight: 500;")
+    } else {
+      p("Select at least 1 technology or caller", 
+        style = "color: #dc3545; font-size: 11px; margin: 0; text-align: center;")
+    }
+  })
+
+  # ====================================================================
   # COMPARISON MODE BUTTON OBSERVERS
   # ====================================================================
  
   data_refresh_trigger <- data_reactives$data_refresh_trigger
   
-  # Technology comparison button
-  observeEvent(input$compare_techs, {
-    data_reactives$current_mode("tech_comparison")
+  # Advanced comparison button
+  observeEvent(input$compare_advanced, {
+    data_reactives$current_mode("advanced_comparison")
     data_reactives$display_experiment_ids(numeric(0))
     data_reactives$table_selected_ids(numeric(0))
     
-    
-    # Reset other comparison selections
-    updateTabsetPanel(session, "main_tabs", selected = "Experiments")
-    updateCheckboxGroupInput(session, "selected_callers", selected = character(0))
-    updateSelectInput(session, "caller_comparison_tech", selected = "ILLUMINA")
+    # Reset filters 
+    updateRadioButtons(session, "filter_type", selected = "none")
     
     # Reset submitted comparison states
+    updateTabsetPanel(session, "main_tabs", selected = "Experiments")
     data_reactives$comparison_submitted(FALSE)
     data_reactives$comparison_type(NULL)
     data_reactives$comparison_results(numeric(0))
     dataTableProxy('experiments_table') %>% selectRows(NULL)
     
-    showNotification("Technology comparison mode activated!", type = "message")
+    showNotification("Advanced comparison mode activated! Select technologies and/or callers.", type = "message")
   })
   
-  # Caller comparison button
-  observeEvent(input$compare_callers, {
-    data_reactives$current_mode("caller_comparison")
-    data_reactives$display_experiment_ids(numeric(0))
-    data_reactives$table_selected_ids(numeric(0))
-    
-    # Reset submitted comparison states
-    updateTabsetPanel(session, "main_tabs", selected = "Experiments")
-    data_reactives$comparison_submitted(FALSE)
-    data_reactives$comparison_type(NULL)
-    data_reactives$comparison_results(numeric(0))
-    
-    # Reset other comparison selections
-    updateCheckboxGroupInput(session, "selected_technologies", selected = character(0))
-    updateSelectInput(session, "tech_comparison_caller", selected = "DEEPVARIANT")
-    
-    showNotification("Caller comparison mode activated!", type = "message")
-  })
-  
-  # Specific experiments comparison button
+  # Manual selection button
   observeEvent(input$compare_experiments, {
     data_reactives$current_mode("manual_selection")
     data_reactives$display_experiment_ids(numeric(0))
@@ -81,12 +127,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     data_reactives$comparison_type(NULL)
     data_reactives$comparison_results(numeric(0))
     
-    # Reset other comparison selections
     updateTabsetPanel(session, "main_tabs", selected = "Experiments")
-    updateCheckboxGroupInput(session, "selected_technologies", selected = character(0))
-    updateCheckboxGroupInput(session, "selected_callers", selected = character(0))
-    updateSelectInput(session, "tech_comparison_caller", selected = "DEEPVARIANT")
-    updateSelectInput(session, "caller_comparison_tech", selected = "ILLUMINA")
     
     showNotification("Click table rows to select experiments.", type = "message")
   })
@@ -116,12 +157,9 @@ setup_observers <- function(input, output, session, data_reactives) {
     updateSelectInput(session, "filter_technology", selected = "ILLUMINA")
     updateSelectInput(session, "filter_caller", selected = "DEEPVARIANT")
     
-    # Reset comparison selections
-    updateCheckboxGroupInput(session, "selected_technologies", selected = character(0))
-    updateCheckboxGroupInput(session, "selected_callers", selected = character(0))
-    updateSelectInput(session, "tech_comparison_caller", selected = "DEEPVARIANT")
-    updateSelectInput(session, "caller_comparison_tech", selected = "ILLUMINA")
-    
+    # Reset hierarchical checkboxes via JavaScript
+    session$sendCustomMessage("resetHierarchyCheckboxes", list())
+
     # Reset truth set filters
     updateSelectInput(session, "truth_set_filter_tab2", selected = "All Truth Sets")
     updateSelectInput(session, "truth_set_filter_tab3", selected = "All Truth Sets")
@@ -144,7 +182,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     
     # Switch to Experiments tab
     updateTabsetPanel(session, "main_tabs", selected = "Experiments")
-    })
+  })
 
 
   # ====================================================================
@@ -198,62 +236,120 @@ setup_observers <- function(input, output, session, data_reactives) {
     }
   })
   
-  # ====================================================================
-  # COMPARISON SUBMISSION OBSERVERS
-  # ====================================================================
-  
-  # Technology comparison submission
-  observeEvent(input$submit_tech_comparison, {
+  # Unified advanced comparison submission
+  observeEvent(input$submit_advanced_comparison, {
+    tech_selection <- input$tech_hierarchy_selection
+    caller_selection <- input$caller_hierarchy_selection
     
-    # Get all experiment IDs for selected technologies
+    # Validate that at least one selection exists
+    has_tech <- !is.null(tech_selection) && length(names(tech_selection)) > 0
+    has_caller <- !is.null(caller_selection) && length(names(caller_selection)) > 0
+    
+    if (!has_tech && !has_caller) {
+      showNotification("Please select at least one technology or caller", type = "warning")
+      return()
+    }
+    
+    # Build experiment IDs for all combinations
     all_ids <- c()
-    for(tech in input$selected_technologies) {
-      tech_ids <- db$get_experiments_by_technology(tech)
-      
-      # Filter by caller
-      for(id in tech_ids) {
-        caller <- db$get_caller(id)
-        if(!is.null(caller) && caller == input$tech_comparison_caller) {
-          all_ids <- c(all_ids, id)
+    
+    # If no tech selected, use all techs; if no caller selected, use all callers
+    techs_to_query <- if (has_tech) names(tech_selection) else db$get_distinct_technologies()
+    callers_to_query <- if (has_caller) names(caller_selection) else db$get_distinct_callers()
+    
+    # Iterate through all tech × caller combinations
+    for (tech in techs_to_query) {
+      for (caller in callers_to_query) {
+        combo_ids <- c()
+        
+        # Get platforms for this tech (if specified)
+        platforms <- if (has_tech) tech_selection[[tech]] else NULL
+        
+        # Get versions for this caller (if specified)
+        versions <- if (has_caller) caller_selection[[caller]] else NULL
+        
+        # Query based on whether we have specific platforms/versions
+        if (is.null(platforms)) {
+          # All platforms for this tech
+          if (is.null(versions)) {
+            # All versions for this caller
+            combo_ids <- db$get_experiments_filtered(
+              technology = tech,
+              platform = NULL,
+              caller = caller,
+              version = NULL
+            )
+          } else {
+            # Specific versions
+            for (version in versions) {
+              version_ids <- db$get_experiments_filtered(
+                technology = tech,
+                platform = NULL,
+                caller = caller,
+                version = version
+              )
+              combo_ids <- c(combo_ids, version_ids)
+            }
+          }
+        } else {
+          # Specific platforms
+          for (platform in platforms) {
+            if (is.null(versions)) {
+              # All versions for this caller
+              platform_ids <- db$get_experiments_filtered(
+                technology = tech,
+                platform = platform,
+                caller = caller,
+                version = NULL
+              )
+              combo_ids <- c(combo_ids, platform_ids)
+            } else {
+              # Specific versions
+              for (version in versions) {
+                version_combo_ids <- db$get_experiments_filtered(
+                  technology = tech,
+                  platform = platform,
+                  caller = caller,
+                  version = version
+                )
+                combo_ids <- c(combo_ids, version_combo_ids)
+              }
+            }
+          }
         }
+        
+        all_ids <- c(all_ids, combo_ids)
       }
     }
     
+    # Remove duplicates and update state
+    all_ids <- unique(all_ids)
     data_reactives$display_experiment_ids(all_ids)
     data_reactives$comparison_submitted(TRUE)
-    data_reactives$comparison_type("technology")
+    data_reactives$comparison_type("advanced")
     data_reactives$comparison_results(all_ids)
     
-    showNotification(paste("Comparing", length(input$selected_technologies), "technologies with", length(all_ids), "experiments"), type = "message")
-  })
-  
-  # Caller comparison submission
-  observeEvent(input$submit_caller_comparison, {
-
-    
-    # Get all experiment IDs for selected callers
-    all_ids <- c()
-    for(caller in input$selected_callers) {
-      caller_ids <- db$get_experiments_by_caller(caller)
-      
-      # Filter by technology
-      for(id in caller_ids) {
-        tech <- db$get_technology(id)
-        if(!is.null(tech) && tech == input$caller_comparison_tech) {
-          all_ids <- c(all_ids, id)
-        }
-      }
+    # Build descriptive notification
+    tech_desc <- if (has_tech) {
+      paste(length(techs_to_query), "technology selection(s)")
+    } else {
+      "all technologies"
     }
     
-    data_reactives$display_experiment_ids(all_ids)
-    data_reactives$comparison_submitted(TRUE)
-    data_reactives$comparison_type("caller")
-    data_reactives$comparison_results(all_ids)
+    caller_desc <- if (has_caller) {
+      paste(length(callers_to_query), "caller selection(s)")
+    } else {
+      "all callers"
+    }
     
-    showNotification(paste("Comparing", length(input$selected_callers), "callers with", length(all_ids), "experiments"), type = "message")
+    showNotification(
+      paste0("Found ", length(all_ids), " experiments matching ", tech_desc, " × ", caller_desc), 
+      type = "message",
+      duration = 5
+    )
   })
   
-  # Specific experiment comparison submission
+  # Manual experiment comparison submission
   observeEvent(input$submit_bottom_comparison, {
     data_reactives$comparison_submitted(FALSE)
     showNotification("Using selected experiments for comparison", type = "message")

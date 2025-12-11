@@ -97,6 +97,7 @@ upload_handler <- import("upload_handler")
 source("constants.R")
 source("utils.R")
 source("auth.R")
+source("dynamic_options.R")
 source("data_processing.R")
 source("plot_functions.R")
 source("table_functions.R")
@@ -123,13 +124,16 @@ ui <- fluidPage(
     # CSS styles
     tags$style(HTML(APP_CSS_STYLES)),
     tags$style(HTML(METADATA_CSS_STYLES)),
+    tags$style(HTML(HIERARCHICAL_CHECKBOX_CSS)),
     
     # JavaScript 
     tags$script(HTML(TABLE_INTERACTION_JS)),
     tags$script(HTML(CUSTOM_MESSAGE_HANDLERS_JS)),
     tags$script(HTML(COLLAPSIBLE_HANDLERS_JS)),
     tags$script(HTML(METRIC_SELECTION_JS)),
-    tags$script(HTML(PLOTLY_REFRESH_JS))
+    tags$script(HTML(PLOTLY_REFRESH_JS)),
+    tags$script(HTML(HIERARCHICAL_CHECKBOX_JS)),
+    tags$script(HTML(COMPARISON_BUTTON_JS))
   ),
   
   # ====================================================================
@@ -161,7 +165,7 @@ ui <- fluidPage(
             h4("Filter Options:"),
             radioButtons(
               "filter_type",
-              "Filter by:",
+              NULL,
               choices = FILTER_TYPES,
               selected = "none"
             ),
@@ -178,63 +182,42 @@ ui <- fluidPage(
               selectInput("filter_caller", "Choose Caller:",
                           choices = CALLER_OPTIONS, selected = "DEEPVARIANT")
             ),
-            
             # Comparison Options Section
-            hr(),
             h4("Comparison Options:"),
             
             # Comparison mode buttons
-            actionButton("compare_techs", "Compare Sequencing Technologies",
+            actionButton("compare_advanced", "Advanced Comparison",
                          class = "btn-primary", style = "width: 100%; margin-bottom: 10px;"),
-            actionButton("compare_callers", "Compare Variant Callers",
-                         class = "btn-success", style = "width: 100%; margin-bottom: 10px;"),
-            actionButton("compare_experiments", "Compare Specific Experiments", 
-                         class = "btn-warning", style = "width: 100%; margin-bottom: 10px;"),
+            actionButton("compare_experiments", "Manual Selection", 
+                         class = "btn-primary", style = "width: 100%; margin-bottom: 10px;"),
             
-            # Technology comparison panel
+            # Advanced comparison panel
             conditionalPanel(
-              condition = "output.comparison_mode == 'tech_comparison'",
-              hr(),
-              h5("Technology Comparison Setup:"),
-              checkboxGroupInput("selected_technologies", "Select technologies (1 or more):",
-                                choices = setNames(names(TECHNOLOGY_DISPLAY_NAMES), 
-                                                  TECHNOLOGY_DISPLAY_NAMES)),
-              selectInput("tech_comparison_caller", "Choose a caller (for all):",
-                          choices = setNames(names(CALLER_DISPLAY_NAMES), 
-                                            CALLER_DISPLAY_NAMES),
-                          selected = names(CALLER_DISPLAY_NAMES)[1]),
-              conditionalPanel(
-                condition = "input.selected_technologies && input.selected_technologies.length >= 1",
-                actionButton("submit_tech_comparison", "Submit Technology Comparison",
-                             class = "btn-primary", style = "width: 100%;")
+              condition = "output.comparison_mode == 'advanced_comparison'",
+              hr(style = "margin: 8px 0;"),
+              
+              # Compact header
+              h5("Advanced Comparison", 
+                 style = "margin-bottom: 8px; font-weight: 600; font-size: 13px;"),
+              
+              # Tech section
+              div(
+                style = "margin-bottom: 10px;",
+                h6("Technologies (Click ▶ for Platforms):", 
+                   style = "font-size: 12px; font-weight: 600; color: #4472ca; margin-bottom: 4px;"),
+                uiOutput("tech_hierarchy_ui")
               ),
-              conditionalPanel(
-                condition = "!input.selected_technologies || input.selected_technologies.length < 1",
-                p("Please select at least 1 technology", style = "color: red; font-size: 12px;")
-              )
-            ),
-            
-            # Caller comparison panel
-            conditionalPanel(
-              condition = "output.comparison_mode == 'caller_comparison'",
-              hr(),
-              h5("Caller Comparison Setup:"),
-              checkboxGroupInput("selected_callers", "Select callers (1 or more):",
-                                choices = setNames(names(CALLER_DISPLAY_NAMES), 
-                                                  CALLER_DISPLAY_NAMES)),
-              selectInput("caller_comparison_tech", "Choose a technology (for all):",
-                          choices = setNames(names(TECHNOLOGY_DISPLAY_NAMES), 
-                                            TECHNOLOGY_DISPLAY_NAMES),
-                          selected = names(TECHNOLOGY_DISPLAY_NAMES)[1]),
-              conditionalPanel(
-                condition = "input.selected_callers && input.selected_callers.length >= 1",
-                actionButton("submit_caller_comparison", "Submit Caller Comparison",
-                             class = "btn-success", style = "width: 100%;")
+              
+              # Caller section
+              div(
+                style = "margin-bottom: 10px;",
+                h6("Callers (Click ▶ for Versions):", 
+                   style = "font-size: 12px; font-weight: 600; color: #4472ca; margin-bottom: 4px;"),
+                uiOutput("caller_hierarchy_ui")
               ),
-              conditionalPanel(
-                condition = "!input.selected_callers || input.selected_callers.length < 1",
-                p("Please select at least 1 caller", style = "color: red; font-size: 12px;")
-              )
+              
+              # Submit button
+              uiOutput("advanced_comparison_submit_ui")
             ),
             
             # Manual experiment selection panel
@@ -262,11 +245,12 @@ ui <- fluidPage(
                     br(),
                     div(style = "text-align: center;",
                         actionButton("submit_bottom_comparison", "Submit Selected Experiments",
-                                     class = "btn-warning")
+                                     class = "btn-primary")
                     )
                 )
               )
             )
+
         )),
     
     # MAIN CONTENT PANEL
