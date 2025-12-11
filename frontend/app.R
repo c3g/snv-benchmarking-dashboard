@@ -245,7 +245,7 @@ ui <- fluidPage(
                     br(),
                     div(style = "text-align: center;",
                         actionButton("submit_bottom_comparison", "Submit Selected Experiments",
-                                     class = "btn-warning")
+                                     class = "btn-primary")
                     )
                 )
               )
