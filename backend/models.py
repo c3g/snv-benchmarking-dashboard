@@ -338,6 +338,24 @@ class RegionType(enum.Enum):
 # DATABASE TABLES
 # ============================================================================
 
+class User(Base):
+    __tablename__ = 'users'
+    
+    id = Column(Integer, primary_key=True)
+    username = Column(String(100), unique=True, nullable=False)  # From OIDC
+    email = Column(String(255), unique=True, nullable=False)     # From OIDC
+    full_name = Column(String(255))                               # From OIDC
+    is_admin = Column(Boolean, default=False)                     # From OIDC group
+    created_at = Column(DateTime, default=func.now())
+    last_login = Column(DateTime)
+    
+    # Relationships
+    experiments = relationship("Experiment", back_populates="owner")
+    
+    def __repr__(self):
+        return f"<User(username={self.username}, email={self.email})>"
+    
+
 class SequencingTechnology(Base):
     """Sequencing technology and platform information"""
     __tablename__ = "sequencing_technologies"
@@ -470,8 +488,11 @@ class Experiment(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(200), nullable=False)
     description = Column(String(1000))
-    
+    is_public = Column(Boolean, default=True)        # Public vs Private
+    created_by_username = Column(String(100))                          
+
     # Foreign keys to reference tables
+    owner_id = Column(Integer, ForeignKey('users.id'), nullable=True)  # NULL = public legacy data
     sequencing_technology_id = Column(Integer, ForeignKey('sequencing_technologies.id'))
     variant_caller_id = Column(Integer, ForeignKey('variant_callers.id'))
     aligner_id = Column(Integer, ForeignKey('aligners.id'))
@@ -485,6 +506,7 @@ class Experiment(Base):
     created_at = Column(DateTime)
 
     # Relationships
+    owner = relationship("User", back_populates="experiments")
     sequencing_technology = relationship("SequencingTechnology", back_populates="experiments")
     variant_caller = relationship("VariantCaller", back_populates="experiments")
     aligner = relationship("Aligner", back_populates="experiments")
