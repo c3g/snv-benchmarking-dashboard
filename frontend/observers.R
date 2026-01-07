@@ -663,7 +663,13 @@ setup_observers <- function(input, output, session, data_reactives) {
         mean_coverage = safe_numeric(input$mean_coverage),
         read_length = safe_numeric(input$read_length),
         mean_insert_size = safe_numeric(input$mean_insert_size),
-        mean_read_length = safe_numeric(input$mean_read_length)
+        mean_read_length = safe_numeric(input$mean_read_length),
+
+        
+        # OWNERSHIP AND VISIBILITY
+        experiment_visibility = safe_input(input$experiment_visibility, "public"),
+        owner_username = user_info$username,
+        owner_id = NULL #for now-------------------------------------------------------------------------------------------
         
       ), auto_unbox = TRUE)
       
@@ -672,7 +678,7 @@ setup_observers <- function(input, output, session, data_reactives) {
       
       # Call Python upload handler
       result <- tryCatch({
-        upload_handler$upload_experiment(
+        upload_handler$upload_experiment_v2(
           file_path = input$upload_file$datapath,
           metadata_json = metadata_json,
           username = user_info$username,
@@ -767,7 +773,10 @@ observeEvent(input$confirm_delete_selected, {
   }
   
   all_experiments <- tryCatch({
-    db$get_experiments_overview()
+    user_info <- get_user_info(session)
+    user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+    is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+    db$get_experiments_overview(NULL, NULL, user_id, is_admin_user)
   }, error = function(e) {
     showNotification("Unable to load experiments", type = "error", duration = 4)
     return(data.frame())
