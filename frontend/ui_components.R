@@ -759,21 +759,34 @@ upload_modal_ui <- function() {
       )
     ),
     
-    # 3: Preview & Submit
+# 3: Preview & Submit
     wellPanel(
       h4("3. Review & Submit"),
       fluidRow(
-        column(8,
                div(
                  h5("Generated Filename:"),
                  verbatimTextOutput("filename_preview", placeholder = TRUE)
-               )
+        )),
+        fluidRow(
+        column(6,
+              br(),
+               h5("Visibility"),
+               br(),
+               radioButtons(
+                 "experiment_visibility",
+                 NULL,
+                 choices = list(
+                   "Public" = "public",
+                   "Private" = "private"
+                 ),
+                 selected = "public"
+               ),
         ),
-        column(4,
-               div(style = "text-align: center; padding-top: 20px;",
+        column(6,
+               div(style = "text-align: center; padding-top: 35px;",
                    actionButton("submit_upload", "Add to Database", 
                                 class = "btn-success btn-lg", 
-                                style = "min-width: 150px; background-color: #42a65c; border: none;")
+                                style = "min-width: 130px; background-color: #42a65c; border: none;")
                )
         )
       ),
@@ -781,6 +794,7 @@ upload_modal_ui <- function() {
       br(),
       div(id = "upload_status", style = "margin-top: 15px;")
     )
+
   )
 }
 
