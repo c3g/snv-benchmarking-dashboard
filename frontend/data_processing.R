@@ -68,6 +68,10 @@ setup_data_reactives <- function(input, output, session) {
   
   # Get experiment IDs based on current filter settings
   experiment_ids <- reactive({
+    
+    # Re-run when auth state changes
+    input$user_authenticated
+    
     tryCatch({
       if (length(display_experiment_ids()) > 0) {
         return(display_experiment_ids())
@@ -78,7 +82,10 @@ setup_data_reactives <- function(input, output, session) {
       } else if (input$filter_type == "caller") {
         return(db$get_experiments_by_caller(input$filter_caller))
       } else {
-        overview <- db$get_experiments_overview()
+        user_info <- get_user_info(session)
+        user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+        is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+        overview <- db$get_experiments_overview(NULL, NULL, user_id, is_admin_user)
         return(overview$id)
       }
     }, error = function(e) {
@@ -91,11 +98,17 @@ setup_data_reactives <- function(input, output, session) {
   # Get overview metadata for selected experiments
   experiments_data <- reactive({
 
-    data_refresh_trigger() #depend on refresh trigger
+    data_refresh_trigger() # Depend on refresh trigger
+    
+    # Re-run when auth state changes
+    input$user_authenticated
 
     if (comparison_submitted() && length(comparison_results()) > 0) {
       exp_ids_json <- json_param(comparison_results())
-      return(db$get_experiments_overview(NULL, exp_ids_json))
+      user_info <- get_user_info(session)
+      user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+      is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+      return(db$get_experiments_overview(NULL, exp_ids_json, user_id, is_admin_user))
     }
     
     if (current_mode() == "manual_selection") {
@@ -105,7 +118,10 @@ setup_data_reactives <- function(input, output, session) {
       } else if (input$filter_type == "caller") {
         filters <- list(caller = input$filter_caller)
       }
-      return(db$get_experiments_overview(filters, NULL))
+      user_info <- get_user_info(session)
+      user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+      is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+      return(db$get_experiments_overview(filters, NULL, user_id, is_admin_user))
     }
     
     filters <- NULL
@@ -115,11 +131,18 @@ setup_data_reactives <- function(input, output, session) {
       filters <- list(caller = input$filter_caller)
     }
     
-    return(db$get_experiments_overview(filters, NULL))
+    user_info <- get_user_info(session)
+    user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+    is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+    return(db$get_experiments_overview(filters, NULL, user_id, is_admin_user))
   })
   
   # Get experiment IDs for performance analysis
   performance_experiment_ids <- reactive({
+    
+    # Re-run when auth state changes
+    input$user_authenticated
+    
     if (current_mode() == "manual_selection") {
       selected_ids <- table_selected_ids()
       if (length(selected_ids) > 0) {
@@ -146,7 +169,10 @@ setup_data_reactives <- function(input, output, session) {
     
     # filter experiments by truth set
     tryCatch({
-      overview <- db$get_experiments_overview(NULL, json_param(ids))
+      user_info <- get_user_info(session)
+      user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+      is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+      overview <- db$get_experiments_overview(NULL, json_param(ids), user_id, is_admin_user)
       filtered <- overview %>%
         filter(toupper(truth_set) == toupper(truth_set_filter)) %>%
         pull(id)
@@ -286,7 +312,6 @@ setup_data_reactives <- function(input, output, session) {
                            coalesce(technology, "Unknown"), "-", 
                            coalesce(caller, "Unknown"), 
                            ")")
-                          # "-", coalesce(chemistry_name, ""),  ---------remove chemistry name from stratifed results
       ) %>%
       arrange(subset, variant_type, desc(experiment_id))
     
