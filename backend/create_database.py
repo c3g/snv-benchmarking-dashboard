@@ -16,6 +16,8 @@ from models import *
 from populate_metadata import *
 import sys
 import logging
+from config import METADATA_CSV_PATH
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -50,11 +52,19 @@ def main():
         sys.exit(1)
     
     # Add reference data
-    if populate_database_from_csv():
-        logger.info("---- Database setup completed ----")
+    # Optionally populate from CSV if it exists (for initial migration only)
+
+    if os.path.exists(METADATA_CSV_PATH):
+        logger.info("Found existing CSV metadata, importing...")
+        if populate_database_from_csv():
+            logger.info("---- Database populated from CSV ----")
+        else:
+            logger.warning("CSV import failed, but database tables created")
     else:
-        logger.error("Database setup failed")
-        sys.exit(1)
+        logger.info("---- Database initialized (empty) ----")
+        logger.info("Upload experiments via web interface to populate")
+
+    logger.info("---- Database setup completed ----")
 
 if __name__ == "__main__":
     main()
