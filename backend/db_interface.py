@@ -18,6 +18,7 @@ import logging
 from sqlalchemy.orm import joinedload
 from database import get_db_session
 from models import *
+from sqlalchemy import or_
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,7 @@ def parse_experiment_ids(experiment_ids_param):
 # EXPERIMENT OVERVIEW AND METADATA
 # ============================================================================
 
-def get_experiments_overview(filters=None, experiment_ids_param=None):
+def get_experiments_overview(filters=None, experiment_ids_param=None, current_user_id=None, is_admin=False):
     """
     Get basic experiment information for dashboard overview table.
     
@@ -81,9 +82,26 @@ def get_experiments_overview(filters=None, experiment_ids_param=None):
                 joinedload(Experiment.sequencing_technology),
                 joinedload(Experiment.variant_caller),
                 joinedload(Experiment.truth_set), 
-                joinedload(Experiment.chemistry)
+                joinedload(Experiment.chemistry),
+                joinedload(Experiment.owner)  # Include owner info
+
             )
             
+            # ACCESS CONTROL FILTER
+            if not is_admin:
+                if current_user_id is not None:
+                    # Logged-in non-admin: show public experiments OR their own private ones
+                    query = query.filter(
+                        or_(
+                            Experiment.is_public == True,
+                            Experiment.owner_id == current_user_id
+                        )
+                    )
+                else:
+                    # Not logged in: show only public experiments
+                    query = query.filter(Experiment.is_public == True)
+                    
+
             # If specific experiment IDs provided, filter by them first
             if experiment_ids and len(experiment_ids) > 0:
                 query = query.filter(Experiment.id.in_(experiment_ids))
@@ -125,7 +143,11 @@ def get_experiments_overview(filters=None, experiment_ids_param=None):
                     'chemistry': exp.chemistry.name if (exp.chemistry and exp.chemistry.name) else "N/A",
                     'truth_set': exp.truth_set.name.value if exp.truth_set else "N/A",
                     'sample': exp.truth_set.sample.value if exp.truth_set else "N/A",
-                    'created_at': exp.created_at.strftime('%Y-%m-%d') if exp.created_at else "N/A"
+                    'created_at': exp.created_at.strftime('%Y-%m-%d') if exp.created_at else "N/A",
+                    'is_public': exp.is_public if exp.is_public is not None else True,
+                    'owner_username': exp.created_by_username if exp.created_by_username else ''
+
+                    
                 })
             
             return pd.DataFrame(data)
