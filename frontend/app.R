@@ -89,6 +89,7 @@ tryCatch({
 })
 
 upload_handler <- import("upload_handler")
+file_manager <<- import("file_manager") 
 # ============================================================================
 # R MODULE IMPORTS
 # ============================================================================
@@ -307,6 +308,16 @@ ui <- fluidPage(
               class = "btn-primary btn-sm",
               style = "font-size: 13px; padding: 6px 22px; white-space: nowrap; min-width: 160px; border: none !important; height: auto;"
             ),
+
+            # File browser button - ONLY VISIBLE TO ADMIN
+            conditionalPanel(
+              condition = "output.user_is_admin",
+              actionButton("show_file_browser", "File Browser", 
+              icon = icon("folder-open"), 
+              class = "btn-secondary btn-sm",
+              style = "width: 100%;")
+              ),
+
              auth_ui()  # Authentication status/button from auth.R
           )
         ),
@@ -1105,10 +1116,12 @@ div(
             )
           )
         ),
-        
-        # Upload modal
+
+        #=======================================================================
+        # Modals
         upload_modal_ui(),
-        delete_modal_ui()
+        delete_modal_ui(),
+        file_browser_modal_ui(),
     )
   )
 )
