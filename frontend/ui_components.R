@@ -823,6 +823,41 @@ delete_modal_ui <- function() {
     div(id = "delete_status", style = "margin-top: 15px;")
   )
 }
+
+# ============================================================================
+# FILE BROWSER UI COMPONENTS  
+# ============================================================================
+
+file_browser_modal_ui <- function() {
+  bsModal(
+    "file_browser_modal",
+    "File Browser",
+    "show_file_browser",
+    size = "large",
+    
+    div(id = "fb_path_display",
+        style = "margin-bottom: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px;",
+        strong("Path: "), textOutput("fb_current_path", inline = TRUE)
+    ),
+    
+    div(
+      style = "max-height: 400px; overflow-y: auto; border: 1px solid #dee2e6;",
+      DT::dataTableOutput("fb_files_table")
+    ),
+    
+    div(
+      style = "margin-top: 15px; padding: 10px; background: #e9ecef; border-radius: 4px;",
+      strong("Selected: "), textOutput("fb_selected_display", inline = TRUE)
+    ),
+    
+    div(
+      style = "margin-top: 15px; display: flex; gap: 10px; justify-content: flex-end;",
+      fileInput("fb_upload_file", NULL, buttonLabel = "Upload File", multiple = FALSE),
+      actionButton("fb_rename_btn", "Rename", class = "btn-warning btn-sm"),
+      actionButton("fb_delete_btn", "Delete", class = "btn-danger btn-sm")
+    )
+  )
+}
 # ============================================================================
 # STRATIFIED EXPERIMENT DETAILS PANEL
 # ============================================================================
