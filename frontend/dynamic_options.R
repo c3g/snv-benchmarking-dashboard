@@ -101,51 +101,50 @@ get_chemistry_choices <- function(technology) {
 # HIERARCHICAL DATA STRUCTURES
 # ============================================================================
 
-get_technology_hierarchy <- function() {
-  # Returns list: technology -> list of platforms
-  techs <- db$get_distinct_technologies()
+get_technology_hierarchy <- function(session = NULL) {
+  # Get user context
+  user_info <- if (!is.null(session)) get_user_info(session) else NULL
+  user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+  is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
   
+  # Call Python function that already handles everything
+  raw_hierarchy <- db$get_technology_hierarchy(user_id, is_admin_user)
+  
+  # Transform to expected format
   hierarchy <- list()
-  for (tech in techs) {
-    platforms <- tryCatch({
-      db$get_platforms_for_technology(tech)
-    }, error = function(e) character(0))
-    
-    # get display name from constants.r
+  for (tech in names(raw_hierarchy)) {
     display_name <- if (tech %in% names(TECHNOLOGY_DISPLAY_NAMES)) {
-          TECHNOLOGY_DISPLAY_NAMES[[tech]]
-        } else {
-          tech
-        }
+      TECHNOLOGY_DISPLAY_NAMES[[tech]]
+    } else {
+      tech
+    }
     
     hierarchy[[tech]] <- list(
       display_name = display_name,
-      platforms = if(length(platforms) > 0) platforms else character(0)
+      platforms = names(raw_hierarchy[[tech]])
     )
   }
   hierarchy
 }
 
-get_caller_hierarchy <- function() {
-  # Returns list: caller -> list of versions
-  callers <- db$get_distinct_callers()
+get_caller_hierarchy <- function(session = NULL) {
+  user_info <- if (!is.null(session)) get_user_info(session) else NULL
+  user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+  is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+  
+  raw_hierarchy <- db$get_caller_hierarchy(user_id, is_admin_user)
   
   hierarchy <- list()
-  for (caller in callers) {
-    versions <- tryCatch({
-      db$get_versions_for_caller(caller)
-    }, error = function(e) character(0))
-
-    # get display name from constants.r
+  for (caller in names(raw_hierarchy)) {
     display_name <- if (caller %in% names(CALLER_DISPLAY_NAMES)) {
-          CALLER_DISPLAY_NAMES[[caller]]
-        } else {
-          caller
-        }
+      CALLER_DISPLAY_NAMES[[caller]]
+    } else {
+      caller
+    }
     
     hierarchy[[caller]] <- list(
       display_name = display_name,
-      versions = if(length(versions) > 0) versions else character(0)
+      versions = names(raw_hierarchy[[caller]])
     )
   }
   hierarchy
