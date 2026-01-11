@@ -77,14 +77,16 @@ setup_data_reactives <- function(input, output, session) {
         return(display_experiment_ids())
       }
       
+      # Get user context for visibility filtering
+      user_info <- get_user_info(session)
+      user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+      is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+      
       if (input$filter_type == "tech") {
-        return(db$get_experiments_by_technology(input$filter_technology))
+        return(db$get_experiments_by_technology(input$filter_technology, user_id, is_admin_user))
       } else if (input$filter_type == "caller") {
-        return(db$get_experiments_by_caller(input$filter_caller))
+        return(db$get_experiments_by_caller(input$filter_caller, user_id, is_admin_user))
       } else {
-        user_info <- get_user_info(session)
-        user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
-        is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
         overview <- db$get_experiments_overview(NULL, NULL, user_id, is_admin_user)
         return(overview$id)
       }
