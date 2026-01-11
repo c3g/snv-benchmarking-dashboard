@@ -950,6 +950,7 @@ observeEvent(input$show_file_browser, {
       
       footer = tagList(
         fileInput("fb_upload_file", NULL, buttonLabel = "Upload File", multiple = FALSE),
+        downloadButton("fb_download_all_btn", "Download All", class = "btn-primary btn-sm"),
         downloadButton("fb_download_btn", "Download", class = "btn-info btn-sm"),
         actionButton("fb_rename_btn", "Rename", class = "btn-warning btn-sm"),
         actionButton("fb_delete_btn", "Delete", class = "btn-danger btn-sm"),
@@ -1093,6 +1094,28 @@ output$fb_download_btn <- downloadHandler(
     path <- fb_selected_path()
     if (!is.null(path) && file.exists(path)) {
       file.copy(path, file)
+    }
+  }
+)
+# Download all files as zip
+output$fb_download_all_btn <- downloadHandler(
+  filename = function() {
+    paste0("data_files_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".zip")
+  },
+  content = function(file) {
+    user <- get_user_info(session)
+    result <- file_manager$list_directory(
+      path = NULL,
+      username = user$username,
+      is_admin = user$is_admin
+    )
+    
+    if (result$success) {
+      files <- result$files
+      file_paths <- sapply(files, function(f) if (!f$is_dir) f$path else NULL)
+      file_paths <- file_paths[!sapply(file_paths, is.null)]
+      
+      zip(file, files = file_paths, flags = "-j")
     }
   }
 )
