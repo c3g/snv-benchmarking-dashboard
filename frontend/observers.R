@@ -238,6 +238,12 @@ setup_observers <- function(input, output, session, data_reactives) {
   
   # Unified advanced comparison submission
   observeEvent(input$submit_advanced_comparison, {
+    # Get user context
+    user_info <- get_user_info(session)
+    user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+    is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+  
+
     tech_selection <- input$tech_hierarchy_selection
     caller_selection <- input$caller_hierarchy_selection
     
@@ -286,7 +292,9 @@ setup_observers <- function(input, output, session, data_reactives) {
                 technology = tech,
                 platform = NULL,
                 caller = caller,
-                version = version
+                version = version,
+                user_id = user_id, 
+                is_admin = is_admin_user 
               )
               combo_ids <- c(combo_ids, version_ids)
             }
@@ -611,9 +619,22 @@ setup_observers <- function(input, output, session, data_reactives) {
       duration = NULL,
       closeButton = FALSE
     )
-    
+
     # Prepare complete metadata JSON
     tryCatch({
+      
+      # Determine visibility - non-admins can only upload private
+      upload_visibility <- if (isTRUE(user_info$is_admin)) {
+        safe_input(input$experiment_visibility, "private")
+      } else {
+        "private"  # Force private for non-admins
+      }
+      
+      # Log the upload attempt
+      cat("Upload attempt by:", user_info$username, 
+          "| Admin:", user_info$is_admin, 
+          "| User ID:", user_info$user_id,
+          "| Visibility:", upload_visibility, "\n")
       
       metadata_json <- jsonlite::toJSON(list(
         # REQUIRED FIELDS
@@ -665,11 +686,10 @@ setup_observers <- function(input, output, session, data_reactives) {
         mean_insert_size = safe_numeric(input$mean_insert_size),
         mean_read_length = safe_numeric(input$mean_read_length),
 
-        
         # OWNERSHIP AND VISIBILITY
-        experiment_visibility = safe_input(input$experiment_visibility, "public"),
+        experiment_visibility = upload_visibility,
         owner_username = user_info$username,
-        owner_id = NULL #for now-------------------------------------------------------------------------------------------
+        owner_id = user_info$user_id  # Database user ID from session
         
       ), auto_unbox = TRUE)
       
