@@ -1110,12 +1110,21 @@ output$fb_download_all_btn <- downloadHandler(
       is_admin = user$is_admin
     )
     
-    if (result$success) {
+    if (result$success && length(result$files) > 0) {
       files <- result$files
-      file_paths <- sapply(files, function(f) if (!f$is_dir) f$path else NULL)
-      file_paths <- file_paths[!sapply(file_paths, is.null)]
       
-      zip(file, files = file_paths, flags = "-j")
+      # Extract file paths (exclude directories)
+      file_paths <- c()
+      for (i in seq_along(files)) {
+        f <- files[[i]]
+        if (!f$is_dir) {
+          file_paths <- c(file_paths, f$path)
+        }
+      }
+      
+      if (length(file_paths) > 0) {
+        zip(file, files = file_paths, flags = "-j")
+      }
     }
   }
 )
