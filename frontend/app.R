@@ -1127,11 +1127,15 @@ server <- function(input, output, session) {
   # INITIALIZE MODULES
   # ====================================================================
   
-  # Initialize auth 
-  auth_server(input, output, session)
-
-  # Setup core data processing (returns reactive values)
+  authenticated <- auth_server(input, output, session)
   data_reactives <- setup_data_reactives(input, output, session)
+
+  # Refresh data when auth state changes (including localStorage restore)
+  observeEvent(authenticated(), {
+    if (authenticated()) {
+      data_reactives$data_refresh_trigger(data_reactives$data_refresh_trigger() + 1)
+    }
+  }, ignoreInit = TRUE)
   
   # Setup all output functions (pass data_reactives to each)
   setup_plot_outputs(input, output, session, data_reactives)
