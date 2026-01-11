@@ -1,12 +1,18 @@
 # ============================================================================
 # auth.R - OpenID Connect (OIDC) Authentication - COManage
 # ============================================================================
-# Handles user authentication via OIDC provider
+# Handles user authentication via OIDC provider and syncs users to database.
+#
+# Key changes for private uploads:
+# - Syncs user to database on login via user_management.py
+# - Stores user_id in session for ownership tracking
+# - Passes user context to data queries for visibility filtering
 
 library(httr2)
 library(jose)
 library(jsonlite)
 library(logger)
+library(reticulate)
 
 log_threshold(INFO)
 
@@ -29,8 +35,84 @@ if (OIDC_CLIENT_ID != "") {
   log_info("Client ID configured: {substr(OIDC_CLIENT_ID, 1, 8)}...")
 }
 
+# ============================================================================
+# PYTHON USER MANAGEMENT INTERFACE
+# ============================================================================
 
-# get OIDC provider config
+# Import user management module (initialized lazily)
+user_mgmt <- NULL
+
+get_user_management <- function() {
+  if (is.null(user_mgmt)) {
+    tryCatch({
+      user_mgmt <<- import("user_management")
+      log_info("User management module loaded")
+    }, error = function(e) {
+      log_error("Failed to load user_management module: {e$message}")
+      return(NULL)
+    })
+  }
+  return(user_mgmt)
+}
+
+sync_user_to_database <- function(username, email, full_name, is_admin) {
+  #'
+  #' Sync user to database on login.
+  #' Creates new user or updates existing user's last_login and admin status.
+  #'
+  #' @param username OIDC username (eppn or sub)
+  #' @param email User email
+  #' @param full_name Display name
+
+  #' @param is_admin Admin status from OIDC groups
+  #' @return list with user_id, username, is_new, success
+  #'
+  
+  mgmt <- get_user_management()
+  
+  if (is.null(mgmt)) {
+    log_error("Cannot sync user - user_management module not available")
+    return(list(
+      user_id = NULL,
+      username = username,
+      is_new = FALSE,
+      success = FALSE,
+      error = "User management module not available"
+    ))
+  }
+  
+  tryCatch({
+    result <- mgmt$get_or_create_user(
+      username = username,
+      email = email,
+      full_name = full_name,
+      is_admin = is_admin
+    )
+    
+    if (result$success) {
+      log_info("User synced to database: {username} (ID: {result$user_id}, new: {result$is_new})")
+    } else {
+      log_error("User sync failed: {result$error}")
+    }
+    
+    return(result)
+    
+  }, error = function(e) {
+    log_error("Error syncing user to database: {e$message}")
+    return(list(
+      user_id = NULL,
+      username = username,
+      is_new = FALSE,
+      success = FALSE,
+      error = e$message
+    ))
+  })
+}
+
+# ============================================================================
+# OIDC CONFIGURATION FETCH
+# ============================================================================
+
 get_oidc_config <- function() {
   if (!OIDC_ENABLED) {
     log_warn("OIDC disabled, skipping config fetch")
@@ -90,6 +172,14 @@ is_authenticated <- function(session) {
 }
 
 get_user_info <- function(session) {
+  #'
+  #' Get current user information from session.
+  #' Includes database user_id for ownership tracking.
+  #'
+  #' @param session Shiny session object
+  #' @return list with email, name, username, group, is_admin, user_id
+  #'
+  
   if (!is_authenticated(session)) return(NULL)
   
   user_group <- session$userData$user_group
@@ -107,7 +197,8 @@ get_user_info <- function(session) {
     name = session$userData$user_name, 
     username = session$userData$user_username,
     group = user_group,
-    is_admin = admin_status
+    is_admin = admin_status,
+    user_id = session$userData$user_id  # Database user ID for ownership
   )
 }
 
@@ -130,8 +221,16 @@ create_login_url <- function(state) {
   return(login_url)
 }
 
-# Exchange authorization code for user info
+# ============================================================================
+# TOKEN EXCHANGE
+# ============================================================================
+
 get_user_from_code <- function(code) {
+  #'
+  #' Exchange authorization code for user info.
+  #' Decodes JWT token to extract user claims.
+  #'
+  
   if (is.null(OIDC_CONFIG)) {
     log_error("OIDC_CONFIG is NULL, cannot exchange code")
     return(NULL)
@@ -190,6 +289,7 @@ get_user_from_code <- function(code) {
         log_debug("  Group {i}: {claims$groups[i]}")
       }
     }
+    
     # Filter for dashboard groups
     dashboard_group <- NULL
     if (!is.null(claims$groups) && length(claims$groups) > 0) {
@@ -240,18 +340,56 @@ get_user_from_code <- function(code) {
   })
 }
 
-# Store user info after successful auth
+# ============================================================================
+# AUTHENTICATION COMPLETION
+# ============================================================================
+
 complete_authentication <- function(session, result, authenticated) {
+  #'
+  #' Complete authentication after successful OIDC flow.
+  #' 
+  #' Key steps:
+  #' 1. Store user info in session
+  #' 2. Sync user to database (creates or updates user record)
+  #' 3. Store database user_id in session for ownership tracking
+  #' 4. Update localStorage for session persistence
+  #'
+  
+  # Store basic user info in session
   session$userData$user_email <- result$email
   session$userData$user_name <- result$name
   session$userData$user_username <- result$username %||% result$email
   session$userData$user_group <- result$group
+  
+  # Determine admin status
+  admin_status <- is_admin(result$group)
+  
+  # SYNC USER TO DATABASE
+  db_result <- sync_user_to_database(
+    username = result$username %||% result$email,
+    email = result$email,
+    full_name = result$name,
+    is_admin = admin_status
+  )
+  
+  # Store database user_id in session
+  if (db_result$success && !is.null(db_result$user_id)) {
+    session$userData$user_id <- db_result$user_id
+    log_info("User ID stored in session: {db_result$user_id}")
+  } else {
+    session$userData$user_id <- NULL
+    log_warn("Could not store user_id - database sync failed")
+  }
+  
+  # Set authenticated state
   authenticated(TRUE)
   
+  # Prepare localStorage data
   user_data_list <- list(
     email = result$email,
     name = result$name,
-    username = result$username %||% result$email
+    username = result$username %||% result$email,
+    user_id = db_result$user_id  # Include user_id for session restoration
   )
   
   if (!is.null(result$group) && !is.na(result$group)) {
@@ -267,7 +405,7 @@ complete_authentication <- function(session, result, authenticated) {
   updateQueryString("?", mode = "replace")
   showNotification(paste("Welcome", result$name), type = "message")
   
-  log_success("Authentication completed - user: {result$name}")
+  log_success("Authentication completed - user: {result$name} (DB ID: {db_result$user_id})")
 }
 
 clear_session_data <- function(session, authenticated) {
@@ -275,6 +413,7 @@ clear_session_data <- function(session, authenticated) {
   session$userData$user_name <- NULL
   session$userData$user_username <- NULL
   session$userData$user_group <- NULL
+  session$userData$user_id <- NULL
   session$userData$auth_state <- NULL
   authenticated(FALSE)
   
@@ -314,6 +453,7 @@ auth_server <- function(input, output, session) {
   observeEvent(session$clientData$url_hostname, {
     log_info("Client connected: {session$clientData$url_hostname}")
   }, once = TRUE)
+  
   observe({
     invalidateLater(10000)
     if (authenticated()) {
@@ -325,7 +465,7 @@ auth_server <- function(input, output, session) {
     runjs("Shiny.setInputValue('stored_user_session', localStorage.getItem('user_session'), {priority: 'event'});")
   })
   
-  # Handle retrieved localStorage value
+  # Handle retrieved localStorage value - restore session
   observeEvent(input$stored_user_session, {
     user_json <- input$stored_user_session
         
@@ -344,9 +484,29 @@ auth_server <- function(input, output, session) {
         session$userData$user_name <- user_data$name
         session$userData$user_username <- user_data$username %||% user_data$email
         session$userData$user_group <- user_data$group
+        
+        # Restore user_id from localStorage or re-sync from database
+        if (!is.null(user_data$user_id) && !is.na(user_data$user_id)) {
+          session$userData$user_id <- user_data$user_id
+          log_info("User ID restored from localStorage: {user_data$user_id}")
+        } else {
+          # Re-sync to get user_id
+          admin_status <- is_admin(user_data$group)
+          db_result <- sync_user_to_database(
+            username = user_data$username %||% user_data$email,
+            email = user_data$email,
+            full_name = user_data$name,
+            is_admin = admin_status
+          )
+          if (db_result$success) {
+            session$userData$user_id <- db_result$user_id
+            log_info("User ID re-synced from database: {db_result$user_id}")
+          }
+        }
+        
         authenticated(TRUE)
         
-        log_info("Session restored for: {user_data$name}")
+        log_info("Session restored for: {user_data$name} (ID: {session$userData$user_id})")
       }, error = function(e) {
         log_error("Failed to restore session: {e$message}")
         runjs("localStorage.removeItem('user_session');")
@@ -361,6 +521,7 @@ auth_server <- function(input, output, session) {
     session$userData$user_name <- NULL
     session$userData$user_username <- NULL
     session$userData$user_group <- NULL
+    session$userData$user_id <- NULL
     session$userData$auth_state <- NULL
     authenticated(FALSE)
   })
@@ -419,6 +580,7 @@ auth_server <- function(input, output, session) {
     })
   })
   
+  # Handle login button click
   observeEvent(input$login_btn, {
     log_info("=== LOGIN INITIATED ===")
     if (!OIDC_ENABLED) {
@@ -445,6 +607,7 @@ auth_server <- function(input, output, session) {
     }
   })
   
+  # Handle OIDC callback
   observe({
     query <- parseQueryString(session$clientData$url_search)
     
@@ -526,6 +689,7 @@ auth_server <- function(input, output, session) {
     clear_session_data(session, authenticated)
     showNotification("Signed out", type = "message")
   })
+  
   # ====================================================================
   # AUTHORIZATION OUTPUTS
   # ====================================================================
