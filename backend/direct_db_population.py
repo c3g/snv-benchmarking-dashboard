@@ -342,9 +342,10 @@ def create_experiment_direct(metadata, experiment_id=None, filename=None):
                 description=metadata.get('description', f"Experiment {metadata.get('exp_name', '')}"),
                 created_at=created_at,
                 
-                owner_id=metadata.get('owner_id') if isinstance(metadata.get('owner_id'), int) else None,  # User database ID----------------------------------------                 
-                is_public=metadata.get('is_public', True),                   # Visibility flag
-                created_by_username=metadata.get('owner_username'),          # Username backup
+                # set owner only if for private records
+                owner_id=metadata.get('owner_id') if (not metadata.get('is_public', True) and isinstance(metadata.get('owner_id'), int)) else None,
+                is_public=metadata.get('is_public', True),
+                created_by_username=metadata.get('owner_username') if not metadata.get('is_public', True) else None,
         
 
                 sequencing_technology_id=seq_tech.id if seq_tech else None,
