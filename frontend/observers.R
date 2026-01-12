@@ -188,26 +188,26 @@ setup_observers <- function(input, output, session, data_reactives) {
   # ====================================================================
   # TABLE INTERACTION OBSERVERS
   # ====================================================================
-  
-  # Row selection in experiments table (only in manual selection mode)
   observeEvent(input$experiments_table_rows_selected, {
-    if (data_reactives$current_mode() != "manual_selection") 
-      return()
+    if (data_reactives$current_mode() != "manual_selection") return()
     
     current_data <- data_reactives$experiments_data()
+    if (nrow(current_data) == 0) return()
+    
+    visible_ids <- current_data$id
     selected_rows <- input$experiments_table_rows_selected
+    prev_selected <- isolate(data_reactives$table_selected_ids())
     
-    # Get selected IDs or empty vector if no selection/no data
-    new_ids <- if (nrow(current_data) > 0 && length(selected_rows) > 0) {
-      current_data$id[selected_rows]
-    } else {
-      numeric(0)
-    }
+    # IDs selected in current view
+    selected_in_view <- if (length(selected_rows) > 0) current_data$id[selected_rows] else numeric(0)
     
-    # Update reactive value
-    data_reactives$table_selected_ids(new_ids)
+    # Keep hidden selections + current view selections
+    hidden <- prev_selected[!prev_selected %in% visible_ids]
+    final <- unique(c(hidden, selected_in_view))
+    
+    data_reactives$table_selected_ids(final)
   }, ignoreNULL = FALSE)
-  
+
   # ====================================================================
   # PLOT INTERACTION OBSERVERS
   # ====================================================================
