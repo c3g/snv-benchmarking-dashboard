@@ -14,6 +14,20 @@ Main components:
 "
 
 # ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+# Filter experiments by visibility mode (applied after database query)
+apply_visibility_filter_local <- function(df, filter_mode, user_id) {
+  if (nrow(df) == 0) return(df)
+  
+  switch(filter_mode,
+    "public" = df %>% filter(is_public == TRUE | is.na(owner_id)),
+    "mine" = if (!is.null(user_id)) df %>% filter(owner_id == user_id & is_public == FALSE) else df[0,],
+    df  # "all" returns unchanged
+  )
+}
+# ============================================================================
 # SETUP FUNCTION - CREATES ALL REACTIVE VALUES AND DATA PROCESSING
 # ============================================================================
 
@@ -34,6 +48,9 @@ setup_data_reactives <- function(input, output, session) {
   
   # Currently active truth set filter
   active_truth_set_filter <- reactiveVal("All Truth Sets")
+
+  # Visibility filter mode -- not used 
+  # visibility_filter <- reactiveVal("all")  # "all", "public", "mine"
 
   # User-selected experiments from table clicks
   table_selected_ids <- reactiveVal(numeric(0))
@@ -100,19 +117,25 @@ setup_data_reactives <- function(input, output, session) {
   # Get overview metadata for selected experiments
   experiments_data <- reactive({
 
-    data_refresh_trigger() # Depend on refresh trigger
-    
-    # Re-run when auth state changes
+    data_refresh_trigger()
     input$user_authenticated
 
+    # Get user context
+    user_info <- get_user_info(session)
+    user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+    is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+    
+    # Get visibility filter (default to "all" if not set)
+    vis_filter <- if (!is.null(input$visibility_filter)) input$visibility_filter else "all"
+
+    # Comparison mode - show comparison results
     if (comparison_submitted() && length(comparison_results()) > 0) {
       exp_ids_json <- json_param(comparison_results())
-      user_info <- get_user_info(session)
-      user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
-      is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
-      return(db$get_experiments_overview(NULL, exp_ids_json, user_id, is_admin_user))
+      df <- db$get_experiments_overview(NULL, exp_ids_json, user_id, is_admin_user)
+      return(apply_visibility_filter_local(df, vis_filter, user_id))
     }
     
+    # Manual selection mode
     if (current_mode() == "manual_selection") {
       filters <- NULL
       if (input$filter_type == "tech") {
@@ -120,12 +143,11 @@ setup_data_reactives <- function(input, output, session) {
       } else if (input$filter_type == "caller") {
         filters <- list(caller = input$filter_caller)
       }
-      user_info <- get_user_info(session)
-      user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
-      is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
-      return(db$get_experiments_overview(filters, NULL, user_id, is_admin_user))
+      df <- db$get_experiments_overview(filters, NULL, user_id, is_admin_user)
+      return(apply_visibility_filter_local(df, vis_filter, user_id))
     }
     
+    # Standard filter mode
     filters <- NULL
     if (input$filter_type == "tech") {
       filters <- list(technology = input$filter_technology)
@@ -133,10 +155,8 @@ setup_data_reactives <- function(input, output, session) {
       filters <- list(caller = input$filter_caller)
     }
     
-    user_info <- get_user_info(session)
-    user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
-    is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
-    return(db$get_experiments_overview(filters, NULL, user_id, is_admin_user))
+    df <- db$get_experiments_overview(filters, NULL, user_id, is_admin_user)
+    return(apply_visibility_filter_local(df, vis_filter, user_id))
   })
   
   # Get experiment IDs for performance analysis
