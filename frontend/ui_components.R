@@ -79,7 +79,41 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
     length(data_reactives$table_selected_ids())
   })
   
+  # ====================================================================
+  # VISIBILITY FILTER OUTPUTS 
+  # ====================================================================
   
+  # Count of user's own experiments for visibility filter display
+  output$my_experiments_count <- renderText({
+    input$user_authenticated  # Re-run when auth changes
+    
+    user_info <- get_user_info(session)
+    if (is.null(user_info)) return("")
+    
+    user_id <- session$userData$user_id
+    if (is.null(user_id)) return("")
+    
+    tryCatch({
+      user_exps <- db$get_user_experiments(user_id)
+      count <- nrow(user_exps)
+      
+      if (count == 0) {
+        "No uploads yet"
+      } else {
+        paste0("You have ", count, " upload", ifelse(count != 1, "s", ""))
+      }
+    }, error = function(e) {
+      ""
+    })
+  })
+  
+  # Showing X experiments indicator
+  output$showing_experiments_count <- renderText({
+    df <- data_reactives$experiments_data()
+    count <- nrow(df)
+    paste0("Showing: ", count, " experiment", ifelse(count != 1, "s", ""))
+  })
+
   # ====================================================================
   # EXPERIMENT METADATA OUTPUTS (TAB 3)
   # ====================================================================
@@ -102,7 +136,10 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       
       metadata <- tryCatch({
         exp_id_json <- json_param(list(exp_id))
-        db$get_experiment_metadata(exp_id_json)
+        user_info <- get_user_info(session)
+        user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+        is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+        db$get_experiment_metadata(exp_id_json, user_id, is_admin_user)
       }, error = function(e) {
         data.frame(name = "Error loading metadata")
       })
@@ -161,7 +198,10 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
     tryCatch({
       
       exp_id_json <- json_param(list(exp_id))
-      metadata <- db$get_experiment_metadata(exp_id_json)
+      user_info <- get_user_info(session)
+      user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+      is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+      metadata <- db$get_experiment_metadata(exp_id_json, user_id, is_admin_user)
       
       if (nrow(metadata) == 0) {
         return(p("No metadata found for experiment ID:", exp_id))
