@@ -493,6 +493,83 @@ METADATA_CSS_STYLES <- "
     .metadata-card:hover {
       box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
+
+    /* Visibility filter row (frirst tab) */
+    .visibility-filter-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 15px;
+      padding: 10px 15px;
+      background: #f4f5f7;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
+    }
+    
+    .visibility-filter-row .visibility-label {
+      font-weight: 600;
+      color: #333;
+      line-height: 1;
+    }
+    
+    .visibility-filter-row .form-group {
+      margin: 0;
+    }
+    
+    .visibility-filter-row .shiny-options-group {
+      display: flex;
+      gap: 0;
+    }
+    
+    .visibility-filter-row .radio-inline {
+      padding: 7px 16px;
+      margin: 0;
+      background: white;
+      border: 1px solid #ccc;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: #555;
+      line-height: 1;
+    }
+    
+    .visibility-filter-row .radio-inline:first-child {
+      border-radius: 5px 0 0 5px;
+    }
+    
+    .visibility-filter-row .radio-inline:last-child {
+      border-radius: 0 5px 5px 0;
+      border-left: none;
+    }
+    
+    .visibility-filter-row .radio-inline:not(:first-child):not(:last-child) {
+      border-left: none;
+    }
+    
+    .visibility-filter-row .radio-inline:hover {
+      background: #e9ecef;
+    }
+    
+    .visibility-filter-row .radio-inline input[type='radio'] {
+      display: none;
+    }
+    
+    .visibility-filter-row .radio-inline:has(input:checked) {
+      background: #4472ca;
+      color: white;
+      border-color: #4472ca;
+      
+    }
+
+    .experiment-count-badge {
+    margin-left: 12px;
+    padding: 4px 10px;
+    background: #e9ecef;
+    border-radius: 12px;
+    font-size: 12px;
+    color: #495057;
+    font-weight: 500;
+  }
 "
 # ============================================================================
 # JAVASCRIPT INTERACTION HANDLERS
