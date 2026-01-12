@@ -646,7 +646,7 @@ upload_modal_ui <- function() {
       fluidRow(
         column(3,
           selectInput("caller_name", "Caller*",
-                      choices = c("", "DEEPVARIANT", "GATK", "CLAIR3", "DRAGEN",
+                      choices = c("", "DEEPVARIANT", "CLAIR3", "DRAGEN",
                                   "GATK3", "GATK4", "LONGRANGER", "MEGABOLT",
                                   "NANOCALLER", "PARABRICK", "PEPPER"))
         ),

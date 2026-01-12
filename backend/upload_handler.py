@@ -105,7 +105,7 @@ def validate_metadata(metadata):
         logger.error(f"Metadata validation failed: invalid technology '{metadata['technology']}'")
         return False, f"Invalid technology: {metadata['technology']}"
         
-    if metadata['caller_name'].upper() not in ['DEEPVARIANT', 'GATK', 'CLAIR3', 'DRAGEN', 
+    if metadata['caller_name'].upper() not in ['DEEPVARIANT', 'CLAIR3', 'DRAGEN', 
                                                 'GATK3', 'GATK4', 'LONGRANGER', 'MEGABOLT', 
                                                 'NANOCALLER', 'PARABRICK', 'PEPPER']:
         logger.error(f"Metadata validation failed: invalid caller '{metadata['caller_name']}'")
