@@ -362,6 +362,26 @@ ui <- fluidPage(
                     )
                   )
                 ),
+                # Visibility filter row - only for authenticated users
+                conditionalPanel(
+                  condition = "output.user_authenticated",
+                  div(
+                    class = "visibility-filter-row",
+                    span("View:", class = "visibility-label"),
+                    radioButtons(
+                      "visibility_filter",
+                      label = NULL,
+                      choices = c(
+                        "All" = "all",
+                        "Public" = "public", 
+                        "My Uploads" = "mine"
+                      ),
+                      selected = "all",
+                      inline = TRUE
+                    ),
+                    span(class = "experiment-count-badge", textOutput("showing_experiments_count", inline = TRUE))
+                  )
+                ),
                 div(style = "width: 100%; overflow-x: auto;",
                     DT::dataTableOutput("experiments_table")
                 )
