@@ -261,7 +261,9 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
     current_mode <- data_reactives$current_mode()
     
     if (current_mode == "manual_selection") {
-      selection_config <- list(mode = 'multiple')
+      selected_ids <- isolate(data_reactives$table_selected_ids())
+      selected_rows <- which(df$id %in% selected_ids)
+      selection_config <- list(mode = 'multiple', selected = selected_rows)
     } else {
       selection_config <- 'none'
     }
