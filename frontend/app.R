@@ -79,21 +79,18 @@ shinyOptions(
 # ============================================================================
 # PYTHON BACKEND INTERFACE
 # ============================================================================
-
 tryCatch({
   py_run_string("import sys")
   py_run_string("sys.path.append('../backend')")
-  
-  # Clear any cached old upload_handler module
- # py_run_string("if 'upload_handler' in sys.modules: del sys.modules['upload_handler']")
+  #py_run_string("if 'upload_handler' in sys.modules: del sys.modules['upload_handler']")
   
   db <<- import("db_interface")
   upload_handler <<- import("upload_handler")
+  file_manager <<- import("file_manager") 
 }, error = function(e) {
+  message("Python backend error: ", e$message) 
   stop("Cannot connect to Python backend.")
 })
-upload_handler <- import("upload_handler")
-file_manager <<- import("file_manager") 
 # ============================================================================
 # R MODULE IMPORTS
 # ============================================================================

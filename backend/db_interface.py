@@ -627,7 +627,7 @@ def get_experiments_by_caller(caller, user_id=None, is_admin=False):
     Get experiment IDs matching a specific variant caller.
     
     Args:
-        caller (str): Caller name (e.g., "DEEPVARIANT", "GATK")
+        caller (str): Caller name (e.g., "DEEPVARIANT", "GATK3")
         user_id (int): Current user's database ID for visibility filtering
         is_admin (bool): Whether current user is admin
         
