@@ -923,7 +923,7 @@ observeEvent(input$show_file_browser, {
     })
     
     showModal(modalDialog(
-      title = tagList(icon("folder-open"), " File Browser"),
+      title = tagList(" File Browser"),
       size = "l",
       easyClose = TRUE,
       
@@ -931,17 +931,21 @@ observeEvent(input$show_file_browser, {
           strong("Path: "), result$current_path
       ),
       
-      tags$table(
-        id = "fb_table",
-        class = "table table-striped table-hover",
-        tags$thead(
-          tags$tr(
-            tags$th("Name"),
-            tags$th("Size"),
-            tags$th("Modified")
-          )
-        ),
-        tags$tbody(rows)
+      # Scrollable table container 
+      div(style = "max-height: 370px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 4px;",
+        tags$table(
+          id = "fb_table",
+          class = "table table-striped table-hover",
+          style = "margin-bottom: 0;",
+          tags$thead(
+            tags$tr(
+              tags$th("Name"),
+              tags$th("Size"),
+              tags$th("Modified")
+            )
+          ),
+          tags$tbody(rows)
+        )
       ),
       
       div(style = "margin-top: 15px; padding: 10px; background: #e9ecef; border-radius: 4px;",
