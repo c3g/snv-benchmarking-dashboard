@@ -747,6 +747,10 @@ setup_observers <- function(input, output, session, data_reactives) {
 # Import the Python delete handler
 delete_handler <- import("delete_handler")
 
+# Force table refresh when delete modal opens (prevents browser caching)
+observeEvent(input$show_delete_modal, {
+  data_reactives$delete_modal_trigger(data_reactives$delete_modal_trigger() + 1)
+})
 # Show selected experiments count in modal
 output$selected_delete_count <- renderText({
   selected_rows <- input$delete_experiments_table_rows_selected

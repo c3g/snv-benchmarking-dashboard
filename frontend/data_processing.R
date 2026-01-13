@@ -25,8 +25,11 @@ setup_data_reactives <- function(input, output, session) {
   
   # Trigger to refresh all data
    data_refresh_trigger <- reactiveVal(0)
+  # Trigger to refresh delete modal table (prevents browser caching issues)
 
+  delete_modal_trigger <- reactiveVal(0)
   # Current app mode: "filter", "tech_comparison", "caller_comparison", "manual_selection"
+
   current_mode <- reactiveVal("filter")
   
   # experiments to show in main table (overrides filters)
@@ -336,6 +339,7 @@ setup_data_reactives <- function(input, output, session) {
     stratified_filtered_data = stratified_filtered_data,
     stratified_triggered = stratified_triggered,
     data_refresh_trigger = data_refresh_trigger,
+    delete_modal_trigger = delete_modal_trigger,
     
     # Data processing functions
     experiment_ids = experiment_ids,
