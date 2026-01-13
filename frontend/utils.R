@@ -26,10 +26,9 @@ technology_colors <- c(
 # Caller shape mapping for scatter plots
 caller_shapes <- c(
   "DEEPVARIANT" = 16,   # ●
-  "GATK"         = 17,   # ▲
   "CLAIR3"       = 15,   # ■
   "DRAGEN"       = 18,   # ◆
-  "GATK3"        = 8,    # ✶
+  "GATK3"        = 17,   # ▲ (inherited from GATK)
   "GATK4"        = 4,    # ✕
   "LONGRANGER"   = 3,    # ＋
   "MEGABOLT"     = 10,   # ⊕
@@ -38,7 +37,7 @@ caller_shapes <- c(
   "PEPPER"       = 0,    # □
   "Unknown"      = 4     # ✕ (fallback)
 )
-
+# extra shape to use for new caller: 8 ->  ✶
 
 # Matching HTML legend symbols
 shape_symbols <- c(
@@ -60,10 +59,9 @@ shape_symbols <- c(
 tech_caller_colors <- c(
   # ILLUMINA family (Red variations)
   "ILLUMINA-DEEPVARIANT" = "#F42D1F",
-  "ILLUMINA-GATK" = "#F53B2F",
   "ILLUMINA-CLAIR3" = "#F54A3E",
   "ILLUMINA-DRAGEN" = "#F6584E",
-  "ILLUMINA-GATK3" = "#F7675D",
+  "ILLUMINA-GATK3" = "#F53B2F",
   "ILLUMINA-GATK4" = "#F8756C",
   "ILLUMINA-LONGRANGER" = "#F8847C",
   "ILLUMINA-MEGABOLT" = "#F9938B",
@@ -73,10 +71,9 @@ tech_caller_colors <- c(
   
   # PACBIO family (Purple variations)
   "PACBIO-DEEPVARIANT" = "#A42AFE",
-  "PACBIO-GATK" = "#AB3BFF",
   "PACBIO-CLAIR3" = "#B24BFF",
   "PACBIO-DRAGEN" = "#B95BFF",
-  "PACBIO-GATK3" = "#C06BFF",
+  "PACBIO-GATK3" = "#AB3BFF",
   "PACBIO-GATK4" = "#C77CFF",
   "PACBIO-LONGRANGER" = "#CD8CFE",
   "PACBIO-MEGABOLT" = "#D49CFE",
@@ -86,10 +83,9 @@ tech_caller_colors <- c(
   
   # ONT family (Cyan variations)
   "ONT-DEEPVARIANT" = "#006F72",
-  "ONT-GATK" = "#007F83",
   "ONT-CLAIR3" = "#008F93",
   "ONT-DRAGEN" = "#009FA3",
-  "ONT-GATK3" = "#00AFB3",
+  "ONT-GATK3" = "#007F83",
   "ONT-GATK4" = "#00BEC4",
   "ONT-LONGRANGER" = "#00CED4",
   "ONT-MEGABOLT" = "#00DEE4",
@@ -99,10 +95,9 @@ tech_caller_colors <- c(
   
   # MGI family (Green variations)
   "MGI-DEEPVARIANT" = "#486600",
-  "MGI-GATK" = "#4D6D00",
   "MGI-CLAIR3" = "#597D00",
   "MGI-DRAGEN" = "#648D00",
-  "MGI-GATK3" = "#709D00",
+  "MGI-GATK3" = "#4D6D00",
   "MGI-GATK4" = "#7CAE00",
   "MGI-LONGRANGER" = "#87BE00",
   "MGI-MEGABOLT" = "#93CE00",
@@ -112,10 +107,9 @@ tech_caller_colors <- c(
   
   # 10X family (Orange variations)
   "10X-DEEPVARIANT" = "#AD7000",
-  "10X-GATK" = "#BE7B00",
   "10X-CLAIR3" = "#CE8500",
   "10X-DRAGEN" = "#DE9000",
-  "10X-GATK3" = "#EE9A00",
+  "10X-GATK3" = "#BE7B00",
   "10X-GATK4" = "#FFA500",
   "10X-LONGRANGER" = "#FEAA10",
   "10X-MEGABOLT" = "#FEB020",

@@ -557,7 +557,7 @@ def get_experiments_by_caller(caller):
     Get experiment IDs that match a specific variant caller.
     
     Args:
-        caller (str): Caller name - "DEEPVARIANT", "GATK", or "CLAIR3"
+        caller (str): Caller name - "DEEPVARIANT", "GATK3", or "CLAIR3"
         
     Returns:
         list: List of experiment IDs matching the caller
@@ -625,7 +625,7 @@ def get_caller(experiment_id):
         experiment_id (int): Single experiment ID
         
     Returns:
-        str or None: Caller name (e.g., "DEEPVARIANT", "GATK") or None if not found
+        str or None: Caller name (e.g., "DEEPVARIANT", "GATK3") or None if not found
     """
     try:
         with get_db_session() as session:
@@ -672,7 +672,7 @@ def get_distinct_callers():
     Get all unique caller names from database.
     
     Returns:
-        list: Sorted list of caller names (e.g., ["CLAIR3", "DEEPVARIANT", "GATK"])
+        list: Sorted list of caller names (e.g., ["CLAIR3", "DEEPVARIANT", "GATK3"])
     """
     try:
         with get_db_session() as session:

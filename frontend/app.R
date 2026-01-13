@@ -89,6 +89,7 @@ tryCatch({
 })
 
 upload_handler <- import("upload_handler")
+file_manager <<- import("file_manager") 
 # ============================================================================
 # R MODULE IMPORTS
 # ============================================================================
@@ -307,6 +308,16 @@ ui <- fluidPage(
               class = "btn-primary btn-sm",
               style = "font-size: 13px; padding: 6px 22px; white-space: nowrap; min-width: 160px; border: none !important; height: auto;"
             ),
+
+            # File browser button - ONLY VISIBLE TO ADMIN
+            conditionalPanel(
+              condition = "output.user_is_admin",
+              actionButton("show_file_browser", "File Browser", 
+              icon = icon("folder-open"), 
+              class = "btn-secondary btn-sm",
+              style = "width: 100%;")
+              ),
+
              auth_ui()  # Authentication status/button from auth.R
           )
         ),
@@ -351,10 +362,10 @@ ui <- fluidPage(
                     style = "margin-top: 12px; padding: 10px; background-color: #dce6f2; border-left: 4px solid #4472C4; border-radius: 4px;",
                     p(style = "margin: 0; font-size: 0.95em;",
                       icon("compass"), strong(" How to Navigate:"), br(),
-                      "• Use ", strong("sidebar filters"), " to narrow by technology or caller | Results update in all tabs", br(),
-                      "• Choose a ", strong("comparison option"), " to evaluate multiple experiments side-by-side", br(),
-                      "• Expand ", strong("▶ arrows"), " for detailed experiment metadata" , br(),
-                      "• To manually select: Click ", strong("Compare Specific Experiments"), " button, then", strong("select"), "table rows"    
+                      "• Use ", strong("sidebar filters"), " to narrow by technology or caller", br(),
+                      "• ", strong("Advanced Comparison"), " — filter by technology/caller combinations", br(),
+                      "• ", strong("Manual Selection"), " — click rows to pick specific experiments", br(),
+                      "• Expand ", strong("▶ arrows"), " for detailed experiment metadata"
                     )
                   )
                 ),
@@ -1105,10 +1116,12 @@ div(
             )
           )
         ),
-        
-        # Upload modal
+
+        #=======================================================================
+        # Modals
         upload_modal_ui(),
-        delete_modal_ui()
+        delete_modal_ui(),
+        file_browser_modal_ui(),
     )
   )
 )
