@@ -19,6 +19,8 @@ import logging
 from datetime import datetime
 from config import DATA_FOLDER
 from authorization import require_admin
+import zipfile
+import tempfile
 
 logger = logging.getLogger(__name__)
 
@@ -170,4 +172,55 @@ def upload_file(temp_path, filename, dest_folder=None, username=None, is_admin=F
         return {'success': True, 'message': f'Uploaded {filename}'}
     except Exception as e:
         logger.error(f"upload_file failed: {e}")
+        return {'success': False, 'error': str(e)}
+    
+
+
+@require_admin
+def create_zip_download(username=None, is_admin=False, max_size_mb=500):
+    """
+    Create a zip file of all data files for download.
+    
+    Args:
+        username: Username for logging
+        is_admin: Admin status (required)
+        max_size_mb: Maximum total size allowed in MB
+        
+    Returns:
+        dict: {success, zip_path} or {success, error}
+    """
+    try:
+        max_size = max_size_mb * 1024 * 1024
+        
+        # Collect files and calculate size
+        file_paths = []
+        total_size = 0
+        
+        for name in os.listdir(DATA_FOLDER):
+            full_path = os.path.join(DATA_FOLDER, name)
+            if os.path.isfile(full_path):
+                file_paths.append(full_path)
+                total_size += os.path.getsize(full_path)
+        
+        if not file_paths:
+            return {'success': False, 'error': 'No files to download'}
+        
+        if total_size > max_size:
+            size_mb = round(total_size / (1024 * 1024))
+            return {
+                'success': False, 
+                'error': f'Download too large ({size_mb} MB). Maximum: {max_size_mb} MB.'
+            }
+        
+        # Create zip in temp directory
+        zip_path = tempfile.mktemp(suffix='.zip')
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for file_path in file_paths:
+                zf.write(file_path, os.path.basename(file_path))
+        
+        logger.info(f"Zip created by {username}: {len(file_paths)} files, {round(total_size/1024/1024, 1)} MB")
+        return {'success': True, 'zip_path': zip_path, 'file_count': len(file_paths)}
+    
+    except Exception as e:
+        logger.error(f"create_zip_download failed: {e}")
         return {'success': False, 'error': str(e)}
