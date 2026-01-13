@@ -44,7 +44,6 @@ class SeqTechPlatformType(enum.Enum):
 class CallerName(enum.Enum):
     """Variant caller names"""
     DEEPVARIANT = "DEEPVARIANT"
-    GATK = "GATK"
     GATK3 = "GATK3"      
     GATK4 = "GATK4"       
     CLAIR3 = "CLAIR3"

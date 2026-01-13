@@ -679,7 +679,15 @@ def get_technology(experiment_id):
         return None
 
 def get_caller(experiment_id):
-    """Get variant caller name for a specific experiment."""
+    """
+    Get variant caller name for a specific experiment.
+    
+    Args:
+        experiment_id (int): Single experiment ID
+        
+    Returns:
+        str or None: Caller name (e.g., "DEEPVARIANT", "GATK3") or None if not found
+    """
     try:
         with get_db_session() as session:
             experiment = session.query(Experiment).options(
@@ -776,7 +784,12 @@ def get_distinct_technologies():
         return []
 
 def get_distinct_callers():
-    """Get list of distinct caller names in database."""
+    """
+    Get all unique caller names from database.
+    
+    Returns:
+        list: Sorted list of caller names (e.g., ["CLAIR3", "DEEPVARIANT", "GATK3"])
+    """
     try:
         with get_db_session() as session:
             result = session.query(VariantCaller.name).distinct().all()

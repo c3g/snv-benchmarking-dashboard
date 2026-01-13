@@ -686,7 +686,7 @@ upload_modal_ui <- function() {
       fluidRow(
         column(3,
           selectInput("caller_name", "Caller*",
-                      choices = c("", "DEEPVARIANT", "GATK", "CLAIR3", "DRAGEN",
+                      choices = c("", "DEEPVARIANT", "CLAIR3", "DRAGEN",
                                   "GATK3", "GATK4", "LONGRANGER", "MEGABOLT",
                                   "NANOCALLER", "PARABRICK", "PEPPER"))
         ),
@@ -875,6 +875,47 @@ delete_modal_ui <- function() {
     
     # Status display
     div(id = "delete_status", style = "margin-top: 15px;")
+  )
+}
+
+# ============================================================================
+# FILE BROWSER UI COMPONENTS  
+# ============================================================================
+
+file_browser_modal_ui <- function() {
+  bsModal(
+    "file_browser_modal",
+    "File Browser",
+    "show_file_browser",
+    size = "large",
+    
+    # Path display
+    div(
+      style = "margin-bottom: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px;",
+      strong("Path: "), textOutput("fb_current_path", inline = TRUE)
+    ),
+    
+    # File table container
+    div(
+      style = "max-height: 370px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 4px;",
+      uiOutput("fb_files_table_ui")
+    ),
+    
+    # Selected file display
+    div(
+      style = "margin-top: 15px; padding: 10px; background: #e9ecef; border-radius: 4px;",
+      strong("Selected: "), textOutput("fb_selected_display", inline = TRUE)
+    ),
+    
+    # Action buttons
+    div(
+      style = "margin-top: 15px; display: flex; gap: 10px; justify-content: flex-end; align-items: center;",
+      fileInput("fb_upload_file", NULL, buttonLabel = "Upload File", multiple = FALSE),
+      downloadButton("fb_download_all_btn", "Download All", class = "btn-primary btn-sm"),
+      downloadButton("fb_download_btn", "Download", class = "btn-info btn-sm"),
+      actionButton("fb_rename_btn", "Rename", class = "btn-warning btn-sm"),
+      actionButton("fb_delete_btn", "Delete", class = "btn-danger btn-sm")
+    )
   )
 }
 # ============================================================================

@@ -107,7 +107,6 @@ ENUM_MAPPINGS = {
     },
     'caller_name': {
         'deepvariant': CallerName.DEEPVARIANT,
-        'gatk': CallerName.GATK,
         'gatk3': CallerName.GATK3,     
         'gatk4': CallerName.GATK4,         
         'clair3': CallerName.CLAIR3,

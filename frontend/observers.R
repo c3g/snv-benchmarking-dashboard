@@ -908,4 +908,265 @@ observeEvent(input$final_confirm_delete, {
 observeEvent(input$cancel_delete, {
   toggleModal(session, "delete_modal", toggle = "close")
 })
+# ============================================================================
+# FILE BROWSER OBSERVERS
+# ============================================================================
+
+# Track selected file path
+fb_selected_path <- reactiveVal(NULL)
+
+# Track current directory listing
+fb_directory_data <- reactiveVal(NULL)
+
+# Load directory when modal opens
+observeEvent(input$show_file_browser, {
+  fb_selected_path(NULL)  # Reset selection
+  
+  user <- get_user_info(session)
+  result <- file_manager$list_directory(
+    path = NULL,
+    username = user$username,
+    is_admin = user$is_admin
+  )
+  
+  if (result$success) {
+    fb_directory_data(result)
+  } else {
+    showNotification(paste("Error:", result$error), type = "error")
+    fb_directory_data(NULL)
+  }
+})
+
+# Render current path
+output$fb_current_path <- renderText({
+  data <- fb_directory_data()
+  if (is.null(data)) return("Loading...")
+  data$current_path
+})
+
+# Render file table
+output$fb_files_table_ui <- renderUI({
+  data <- fb_directory_data()
+  if (is.null(data) || !data$success) {
+    return(div(
+      style = "padding: 20px; text-align: center; color: #6c757d;",
+      "No files to display"
+    ))
+  }
+  
+  files <- data$files
+  if (length(files) == 0) {
+    return(div(
+      style = "padding: 20px; text-align: center; color: #6c757d;",
+      "Directory is empty"
+    ))
+  }
+  
+  rows <- lapply(seq_along(files), function(i) {
+    f <- files[[i]]
+    icon_name <- if (f$is_dir) "folder" else "file"
+    icon_color <- if (f$is_dir) "#f6b93b" else "#95a5a6"
+    size_str <- if (is.null(f$size)) "--" else paste0(round(f$size/1024, 1), " KB")
+    
+    tags$tr(
+      id = paste0("fb_row_", i),
+      onclick = sprintf("
+        document.querySelectorAll('#fb_table tr').forEach(r => r.style.backgroundColor = '');
+        this.style.backgroundColor = '#e3f2fd';
+        Shiny.setInputValue('fb_select_file', '%s', {priority: 'event'});
+      ", f$path),
+      style = "cursor: pointer;",
+      tags$td(icon(icon_name, style = paste0("color:", icon_color)), " ", f$name),
+      tags$td(size_str),
+      tags$td(f$modified)
+    )
+  })
+  
+  tags$table(
+    id = "fb_table",
+    class = "table table-striped table-hover",
+    style = "margin-bottom: 0;",
+    tags$thead(
+      tags$tr(
+        tags$th("Name"),
+        tags$th("Size"),
+        tags$th("Modified")
+      )
+    ),
+    tags$tbody(rows)
+  )
+})
+
+# Track selection
+observeEvent(input$fb_select_file, {
+  fb_selected_path(input$fb_select_file)
+})
+
+# Display selected file
+output$fb_selected_display <- renderText({
+  path <- fb_selected_path()
+  if (is.null(path)) "None" else basename(path)
+})
+
+# Helper to refresh file list
+refresh_file_browser <- function() {
+  user <- get_user_info(session)
+  result <- file_manager$list_directory(
+    path = NULL,
+    username = user$username,
+    is_admin = user$is_admin
+  )
+  if (result$success) {
+    fb_directory_data(result)
+  }
 }
+
+# Rename button
+observeEvent(input$fb_rename_btn, {
+  path <- fb_selected_path()
+  if (is.null(path)) {
+    showNotification("Select a file first", type = "warning")
+    return()
+  }
+  
+  showModal(modalDialog(
+    title = "Rename File",
+    textInput("fb_new_name", "New name:", value = basename(path)),
+    footer = tagList(
+      modalButton("Cancel"),
+      actionButton("fb_rename_confirm", "Rename", class = "btn-primary")
+    )
+  ))
+})
+
+# Confirm rename
+observeEvent(input$fb_rename_confirm, {
+  path <- fb_selected_path()
+  new_name <- trimws(input$fb_new_name)
+  
+  if (is.null(path) || new_name == "") {
+    showNotification("Enter a valid name", type = "warning")
+    return()
+  }
+  
+  user <- get_user_info(session)
+  result <- file_manager$rename_file(
+    path = path,
+    new_name = new_name,
+    username = user$username,
+    is_admin = user$is_admin
+  )
+  
+  removeModal()
+  
+  if (result$success) {
+    showNotification(result$message, type = "message")
+    fb_selected_path(NULL)
+    refresh_file_browser()
+  } else {
+    showNotification(result$error, type = "error")
+  }
+})
+
+# Delete button
+observeEvent(input$fb_delete_btn, {
+  path <- fb_selected_path()
+  if (is.null(path)) {
+    showNotification("Select a file first", type = "warning")
+    return()
+  }
+  
+  showModal(modalDialog(
+    title = tagList(icon("trash-alt"), " Confirm Delete"),
+    p(paste("Delete:", basename(path), "?")),
+    p("This cannot be undone.", style = "color: #dc3545;"),
+    footer = tagList(
+      modalButton("Cancel"),
+      actionButton("fb_delete_confirm", "Delete", class = "btn-danger")
+    )
+  ))
+})
+
+# Confirm delete
+observeEvent(input$fb_delete_confirm, {
+  path <- fb_selected_path()
+  user <- get_user_info(session)
+  
+  result <- file_manager$delete_file(
+    path = path,
+    username = user$username,
+    is_admin = user$is_admin
+  )
+  
+  removeModal()
+  
+  if (result$success) {
+    showNotification(result$message, type = "message")
+    fb_selected_path(NULL)
+    refresh_file_browser()
+  } else {
+    showNotification(result$error, type = "error")
+  }
+})
+
+# Upload file
+observeEvent(input$fb_upload_file, {
+  file_info <- input$fb_upload_file
+  if (is.null(file_info)) return()
+  
+  user <- get_user_info(session)
+  result <- file_manager$upload_file(
+    temp_path = file_info$datapath,
+    filename = file_info$name,
+    dest_folder = NULL,
+    username = user$username,
+    is_admin = user$is_admin
+  )
+  
+  if (result$success) {
+    showNotification(result$message, type = "message")
+    refresh_file_browser()
+  } else {
+    showNotification(result$error, type = "error")
+  }
+})
+
+# Download single file
+output$fb_download_btn <- downloadHandler(
+  filename = function() {
+    path <- fb_selected_path()
+    if (is.null(path)) return("no_file_selected.txt")
+    basename(path)
+  },
+  content = function(file) {
+    path <- fb_selected_path()
+    if (!is.null(path) && file.exists(path)) {
+      file.copy(path, file)
+    } else {
+      showNotification("File not found", type = "error")
+    }
+  }
+)
+
+# Download all files as zip
+output$fb_download_all_btn <- downloadHandler(
+  filename = function() {
+    paste0("data_files_", format(Sys.time(), "%Y%m%d_%H%M%S"), ".zip")
+  },
+  content = function(file) {
+    user <- get_user_info(session)
+    
+    result <- file_manager$create_zip_download(
+      username = user$username,
+      is_admin = user$is_admin,
+      max_size_mb = 500L
+    )
+    
+    if (result$success) {
+      file.copy(result$zip_path, file)
+      unlink(result$zip_path)  # Cleanup temp zip
+    } else {
+      showNotification(result$error, type = "warning", duration = 8)
+    }
+  }
+)}

@@ -30,7 +30,7 @@ FILTER_TYPES <- list(
 
 # Available options for dropdowns
 TECHNOLOGY_OPTIONS <- c("ILLUMINA", "PACBIO", "ONT", "MGI", "10X")
-CALLER_OPTIONS <- c("DEEPVARIANT", "GATK", "CLAIR3", "DRAGEN", 
+CALLER_OPTIONS <- c("DEEPVARIANT", "CLAIR3", "DRAGEN", 
                     "GATK3", "GATK4", "LONGRANGER", "MEGABOLT", 
                     "NANOCALLER", "PARABRICK", "PEPPER")
 VARIANT_TYPES <- c("SNP", "INDEL")

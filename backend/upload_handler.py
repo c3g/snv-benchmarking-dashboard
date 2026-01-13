@@ -53,7 +53,7 @@ REQUIRED_COLS = ['Type', 'Subtype', 'Subset', 'METRIC.Recall', 'METRIC.Precision
 # Valid enum values
 VALID_TECHNOLOGIES = ['ILLUMINA', 'PACBIO', 'ONT', 'MGI', '10X']
 VALID_CALLERS = [
-    'DEEPVARIANT', 'GATK', 'CLAIR3', 'DRAGEN', 'GATK3', 'GATK4',
+    'DEEPVARIANT', 'CLAIR3', 'DRAGEN', 'GATK3', 'GATK4',
     'LONGRANGER', 'MEGABOLT', 'NANOCALLER', 'PARABRICK', 'PEPPER'
 ]
 
@@ -210,11 +210,11 @@ def generate_filename(metadata, experiment_id, is_public):
         # Extract sample name (first part before underscore)
         sample = strip_value(str(metadata.get('exp_name', '')).split('_')[0])
         
-        # Clean metadata components
-        technology = strip_value(metadata.get('technology', '')).lower()
-        platform = strip_value(metadata.get('platform_name', '')).lower()
-        caller = strip_value(metadata.get('caller_name', '')).lower()
-        truthset = strip_value(metadata.get('truth_set_name', '')).lower()
+        # Clean all metadata components
+        technology = strip_value(metadata.get('technology', '')).lower().replace(" ", "")
+        platform = strip_value(metadata.get('platform_name', '')).lower().replace(" ", "")
+        caller = strip_value(metadata.get('caller_name', '')).lower().replace(" ", "")
+        truthset = strip_value(metadata.get('truth_set_name', '')).lower().replace(" ", "")
         
         # Build filename - 3-digit padding for public, 4-digit for private
         if is_public:
