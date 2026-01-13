@@ -163,10 +163,10 @@ def generate_filename(metadata, experiment_id):
         sample = strip_value(str(metadata.get('exp_name', '')).split('_')[0])
         
         # Clean all metadata components
-        technology = strip_value(metadata.get('technology', '')).lower()
-        platform = strip_value(metadata.get('platform_name', '')).lower()
-        caller = strip_value(metadata.get('caller_name', '')).lower()
-        truthset = strip_value(metadata.get('truth_set_name', '')).lower()
+        technology = strip_value(metadata.get('technology', '')).lower().replace(" ", "")
+        platform = strip_value(metadata.get('platform_name', '')).lower().replace(" ", "")
+        caller = strip_value(metadata.get('caller_name', '')).lower().replace(" ", "")
+        truthset = strip_value(metadata.get('truth_set_name', '')).lower().replace(" ", "")
         
         # Build filename with 3 zero padding
         filename = f"{experiment_id:03d}_{sample}_{technology}_{platform}_{caller}_{truthset}.csv"
