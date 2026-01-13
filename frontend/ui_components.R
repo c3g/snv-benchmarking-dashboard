@@ -835,24 +835,30 @@ file_browser_modal_ui <- function() {
     "show_file_browser",
     size = "large",
     
-    div(id = "fb_path_display",
-        style = "margin-bottom: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px;",
-        strong("Path: "), textOutput("fb_current_path", inline = TRUE)
-    ),
-    
+    # Path display
     div(
-      style = "max-height: 400px; overflow-y: auto; border: 1px solid #dee2e6;",
-      DT::dataTableOutput("fb_files_table")
+      style = "margin-bottom: 10px; padding: 10px; background: #f8f9fa; border-radius: 4px;",
+      strong("Path: "), textOutput("fb_current_path", inline = TRUE)
     ),
     
+    # File table container
+    div(
+      style = "max-height: 370px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 4px;",
+      uiOutput("fb_files_table_ui")
+    ),
+    
+    # Selected file display
     div(
       style = "margin-top: 15px; padding: 10px; background: #e9ecef; border-radius: 4px;",
       strong("Selected: "), textOutput("fb_selected_display", inline = TRUE)
     ),
     
+    # Action buttons
     div(
-      style = "margin-top: 15px; display: flex; gap: 10px; justify-content: flex-end;",
+      style = "margin-top: 15px; display: flex; gap: 10px; justify-content: flex-end; align-items: center;",
       fileInput("fb_upload_file", NULL, buttonLabel = "Upload File", multiple = FALSE),
+      downloadButton("fb_download_all_btn", "Download All", class = "btn-primary btn-sm"),
+      downloadButton("fb_download_btn", "Download", class = "btn-info btn-sm"),
       actionButton("fb_rename_btn", "Rename", class = "btn-warning btn-sm"),
       actionButton("fb_delete_btn", "Delete", class = "btn-danger btn-sm")
     )
