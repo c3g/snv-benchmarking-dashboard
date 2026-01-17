@@ -965,3 +965,206 @@ create_experiment_details_panel_ui <- function() {
     "))
   )
 }
+
+# ============================================================================
+# ADMIN PANEL UI COMPONENTS
+# ============================================================================
+# creates the admin panel UI content
+admin_panel_ui <- function() {
+  div(
+    class = "container-fluid",
+    style = "padding: 20px;",
+    
+    # Header
+    div(
+      style = "margin-bottom: 20px; border-bottom: 1px solid #e4e7ea; padding-bottom: 15px;",
+      h4( " Admin Dashboard", 
+         style = "color: #4472ca; font-weight: 600; margin: 0;"),
+      p("Manage experiments, users, and system settings", 
+        style = "color: #6c757d; margin: 5px 0 0 0; font-size: 13px;")
+    ),
+    
+    # Statistics Cards Row
+    div(
+      class = "row",
+      style = "margin-bottom: 20px;",
+      
+      # Total Experiments
+      div(
+        class = "col-md-2",
+        div(
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; 
+                   padding: 15px; text-align: center;",
+          p("Total Experiments", style = "margin: 0 0 5px 0; font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;"),
+          h3(textOutput("admin_total_experiments", inline = TRUE), 
+             style = "margin: 0; font-weight: 600; font-size: 24px; color: #4472ca;")
+        )
+      ),
+      
+      # Public
+      div(
+        class = "col-md-2",
+        div(
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; 
+                   padding: 15px; text-align: center;",
+          p("Public", style = "margin: 0 0 5px 0; font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;"),
+          h3(textOutput("admin_public_experiments", inline = TRUE), 
+             style = "margin: 0; font-weight: 600; font-size: 24px; color: #2e7d32;")
+        )
+      ),
+      
+      # Private
+      div(
+        class = "col-md-2",
+        div(
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; 
+                   padding: 15px; text-align: center;",
+          p("Private", style = "margin: 0 0 5px 0; font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;"),
+          h3(textOutput("admin_private_experiments", inline = TRUE), 
+             style = "margin: 0; font-weight: 600; font-size: 24px; color: #c62828;")
+        )
+      ),
+      
+      # Users
+      div(
+        class = "col-md-2",
+        div(
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; 
+                   padding: 15px; text-align: center;",
+          p("Users", style = "margin: 0 0 5px 0; font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;"),
+          h3(textOutput("admin_total_users", inline = TRUE), 
+             style = "margin: 0; font-weight: 600; font-size: 24px; color: #4472ca;")
+        )
+      ),
+      
+      # Admins
+      div(
+        class = "col-md-2",
+        div(
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; 
+                   padding: 15px; text-align: center;",
+          p("Admins", style = "margin: 0 0 5px 0; font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;"),
+          h3(textOutput("admin_admin_users", inline = TRUE), 
+             style = "margin: 0; font-weight: 600; font-size: 24px; color: #5c6bc0;")
+        )
+      ),
+      
+      # This Week uploads
+      div(
+        class = "col-md-2",
+        div(
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; 
+                   padding: 15px; text-align: center;",
+          p("This Week", style = "margin: 0 0 5px 0; font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;"),
+          h3(textOutput("admin_recent_uploads", inline = TRUE), 
+             style = "margin: 0; font-weight: 600; font-size: 24px; color: #6c757d;")
+        )
+      )
+    ),
+    
+    # Quick Actions Row
+    div(
+      class = "row",
+      style = "margin-bottom: 20px;",
+      div(
+        class = "col-md-12",
+        div(
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; padding: 15px;",
+          h5("Quick Actions", style = "margin: 0 0 12px 0; font-weight: 600; color: #333; font-size: 14px;"),
+          div(
+            style = "display: flex; gap: 10px; flex-wrap: wrap;",
+            actionButton("admin_upload_btn", 
+                        tagList(icon("upload"), " Upload Dataset"),
+                        class = "btn-sm",
+                          style = "padding: 6px 16px; background-color: white; border: 1px solid #4472ca; color: #4472ca;"),
+            actionButton("admin_delete_btn", 
+                        tagList(icon("trash"), " Delete Datasets"),
+                        class = "btn-default btn-sm",
+                        style = "padding: 8px 16px; border: 1px solid #d9534f; color: #d9534f; background: white;"),
+            actionButton("admin_file_browser_btn", 
+                        tagList(icon("folder-open"), " File Browser"),
+                        class = "btn-default btn-sm",
+                        style = "padding: 8px 16px;")
+          )
+        )
+      )
+    ),
+    
+    # Main Content - Two Column Layout
+    div(
+      class = "row",
+      
+      # Left Column - Private Uploads
+      div(
+        class = "col-md-8",
+        div(
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; padding: 20px;",
+          
+          # Header with count
+          div(
+            style = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;",
+            h5("Private Uploads", style = "margin: 0; font-weight: 600; color: #333; font-size: 14px;"),
+            span(
+              style = "background-color: #f8f9fa; color: #6c757d; padding: 4px 10px; border-radius: 4px; font-size: 12px; border: 1px solid #e4e7ea;",
+              textOutput("admin_private_count_badge", inline = TRUE)
+            )
+          ),
+          
+          # Info text
+          p("Review and manage private experiments uploaded by all users.",
+            style = "color: #6c757d; font-size: 12px; margin-bottom: 12px;"),
+          
+          # Private experiments table (using uiOutput)
+          div(
+            style = "border: 1px solid #e9ecef; border-radius: 4px; max-height: 300px; overflow-y: auto;",
+            uiOutput("admin_private_experiments_ui")
+          ),
+          
+          # Action buttons for selected
+          div(
+            style = "margin-top: 12px; padding-top: 12px; border-top: 1px solid #e9ecef; display: flex; gap: 8px;",
+            actionButton("admin_make_public_btn", 
+                        tagList(icon("globe"), " Make Public"),
+                        class = "btn-default btn-sm",
+                        style = "padding: 6px 12px; border: 1px solid #5cb85c; color: #5cb85c; background: white;"),
+            actionButton("admin_view_experiment_btn", 
+                        tagList(icon("eye"), " View"),
+                        class = "btn-default btn-sm",
+                        style = "padding: 6px 12px;"),
+            actionButton("admin_delete_private_btn", 
+                        tagList(icon("trash"), " Delete"),
+                        class = "btn-default btn-sm",
+                        style = "padding: 6px 12px; border: 1px solid #d9534f; color: #d9534f; background: white;")
+          )
+        )
+      ),
+      
+      # Right Column - Users List
+      div(
+        class = "col-md-4",
+        div(
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; padding: 20px;",
+          
+          # Header
+          h5("Registered Users", style = "margin: 0 0 12px 0; font-weight: 600; color: #333; font-size: 14px;"),
+          
+          # Users table (using uiOutput)
+          div(
+            style = "border: 1px solid #e9ecef; border-radius: 4px; max-height: 300px; overflow-y: auto;",
+            uiOutput("admin_users_ui")
+          )
+        )
+      )
+    )
+  )
+}
+# Admin Dashboard Modal (wraps panel UI)
+admin_modal_ui <- function() {
+  bsModal(
+    id = "admin_modal",
+    title = tagList(icon("cog"), " Admin Dashboard"),
+    trigger = NULL,
+    size = "large",
+    admin_panel_ui()
+  )
+}
