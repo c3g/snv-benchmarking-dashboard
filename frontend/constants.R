@@ -570,6 +570,30 @@ METADATA_CSS_STYLES <- "
     color: #495057;
     font-weight: 500;
   }
+  
+  /* Admin Panel Styles */
+  .admin-stat-card {
+    background: #ffffff;
+    border: 1px solid #e4e7ea;
+    border-radius: 6px;
+    padding: 15px;
+    text-align: center;
+  }
+  
+  .admin-panel-section {
+    background: #ffffff;
+    border: 1px solid #e4e7ea;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .admin-panel-section h5 {
+    margin-bottom: 12px;
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+  }
 "
 # ============================================================================
 # JAVASCRIPT INTERACTION HANDLERS
