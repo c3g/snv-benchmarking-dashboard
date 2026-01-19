@@ -944,4 +944,187 @@ def get_user_experiments(user_id):
     except Exception as e:
         logger.error(f"Error getting user experiments: {e}")
         return pd.DataFrame()
+
+# ============================================================================
+# ADMIN PANEL FUNCTIONS
+# ============================================================================
+
+def get_admin_stats():
+    """
+    Get statistics for admin dashboard cards.
     
+    Returns:
+        dict: Statistics including experiment counts, user counts, storage info
+    """
+    try:
+        with get_db_session() as session:
+            total_experiments = session.query(Experiment).count()
+            public_experiments = session.query(Experiment).filter(
+                or_(Experiment.is_public == True, Experiment.owner_id.is_(None))
+            ).count()
+            private_experiments = session.query(Experiment).filter(
+                Experiment.is_public == False,
+                Experiment.owner_id.isnot(None)
+            ).count()
+            
+            total_users = session.query(User).count()
+            admin_users = session.query(User).filter(User.is_admin == True).count()
+            
+            # Get recent activity counts (last 7 days)
+            from datetime import datetime, timedelta
+            week_ago = datetime.now() - timedelta(days=7)
+            recent_uploads = session.query(Experiment).filter(
+                Experiment.created_at >= week_ago
+            ).count()
+            
+            return {
+                "total_experiments": total_experiments,
+                "public_experiments": public_experiments,
+                "private_experiments": private_experiments,
+                "total_users": total_users,
+                "admin_users": admin_users,
+                "recent_uploads": recent_uploads,
+                "success": True
+            }
+            
+    except Exception as e:
+        logger.error(f"Error getting admin stats: {e}")
+        return {
+            "total_experiments": 0,
+            "public_experiments": 0,
+            "private_experiments": 0,
+            "total_users": 0,
+            "admin_users": 0,
+            "recent_uploads": 0,
+            "success": False,
+            "error": str(e)
+        }
+
+def get_all_private_experiments():
+    """
+    Get all private experiments for admin review.
+    Admin-only function to view all private uploads from all users.
+    
+    Returns:
+        pandas.DataFrame: All private experiments with owner info
+    """
+    try:
+        with get_db_session() as session:
+            query = session.query(Experiment).options(
+                joinedload(Experiment.sequencing_technology),
+                joinedload(Experiment.variant_caller),
+                joinedload(Experiment.owner)
+            ).filter(
+                Experiment.is_public == False,
+                Experiment.owner_id.isnot(None)
+            ).order_by(Experiment.created_at.desc())
+            
+            experiments = query.all()
+            
+            data = []
+            for exp in experiments:
+                data.append({
+                    'id': exp.id,
+                    'name': exp.name,
+                    'owner_username': exp.owner.username if exp.owner else "Unknown",
+                    'owner_email': exp.owner.email if exp.owner else "N/A",
+                    'technology': exp.sequencing_technology.technology.value if exp.sequencing_technology else "N/A",
+                    'caller': exp.variant_caller.name.value if exp.variant_caller else "N/A",
+                    'created_at': exp.created_at.strftime('%Y-%m-%d') if exp.created_at else "N/A"
+                })
+            
+            return pd.DataFrame(data)
+            
+    except Exception as e:
+        logger.error(f"Error getting private experiments: {e}")
+        return pd.DataFrame()
+
+@require_admin
+def toggle_experiment_visibility(experiment_id, make_public=True):
+    """
+    Toggle experiment visibility between public and private.
+    Admin-only function.
+    
+    Args:
+        experiment_id: ID of experiment to modify
+        make_public: True to make public, False to make private
+        
+    Returns:
+        dict: Result with success status and message
+    """
+    try:
+        with get_db_session() as session:
+            experiment = session.query(Experiment).filter(
+                Experiment.id == experiment_id
+            ).first()
+            
+            if not experiment:
+                return {
+                    "success": False,
+                    "error": f"Experiment {experiment_id} not found"
+                }
+            
+            old_status = "public" if experiment.is_public else "private"
+            experiment.is_public = make_public
+            new_status = "public" if make_public else "private"
+            
+            session.commit()
+            
+            logger.info(f"Experiment {experiment_id} visibility changed: {old_status} -> {new_status}")
+            
+            return {
+                "success": True,
+                "message": f"Experiment '{experiment.name}' is now {new_status}",
+                "experiment_id": experiment_id,
+                "is_public": make_public
+            }
+            
+    except Exception as e:
+        logger.error(f"Error toggling visibility for experiment {experiment_id}: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+def get_all_users_with_stats():
+    """
+    Get all users with their experiment counts for admin panel.
+    
+    Returns:
+        pandas.DataFrame: Users with upload statistics
+    """
+    try:
+        with get_db_session() as session:
+            from sqlalchemy import func
+            
+            # Subquery for experiment counts per user
+            exp_counts = session.query(
+                Experiment.owner_id,
+                func.count(Experiment.id).label('upload_count')
+            ).group_by(Experiment.owner_id).subquery()
+            
+            users = session.query(User).all()
+            
+            data = []
+            for user in users:
+                # Get upload count for this user
+                count_result = session.query(exp_counts.c.upload_count).filter(
+                    exp_counts.c.owner_id == user.id
+                ).scalar() or 0
+                
+                data.append({
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email or "N/A",
+                    'full_name': user.full_name or "N/A",
+                    'is_admin': user.is_admin,
+                    'upload_count': count_result,
+                    'created_at': user.created_at.strftime('%Y-%m-%d') if user.created_at else "N/A",
+                    'last_login': user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else "Never"
+                })
+            
+            return pd.DataFrame(data)
+            
+    except Exception as e:
+        logger.error(f"Error getting users with stats: {e}")
+        return pd.DataFrame()
