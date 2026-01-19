@@ -36,7 +36,7 @@ setup_data_reactives <- function(input, output, session) {
   # ====================================================================
   # REACTIVE VALUES FOR STATE MANAGEMENT
   # ====================================================================
-  
+
   # Trigger to refresh all data
    data_refresh_trigger <- reactiveVal(0)
 
@@ -78,6 +78,9 @@ setup_data_reactives <- function(input, output, session) {
   
   # Has stratified analysis been run (shows/hides Tab 4)
   stratified_triggered <- reactiveVal(FALSE)
+
+  # admin ralated stats
+  admin_stats <- reactiveVal(NULL)
   
   # ====================================================================
   # CORE DATA PROCESSING FUNCTIONS
@@ -370,6 +373,7 @@ setup_data_reactives <- function(input, output, session) {
   
   return(list(
     # State management
+    admin_stats = admin_stats,
     current_mode = current_mode,
     display_experiment_ids = display_experiment_ids,
     active_truth_set_filter = active_truth_set_filter,
