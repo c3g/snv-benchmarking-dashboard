@@ -32,7 +32,7 @@ create_experiment_details_html <- function(metadata) {
   # Create compact HTML content for row expansion
   details_html <- paste0(
     '<tr class="detail-row-', exp_id, '">',
-    '<td colspan="11">',
+    '<td colspan="12">',
     '<div class="detail-content">',
     '<div class="detail-grid">',
     
