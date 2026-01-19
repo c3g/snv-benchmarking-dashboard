@@ -360,15 +360,6 @@ def create_experiment_direct(metadata, experiment_id=None, filename=None):
             session.add(experiment)
             session.flush()
             
-            if filename:
-                from happy_parser import parse_happy_csv
-                result = parse_happy_csv(filename, experiment.id, session)
-                
-                if result["success"]:
-                    logger.info(f"Loaded hap.py results: {result['message']}")
-                else:
-                    logger.warning(f"Failed to load hap.py results: {result.get('error')}")
-            
             logger.info(f"Successfully created experiment ID {experiment_id}: {experiment.name}")
             
             return {
