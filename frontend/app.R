@@ -118,6 +118,7 @@ theme_set(theme_bw())
 ui <- fluidPage(
   
   useShinyjs(), #for auth
+  #uiOutput("admin_tab_css"),  # Dynamic CSS to hide admin tab for non-admins
   # ====================================================================
   # HEAD SECTION - CSS and JavaScript
   # ====================================================================
@@ -259,7 +260,7 @@ ui <- fluidPage(
     div(class = "main-content",
         width = 9,
         
-        # Header with download, upload, and delete buttons
+        # Header with download button and auth
         div(
           style = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 0; padding-bottom: 0;",
           
@@ -279,26 +280,24 @@ ui <- fluidPage(
                 )
               )
             ),
-            
-            # Upload button - ONLY VISIBLE TO ADMIN _ FOR NOW
+            # Admin button - only visible to admins
+conditionalPanel(
+  condition = "output.user_is_admin",
+  actionButton(
+    "show_admin_modal",
+    label = tagList(icon("cog"), "Admin"),
+    class = "btn-warning btn-sm",
+    style = "font-size: 13px; padding: 6px 12px;"
+  )
+),
+            # Upload button - ONLY VISIBLE TO AUTHENTICATED USERS _ FOR NOW
             conditionalPanel(
-              condition = "output.user_is_admin",
+              condition = "output.user_authenticated",
               actionButton(
                 "show_upload_modal", 
                 label = tagList(icon("upload"), "Upload Dataset"),
-                class = "btn-success btn-sm",
+                class = "btn-primary btn-sm",
                 style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px; border-radius: 3px;"
-              )
-            ),
-            
-            # Delete button - ONLY VISIBLE TO ADMIN
-            conditionalPanel(
-              condition = "output.user_is_admin",
-              actionButton(
-                "show_delete_modal", 
-                label = tagList(icon("trash"), "Delete Datasets"),
-                class = "btn-danger btn-sm",
-                style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px; border: none !important;"
               )
             ),
             
@@ -309,15 +308,6 @@ ui <- fluidPage(
               class = "btn-primary btn-sm",
               style = "font-size: 13px; padding: 6px 22px; white-space: nowrap; min-width: 160px; border: none !important; height: auto;"
             ),
-
-            # File browser button - ONLY VISIBLE TO ADMIN
-            conditionalPanel(
-              condition = "output.user_is_admin",
-              actionButton("show_file_browser", "File Browser", 
-              icon = icon("folder-open"), 
-              class = "btn-secondary btn-sm",
-              style = "width: 100%;")
-              ),
 
              auth_ui()  # Authentication status/button from auth.R
           )
@@ -1136,6 +1126,7 @@ div(
               )
             )
           )
+
         ),
 
         #=======================================================================
@@ -1143,6 +1134,7 @@ div(
         upload_modal_ui(),
         delete_modal_ui(),
         file_browser_modal_ui(),
+        admin_modal_ui(),
     )
   )
 )
