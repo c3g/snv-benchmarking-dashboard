@@ -6,13 +6,14 @@ Direct-to-database upload handler for SNV Benchmarking Dashboard.
 
 Key features:
 - Writes directly to database (CSV is backup only)
-- ID range separation: Public (1-999), Private (1000+)
 - Ownership tracking via owner_id
 - Visibility control via is_public flag
 
-ID Range Convention:
-- IDs 1-999: Public/reference experiments (admin uploads, legacy data)
-- IDs 1000+: Private user experiments
+Visibility Rules:
+- Admins can upload public or private experiments
+- Regular users can only upload private experiments
+- Private experiments visible only to owner + admins
+
 """
 
 import json
@@ -35,11 +36,6 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 # CONSTANTS
 # ============================================================================
-
-# ID range boundaries
-PUBLIC_ID_MIN = 1
-PUBLIC_ID_MAX = 999
-PRIVATE_ID_START = 1000
 
 # Required fields for upload validation
 REQUIRED_METADATA = [
@@ -128,60 +124,6 @@ def validate_metadata(metadata):
     
     logger.info("Metadata validation successful")
     return True, "Metadata is valid"
-
-# ============================================================================
-# ID GENERATION WITH RANGE LOGIC
-# ============================================================================
-
-def get_next_experiment_id(is_public):
-    """
-    Get next experiment ID based on visibility.
-    
-    ID Ranges:
-    - Public experiments: 1-999 (reference/benchmark data)
-    - Private experiments: 1000+ (user uploads)
-    
-    Args:
-        is_public: Boolean indicating if experiment is public
-        
-    Returns:
-        int: Next available experiment ID in appropriate range
-    """
-    try:
-        with get_db_session() as session:
-            if is_public:
-                # Public: find max ID in range 1-999
-                max_public = session.query(func.max(Experiment.id)).filter(
-                    Experiment.id >= PUBLIC_ID_MIN,
-                    Experiment.id <= PUBLIC_ID_MAX
-                ).scalar()
-                
-                next_id = (max_public or 0) + 1
-                
-                # Check if we've exceeded public range
-                if next_id > PUBLIC_ID_MAX:
-                    logger.error(f"Public ID range exhausted (max: {PUBLIC_ID_MAX})")
-                    raise ValueError(f"Public experiment ID limit ({PUBLIC_ID_MAX}) reached")
-                    
-                logger.info(f"Next public experiment ID: {next_id}")
-                return next_id
-            else:
-                # Private: find max ID >= 1000
-                max_private = session.query(func.max(Experiment.id)).filter(
-                    Experiment.id >= PRIVATE_ID_START
-                ).scalar()
-                
-                next_id = max(max_private or (PRIVATE_ID_START - 1), PRIVATE_ID_START - 1) + 1
-                
-                logger.info(f"Next private experiment ID: {next_id}")
-                return next_id
-                
-    except ValueError:
-        raise  # Re-raise ID limit errors
-    except Exception as e:
-        logger.error(f"Error getting next experiment ID: {e}")
-        # Fallback: use private range to be safe
-        return PRIVATE_ID_START
 
 # ============================================================================
 # FILENAME GENERATION
@@ -378,48 +320,53 @@ def process_upload_direct(temp_file_path, metadata_json_string):
         
         logger.info(f"Upload visibility: {'PUBLIC' if is_public else 'PRIVATE'}")
         
-        # STEP 4: Get experiment ID based on visibility
-        try:
-            experiment_id = get_next_experiment_id(is_public)
-        except ValueError as e:
-            return {"success": False, "message": str(e), "filename": None}
-            
-        logger.info(f"Assigned experiment ID: {experiment_id} ({'public range' if is_public else 'private range'})")
+        # STEP 4: database auto-generates ID
+        experiment_id = None  # assigned by database
+        logger.info(f"Visibility: {'PUBLIC' if is_public else 'PRIVATE'} (ID will be auto-assigned)")
         
         # STEP 5: Setup working directory
         temp_work_dir = tempfile.mkdtemp(prefix="upload_")
         logger.debug(f"Working in {temp_work_dir}")
         
-        # STEP 6: Generate filename
-        filename = generate_filename(db_metadata, experiment_id, is_public)
-        temp_file_copy = os.path.join(temp_work_dir, filename)
-        
+        # STEP 6: Copy file temporarily (filename generated after DB assigns ID)
+        temp_filename = f"temp_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        temp_file_copy = os.path.join(temp_work_dir, temp_filename)
         shutil.copy2(temp_file_path, temp_file_copy)
         logger.debug("File copied to working directory")
         
-        # STEP 7: Save file to final location
-        os.makedirs(DATA_FOLDER, exist_ok=True)
-        final_file_path = os.path.join(DATA_FOLDER, filename)
-        shutil.move(temp_file_copy, final_file_path)
-        logger.info(f"File saved to: {final_file_path}")
-        
-        # STEP 8: Create experiment directly in database
+        # STEP 7: Create experiment in database (ID auto-assigned)
         logger.debug("Creating experiment in database...")
         db_result = create_experiment_direct(
             metadata=db_metadata,
-            experiment_id=experiment_id,
-            filename=filename
+            experiment_id=None,  # Let DB auto-generate
+            filename=None  # Will add file after we get ID
         )
         
         if not db_result["success"]:
-            # Cleanup file if database creation failed
-            if os.path.exists(final_file_path):
-                os.remove(final_file_path)
             return {
                 "success": False,
                 "message": f"Database creation failed: {db_result['message']}",
                 "filename": None
             }
+        
+        # Get the auto-assigned ID
+        experiment_id = db_result["experiment_id"]
+        logger.info(f"Database assigned experiment ID: {experiment_id}")
+        
+        # STEP 8: Generate final filename with real ID and save file
+        filename = generate_filename(db_metadata, experiment_id, is_public)
+        os.makedirs(DATA_FOLDER, exist_ok=True)
+        final_file_path = os.path.join(DATA_FOLDER, filename)
+        shutil.copy2(temp_file_copy, final_file_path)
+        logger.info(f"File saved to: {final_file_path}")
+        
+        # STEP 9: Parse hap.py results into database
+        from happy_parser import parse_happy_csv
+        from database import get_db_session
+        with get_db_session() as session:
+            parse_result = parse_happy_csv(filename, experiment_id, session)
+            if not parse_result["success"]:
+                logger.warning(f"Failed to parse hap.py: {parse_result.get('error')}")
         
         # Success
         visibility_label = "public" if is_public else "private"

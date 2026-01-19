@@ -82,7 +82,7 @@ shinyOptions(
 tryCatch({
   py_run_string("import sys")
   py_run_string("sys.path.append('../backend')")
-  #py_run_string("if 'upload_handler' in sys.modules: del sys.modules['upload_handler']")
+#py_run_string("if 'upload_handler' in sys.modules: del sys.modules['upload_handler']")
   
   db <<- import("db_interface")
   upload_handler <<- import("upload_handler")
@@ -281,15 +281,15 @@ ui <- fluidPage(
               )
             ),
             # Admin button - only visible to admins
-conditionalPanel(
-  condition = "output.user_is_admin",
-  actionButton(
-    "show_admin_modal",
-    label = tagList(icon("cog"), "Admin"),
-    class = "btn-warning btn-sm",
-    style = "font-size: 13px; padding: 6px 12px;"
-  )
-),
+            conditionalPanel(
+              condition = "output.user_is_admin",
+              actionButton(
+                "show_admin_modal",
+                label = tagList(icon("cog"), "Admin"),
+                class = "btn-warning btn-sm",
+                style = "font-size: 13px; padding: 6px 12px;"
+              )
+            ),
             # Upload button - ONLY VISIBLE TO AUTHENTICATED USERS _ FOR NOW
             conditionalPanel(
               condition = "output.user_authenticated",
