@@ -160,7 +160,8 @@ def generate_filename(metadata, experiment_id, is_public):
         
         # Build filename - 3-digit padding for all public and private records
         filename = f"{experiment_id:03d}_{sample}_{technology}_{platform}_{caller}_{truthset}.csv"
-        
+        return filename
+    
     except Exception as e:
         # Fallback: timestamp-based filename
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
