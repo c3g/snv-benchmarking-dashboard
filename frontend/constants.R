@@ -594,7 +594,98 @@ METADATA_CSS_STYLES <- "
     color: #333;
     font-size: 14px;
   }
+
+  /* Fix modal scrolling */
+  .modal-body {
+    max-height: 80vh;
+    overflow-y: auto;
+  }
 "
+# Region selection CSS
+REGION_INFO_CSS <- "
+  .region-info-icon {
+    color: #007bff;
+    cursor: help;
+    margin-left: 5px;
+    font-size: 14px;
+  }
+  
+  .tooltip-inner {
+    max-width: 350px;
+    text-align: left;
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 12px 15px;
+    background-color: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #bbdefb;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    opacity: 1;
+  }
+  
+  .tooltip {
+    opacity: 1 !important;
+  }
+  
+  .tooltip.bs-tooltip-right .arrow::before {
+    border-right-color: #e3f2fd;
+  }
+  
+  .tooltip.bs-tooltip-left .arrow::before {
+    border-left-color: #e3f2fd;
+  }
+  
+  .tooltip.bs-tooltip-top .arrow::before {
+    border-top-color: #e3f2fd;
+  }
+  
+  .tooltip.bs-tooltip-bottom .arrow::before {
+    border-bottom-color: #e3f2fd;
+  }
+"
+# Truth set filter panel styling
+TRUTH_SET_FILTER_CSS <- "
+  .truth-set-filter-panel {
+    background-color: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  
+  .truth-set-filter-panel label {
+    margin: 0;
+    font-weight: 500;
+    font-size: 14px;
+    color: #495057;
+    white-space: nowrap;
+  }
+  
+  .truth-set-filter-panel .form-group {
+    margin: 0;
+    flex: 1;
+    max-width: 250px;
+  }
+  
+  .truth-set-filter-panel select {
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+  }
+  
+  .truth-set-filter-panel .info-icon {
+    color: #6c757d;
+    cursor: help;
+    font-size: 16px;
+  }
+"
+
 # ============================================================================
 # JAVASCRIPT INTERACTION HANDLERS
 # ============================================================================
@@ -754,50 +845,6 @@ METRIC_SELECTION_JS <- "
 "
 
 
-# Region selection CSS
-REGION_INFO_CSS <- "
-  .region-info-icon {
-    color: #007bff;
-    cursor: help;
-    margin-left: 5px;
-    font-size: 14px;
-  }
-  
-  .tooltip-inner {
-    max-width: 350px;
-    text-align: left;
-    font-size: 13px;
-    line-height: 1.5;
-    padding: 12px 15px;
-    background-color: #e3f2fd;
-    color: #1565c0;
-    border: 1px solid #bbdefb;
-    border-radius: 6px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    opacity: 1;
-  }
-  
-  .tooltip {
-    opacity: 1 !important;
-  }
-  
-  .tooltip.bs-tooltip-right .arrow::before {
-    border-right-color: #e3f2fd;
-  }
-  
-  .tooltip.bs-tooltip-left .arrow::before {
-    border-left-color: #e3f2fd;
-  }
-  
-  .tooltip.bs-tooltip-top .arrow::before {
-    border-top-color: #e3f2fd;
-  }
-  
-  .tooltip.bs-tooltip-bottom .arrow::before {
-    border-bottom-color: #e3f2fd;
-  }
-"
-
 # tooltip JavaScript
 REGION_TOOLTIPS_JS <- "
   $(document).ready(function(){
@@ -808,47 +855,6 @@ REGION_TOOLTIPS_JS <- "
     });
   });
 
-"
-# Truth set filter panel styling
-TRUTH_SET_FILTER_CSS <- "
-  .truth-set-filter-panel {
-    background-color: #f8f9fa;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  }
-  
-  .truth-set-filter-panel label {
-    margin: 0;
-    font-weight: 500;
-    font-size: 14px;
-    color: #495057;
-    white-space: nowrap;
-  }
-  
-  .truth-set-filter-panel .form-group {
-    margin: 0;
-    flex: 1;
-    max-width: 250px;
-  }
-  
-  .truth-set-filter-panel select {
-    font-size: 13px;
-    padding: 6px 10px;
-    border-radius: 4px;
-    border: 1px solid #ced4da;
-  }
-  
-  .truth-set-filter-panel .info-icon {
-    color: #6c757d;
-    cursor: help;
-    font-size: 16px;
-  }
 "
 # Plotly refresh on tab 3
 PLOTLY_REFRESH_JS <- "
