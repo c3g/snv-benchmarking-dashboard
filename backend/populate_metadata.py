@@ -2,6 +2,8 @@
 # populate_metadata.py
 # ============================================================================
 """
+<<<<<<THIS IS ONLY USED FOR INITIAL MIGRATION FROM CSV AND BACK_UP>>>>>>
+
 Metadata parsing and database population for SNV Benchmarking Dashboard.
 
 Main components:

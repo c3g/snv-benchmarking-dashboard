@@ -1162,7 +1162,7 @@ admin_panel_ui <- function() {
 admin_modal_ui <- function() {
   bsModal(
     id = "admin_modal",
-    title = tagList(icon("cog"), " Admin Dashboard"),
+    title = tagList("Admin Dashboard"),
     trigger = NULL,
     size = "large",
     admin_panel_ui()

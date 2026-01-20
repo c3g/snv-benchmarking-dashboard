@@ -892,7 +892,7 @@ observeEvent(input$final_confirm_delete, {
   
   if (success_count == total_count) {
     showNotification(
-      paste("Successfully deleted", success_count, "experiments and rebuilt database."),
+      paste("Successfully deleted", success_count, "experiments."),
       type = "message",
       duration = 6
     )
