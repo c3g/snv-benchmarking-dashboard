@@ -1247,10 +1247,10 @@ output$admin_admin_users <- renderText({
   as.character(stats$admin_users)
 })
 
-output$admin_recent_uploads <- renderText({
+output$admin_total_storage <- renderText({
   stats <- data_reactives$admin_stats()
   if (is.null(stats)) return("--")
-  as.character(stats$recent_uploads)
+  paste0(stats$total_storage_mb)
 })
 
 output$admin_private_count_badge <- renderText({

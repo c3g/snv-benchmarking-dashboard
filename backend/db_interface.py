@@ -26,6 +26,9 @@ from sqlalchemy import or_
 from database import get_db_session
 from models import *
 from authorization import require_admin
+import os
+from config import DATA_FOLDER
+
 
 logger = logging.getLogger(__name__)
 
@@ -971,12 +974,14 @@ def get_admin_stats():
             total_users = session.query(User).count()
             admin_users = session.query(User).filter(User.is_admin == True).count()
             
-            # Get recent activity counts (last 7 days)
-            from datetime import datetime, timedelta
-            week_ago = datetime.now() - timedelta(days=7)
-            recent_uploads = session.query(Experiment).filter(
-                Experiment.created_at >= week_ago
-            ).count()
+
+            # Calculate total storage
+            total_bytes = sum(
+                os.path.getsize(os.path.join(DATA_FOLDER, f))
+                for f in os.listdir(DATA_FOLDER)
+                if os.path.isfile(os.path.join(DATA_FOLDER, f))
+            )
+            total_storage_mb = round(total_bytes / (1024 * 1024), 1)
             
             return {
                 "total_experiments": total_experiments,
@@ -984,7 +989,7 @@ def get_admin_stats():
                 "private_experiments": private_experiments,
                 "total_users": total_users,
                 "admin_users": admin_users,
-                "recent_uploads": recent_uploads,
+                "total_storage_mb": total_storage_mb,
                 "success": True
             }
             
@@ -1040,7 +1045,6 @@ def get_all_private_experiments():
         logger.error(f"Error getting private experiments: {e}")
         return pd.DataFrame()
 
-@require_admin
 def toggle_experiment_visibility(experiment_id, make_public=True):
     """
     Toggle experiment visibility between public and private.

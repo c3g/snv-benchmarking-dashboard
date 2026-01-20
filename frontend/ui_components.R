@@ -1049,14 +1049,14 @@ admin_panel_ui <- function() {
         )
       ),
       
-      # This Week uploads
+      # Storage uploads
       div(
         class = "col-md-2",
         div(
           style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; 
                    padding: 15px; text-align: center;",
-          p("This Week", style = "margin: 0 0 5px 0; font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;"),
-          h3(textOutput("admin_recent_uploads", inline = TRUE), 
+          p("Storage (mb)", style = "margin: 0 0 5px 0; font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;"),
+          h3(textOutput("admin_total_storage", inline = TRUE), 
              style = "margin: 0; font-weight: 600; font-size: 24px; color: #6c757d;")
         )
       )
