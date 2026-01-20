@@ -1393,11 +1393,13 @@ output$admin_users_ui <- renderUI({
 
 # Quick action: Upload button
 observeEvent(input$admin_upload_btn, {
+  toggleModal(session, "admin_modal", toggle = "close")  # Close admin first
   toggleModal(session, "upload_modal", toggle = "open")
 })
 
 # Quick action: Delete button
 observeEvent(input$admin_delete_btn, {
+  toggleModal(session, "admin_modal", toggle = "close")  # Close admin first
   toggleModal(session, "delete_modal", toggle = "open")
 })
 
@@ -1413,6 +1415,7 @@ observeEvent(input$admin_file_browser_btn, {
   if (result$success) {
     fb_directory_data(result)
   }
+  toggleModal(session, "admin_modal", toggle = "close")  # Close admin first
   toggleModal(session, "file_browser_modal", toggle = "open")
 })
 
