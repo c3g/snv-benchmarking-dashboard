@@ -1090,68 +1090,62 @@ admin_panel_ui <- function() {
       )
     ),
     
-    # Main Content - Two Column Layout
+    # Main Content
     div(
-      class = "row",
-      
-      # Left Column - Private Uploads
       div(
-        class = "col-md-8",
+      class = "row",
+      style = "margin-bottom: 20px;",
         div(
-          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; padding: 20px;",
-          
-          # Header with count
+          class = "col-md-12",
           div(
-            style = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;",
-            h5("Private Uploads", style = "margin: 0; font-weight: 600; color: #333; font-size: 14px;"),
-            span(
-              style = "background-color: #f8f9fa; color: #6c757d; padding: 4px 10px; border-radius: 4px; font-size: 12px; border: 1px solid #e4e7ea;",
-              textOutput("admin_private_count_badge", inline = TRUE)
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; padding: 15px;",
+            
+            # Header
+            h5("Registered Users", style = "margin: 0 0 12px 0; font-weight: 600; color: #333; font-size: 14px;"),
+            
+            # Users table
+            div(
+              style = "border: 1px solid #e9ecef; border-radius: 4px; max-height: 300px; overflow-y: auto;",
+              uiOutput("admin_users_ui")
             )
-          ),
-          
-          # Info text
-          p("Review and manage private experiments uploaded by all users.",
-            style = "color: #6c757d; font-size: 12px; margin-bottom: 12px;"),
-          
-          # Private experiments table (using uiOutput)
-          div(
-            style = "border: 1px solid #e9ecef; border-radius: 4px; max-height: 300px; overflow-y: auto;",
-            uiOutput("admin_private_experiments_ui")
-          ),
-          
-          # Action buttons for selected
-          div(
-            style = "margin-top: 12px; padding-top: 12px; border-top: 1px solid #e9ecef; display: flex; gap: 8px;",
-            actionButton("admin_make_public_btn", 
-                        tagList(icon("globe"), " Make Public"),
-                        class = "btn-default btn-sm",
-                        style = "padding: 6px 12px; border: 1px solid #5cb85c; color: #5cb85c; background: white;"),
-            actionButton("admin_view_experiment_btn", 
-                        tagList(icon("eye"), " View"),
-                        class = "btn-default btn-sm",
-                        style = "padding: 6px 12px;"),
-            actionButton("admin_delete_private_btn", 
-                        tagList(icon("trash"), " Delete"),
-                        class = "btn-default btn-sm",
-                        style = "padding: 6px 12px; border: 1px solid #d9534f; color: #d9534f; background: white;")
           )
         )
       ),
-      
-      # Right Column - Users List
+      # Private Uploads
       div(
-        class = "col-md-4",
-        div(
-          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; padding: 20px;",
-          
-          # Header
-          h5("Registered Users", style = "margin: 0 0 12px 0; font-weight: 600; color: #333; font-size: 14px;"),
-          
-          # Users table (using uiOutput)
+        class = "row",
+        style = "margin-bottom: 20px;",
           div(
-            style = "border: 1px solid #e9ecef; border-radius: 4px; max-height: 300px; overflow-y: auto;",
-            uiOutput("admin_users_ui")
+          class = "col-md-12",
+          div(
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; padding: 15px;",
+            # Header
+            div(
+              style = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;",
+              h5("Private Uploads", style = "margin: 0; font-weight: 600; color: #333; font-size: 14px;"),
+            ),
+            # Private experiments table
+            div(
+              style = "border: 1px solid #e9ecef; border-radius: 4px; max-height: 300px; overflow-y: auto;",
+              uiOutput("admin_private_experiments_ui")
+            ),
+            
+            # Action buttons
+            div(
+              style = "margin-top: 12px; padding-top: 12px; border-top: 1px solid #e9ecef; display: flex; gap: 8px;",
+              actionButton("admin_make_public_btn", 
+                          tagList(icon("globe"), " Make Public"),
+                          class = "btn-default btn-sm",
+                          style = "padding: 6px 12px; border: 1px solid #5cb85c; color: #5cb85c; background: white;"),
+              actionButton("admin_view_experiment_btn", 
+                          tagList(icon("eye"), " View"),
+                          class = "btn-default btn-sm",
+                          style = "padding: 6px 12px;"),
+              actionButton("admin_delete_private_btn", 
+                          tagList(icon("trash"), " Delete"),
+                          class = "btn-default btn-sm",
+                          style = "padding: 6px 12px; border: 1px solid #d9534f; color: #d9534f; background: white;")
+            )
           )
         )
       )
