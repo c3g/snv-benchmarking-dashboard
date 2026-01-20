@@ -1485,22 +1485,137 @@ observeEvent(input$confirm_make_public, {
   session$userData$pending_public_exp_id <- NULL
 })
 
-# View experiment details from admin panel
+# view experiment details
 observeEvent(input$admin_view_experiment_btn, {
+  toggleModal(session, "admin_modal", toggle = "close")  # Close admin first
   exp_id <- input$admin_selected_exp
   
   if (is.null(exp_id)) {
-    showNotification("Please click on an experiment row first", type = "warning")
+    showNotification("Please select an experiment first", type = "warning")
     return()
   }
   
-  # Set the experiment for viewing and switch to visualization tab
-  data_reactives$plot_clicked_id(as.numeric(exp_id))
-  data_reactives$display_experiment_ids(exp_id)
-  updateTabsetPanel(session, "main_tabs", selected = "Performance")
+  user_info <- get_user_info(session)
+  metadata <- tryCatch({
+    db$get_experiment_metadata(
+      experiment_ids_param = as.integer(exp_id),
+      user_id = user_info$user_id,
+      is_admin = user_info$is_admin
+    )
+  }, error = function(e) NULL)
   
-  showNotification("Viewing experiment details", type = "message", duration = 3)
+  if (is.null(metadata) || nrow(metadata) == 0) {
+    showNotification("Experiment not found", type = "error")
+    return()
+  }
+  
+  meta <- metadata[1, ]
+  
+  # Store exp_id for download handler
+
+session$userData$admin_view_exp_id <- as.integer(exp_id)
+  
+  showModal(modalDialog(
+    title = tagList(sprintf(" Experiment %s Details", exp_id)),
+    size = "l",
+    easyClose = TRUE,
+    
+    # Header with visibility badge
+    div(style = "margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;",
+      h4(meta$name, style = "margin: 0 0 5px 0;"),
+      span(
+        if (isTRUE(meta$is_public)) "Public" else "Private",
+        style = paste0(
+          "padding: 3px 8px; border-radius: 3px; font-size: 12px; ",
+          if (isTRUE(meta$is_public)) "background: #d4edda; color: #155724;" else "background: #fff3cd; color: #856404;"
+        )
+      ),
+      if (!is.null(meta$owner_username)) span(paste(" | Owner:", meta$owner_username), style = "color: #666; font-size: 13px;")
+    ),
+    fluidRow(
+      # Left column - Basic Info
+      column(6,
+        h5("Basic Information", style = "border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 12px;"),
+        tags$table(style = "width: 100%; font-size: 13px;",
+          tags$tr(tags$td(strong("ID:"), style = "padding: 4px 8px; width: 40%;"), tags$td(meta$id)),
+          tags$tr(tags$td(strong("Name:"), style = "padding: 4px 8px;"), tags$td(meta$name)),
+          tags$tr(tags$td(strong("Created:"), style = "padding: 4px 8px;"), tags$td(meta$created_at)),
+          tags$tr(tags$td(strong("Visibility:"), style = "padding: 4px 8px;"), 
+                  tags$td(if(isTRUE(meta$is_public)) span("Public", class = "label label-success") else span("Private", class = "label label-warning"))),
+          tags$tr(tags$td(strong("Owner:"), style = "padding: 4px 8px;"), tags$td(meta$owner_username %||% "N/A"))
+        ),
+        
+        h5("Sequencing", style = "border-bottom: 1px solid #eee; padding-bottom: 8px; margin: 16px 0 12px 0;"),
+        tags$table(style = "width: 100%; font-size: 13px;",
+          tags$tr(tags$td(strong("Technology:"), style = "padding: 4px 8px; width: 40%;"), tags$td(meta$technology %||% "N/A")),
+          tags$tr(tags$td(strong("Platform:"), style = "padding: 4px 8px;"), tags$td(meta$platform_name %||% "N/A")),
+          tags$tr(tags$td(strong("Platform Type:"), style = "padding: 4px 8px;"), tags$td(meta$platform_type %||% "N/A")),
+          tags$tr(tags$td(strong("Chemistry:"), style = "padding: 4px 8px;"), tags$td(meta$chemistry_name %||% "N/A"))
+        )
+      ),
+      
+      # Right column - Analysis Info
+      column(6,
+        h5("Variant Calling", style = "border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 12px;"),
+        tags$table(style = "width: 100%; font-size: 13px;",
+          tags$tr(tags$td(strong("Caller:"), style = "padding: 4px 8px; width: 40%;"), tags$td(meta$caller %||% "N/A")),
+          tags$tr(tags$td(strong("Version:"), style = "padding: 4px 8px;"), tags$td(meta$caller_version %||% "N/A")),
+          tags$tr(tags$td(strong("Type:"), style = "padding: 4px 8px;"), tags$td(meta$caller_type %||% "N/A")),
+          tags$tr(tags$td(strong("Aligner:"), style = "padding: 4px 8px;"), tags$td(meta$aligner_name %||% "N/A"))
+        ),
+        
+        h5("Truth Set", style = "border-bottom: 1px solid #eee; padding-bottom: 8px; margin: 16px 0 12px 0;"),
+        tags$table(style = "width: 100%; font-size: 13px;",
+          tags$tr(tags$td(strong("Name:"), style = "padding: 4px 8px; width: 40%;"), tags$td(meta$truth_set_name %||% "N/A")),
+          tags$tr(tags$td(strong("Sample:"), style = "padding: 4px 8px;"), tags$td(meta$truth_set_sample %||% "N/A")),
+          tags$tr(tags$td(strong("Reference:"), style = "padding: 4px 8px;"), tags$td(meta$truth_set_reference %||% "N/A"))
+        ),
+        
+        h5("Quality Metrics", style = "border-bottom: 1px solid #eee; padding-bottom: 8px; margin: 16px 0 12px 0;"),
+        tags$table(style = "width: 100%; font-size: 13px;",
+          tags$tr(tags$td(strong("Coverage:"), style = "padding: 4px 8px; width: 40%;"), tags$td(if(!is.na(meta$mean_coverage)) paste0(meta$mean_coverage, "x") else "N/A")),
+          tags$tr(tags$td(strong("Read Length:"), style = "padding: 4px 8px;"), tags$td(meta$read_length %||% "N/A"))
+        )
+      )
+    ),
+        footer = tagList(
+      downloadButton("admin_download_happy", "Download hap.py File", class = "btn-primary"),
+      modalButton("Close")
+    )
+  ))
 })
+
+# Download happy file from admin panel
+output$admin_download_happy <- downloadHandler(
+  filename = function() {
+    exp_id <- session$userData$admin_view_exp_id
+    if (is.null(exp_id)) return("experiment.csv")
+    sprintf("%03d_happy_results.csv", exp_id)
+  },
+  content = function(file) {
+    exp_id <- session$userData$admin_view_exp_id
+    if (is.null(exp_id)) {
+      writeLines("Error: No experiment selected", file)
+      return()
+    }
+    
+    # Import config module to get DATA_FOLDER
+    config <- import("config")
+    data_folder <- config$DATA_FOLDER
+    
+    prefix <- sprintf("%03d_", exp_id)
+    
+    files <- list.files(data_folder, pattern = paste0("^", prefix, ".*\\.csv$"), full.names = TRUE)
+    files <- files[!grepl("^000_", basename(files))]
+    
+    if (length(files) == 0) {
+      writeLines(paste("Happy file not found for experiment", exp_id), file)
+      return()
+    }
+    
+    file.copy(files[1], file)
+  }
+)
 
 # Delete private experiment from admin panel
 observeEvent(input$admin_delete_private_btn, {
