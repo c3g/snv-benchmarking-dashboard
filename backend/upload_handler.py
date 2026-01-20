@@ -158,13 +158,8 @@ def generate_filename(metadata, experiment_id, is_public):
         caller = strip_value(metadata.get('caller_name', '')).lower().replace(" ", "")
         truthset = strip_value(metadata.get('truth_set_name', '')).lower().replace(" ", "")
         
-        # Build filename - 3-digit padding for public, 4-digit for private
-        if is_public:
-            filename = f"{experiment_id:03d}_{sample}_{technology}_{platform}_{caller}_{truthset}.csv"
-        else:
-            filename = f"{experiment_id:04d}_{sample}_{technology}_{platform}_{caller}_{truthset}.csv"
-        
-        return filename
+        # Build filename - 3-digit padding for all public and private records
+        filename = f"{experiment_id:03d}_{sample}_{technology}_{platform}_{caller}_{truthset}.csv"
         
     except Exception as e:
         # Fallback: timestamp-based filename
@@ -360,13 +355,20 @@ def process_upload_direct(temp_file_path, metadata_json_string):
         shutil.copy2(temp_file_copy, final_file_path)
         logger.info(f"File saved to: {final_file_path}")
         
-        # STEP 9: Parse hap.py results into database
+# STEP 9: Parse hap.py results into database
         from happy_parser import parse_happy_csv
         from database import get_db_session
         with get_db_session() as session:
             parse_result = parse_happy_csv(filename, experiment_id, session)
             if not parse_result["success"]:
                 logger.warning(f"Failed to parse hap.py: {parse_result.get('error')}")
+        
+        # STEP 10: Add to CSV backup
+        try:
+            from csv_backup import add_to_backup
+            add_to_backup(experiment_id, db_metadata, filename)
+        except Exception as e:
+            logger.warning(f"CSV backup failed (non-critical): {e}")
         
         # Success
         visibility_label = "public" if is_public else "private"
