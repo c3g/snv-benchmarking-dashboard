@@ -15,13 +15,13 @@ get_technology_choices <- function() {
  tryCatch({
     techs <- db$get_distinct_technologies()
     if (length(techs) == 0) {
-      return(TECHNOLOGY_DISPLAY_NAMES)
+      return(TECHNOLOGY_OPTIONS)
     }
     
     #get display names from constants.r 
     display_names <- sapply(techs, function(t) {
-          if (t %in% names(TECHNOLOGY_DISPLAY_NAMES)) {
-            TECHNOLOGY_DISPLAY_NAMES[[t]]
+          if (t %in% names(TECHNOLOGY_OPTIONS)) {
+            TECHNOLOGY_OPTIONS[[t]]
           } else {
             t
           }
@@ -30,7 +30,7 @@ get_technology_choices <- function() {
     setNames(techs, display_names)
   }, error = function(e) {
     warning(paste("Error fetching technologies:", e$message))
-    CALLER_DISPLAY_NAMES
+    CALLER_OPTIONS
   })
 }
 
@@ -39,12 +39,12 @@ get_caller_choices <- function() {
   tryCatch({
     callers <- db$get_distinct_callers()
     if (length(callers) == 0) {
-      return(CALLER_DISPLAY_NAMES)
+      return(CALLER_OPTIONS)
     }
     # get display names from constants.r
     display_names <- sapply(callers, function(c) {
-          if (c %in% names(CALLER_DISPLAY_NAMES)) {
-            CALLER_DISPLAY_NAMES[[c]]
+          if (c %in% names(CALLER_OPTIONS)) {
+            CALLER_OPTIONS[[c]]
           } else {
             c
           }
@@ -53,7 +53,7 @@ get_caller_choices <- function() {
     setNames(callers, display_names)
   }, error = function(e) {
     warning(paste("Error fetching callers:", e$message))
-    CALLER_DISPLAY_NAMES
+    CALLER_OPTIONS
   })
 }
 
@@ -113,8 +113,8 @@ get_technology_hierarchy <- function(session = NULL) {
   # Transform to expected format
   hierarchy <- list()
   for (tech in names(raw_hierarchy)) {
-    display_name <- if (tech %in% names(TECHNOLOGY_DISPLAY_NAMES)) {
-      TECHNOLOGY_DISPLAY_NAMES[[tech]]
+    display_name <- if (tech %in% names(TECHNOLOGY_OPTIONS)) {
+      TECHNOLOGY_OPTIONS[[tech]]
     } else {
       tech
     }
@@ -136,8 +136,8 @@ get_caller_hierarchy <- function(session = NULL) {
   
   hierarchy <- list()
   for (caller in names(raw_hierarchy)) {
-    display_name <- if (caller %in% names(CALLER_DISPLAY_NAMES)) {
-      CALLER_DISPLAY_NAMES[[caller]]
+    display_name <- if (caller %in% names(CALLER_OPTIONS)) {
+      CALLER_OPTIONS[[caller]]
     } else {
       caller
     }
