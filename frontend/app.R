@@ -421,7 +421,7 @@ ui <- fluidPage(
             ),
             #truthset filter 
             div(class = "truth-set-filter-panel",
-              tags$label("Choose Reference Standards for Comparison:"),
+              tags$label("Choose Truth Set References for Comparison:"),
               selectInput(
                 "truth_set_filter_tab2",
                 label = NULL,
@@ -479,7 +479,7 @@ div(
             ),
             #truthset filter 
             div(class = "truth-set-filter-panel",
-              tags$label("Choose Reference Standards for Comparison:"),
+              tags$label("Choose Truth Set References for Comparison:"),
               selectInput(
                 "truth_set_filter_tab3",
                 label = NULL,
@@ -603,7 +603,7 @@ div(
             ),
             #truthset filter 
             div(class = "truth-set-filter-panel",
-              tags$label("Choose Reference Standards for Comparison:"),
+              tags$label("Choose Truth Set References for Comparison:"),
               selectInput(
                 "truth_set_filter_tab4",
                 label = NULL,
