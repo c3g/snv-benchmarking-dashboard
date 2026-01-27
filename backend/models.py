@@ -29,6 +29,7 @@ class SeqTechName(enum.Enum):
     ONT = "ONT"
     PACBIO = "PACBIO"
     TENX = "10X"
+    ULTIMA = "ULTIMA"
 
 class SeqTechTarget(enum.Enum):
     """Sequencing targets"""
