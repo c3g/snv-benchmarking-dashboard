@@ -150,7 +150,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     data_reactives$comparison_results(numeric(0))
     data_reactives$plot_clicked_id(NULL)
     data_reactives$stratified_triggered(FALSE)
-    data_reactives$active_truth_set_filter("All Truth Sets")
+    data_reactives$active_truth_set_filter("ALL")
     
     # Reset all filter controls
     updateRadioButtons(session, "filter_type", selected = "none")
@@ -161,9 +161,9 @@ setup_observers <- function(input, output, session, data_reactives) {
     session$sendCustomMessage("resetHierarchyCheckboxes", list())
 
     # Reset truth set filters
-    updateSelectInput(session, "truth_set_filter_tab2", selected = "All Truth Sets")
-    updateSelectInput(session, "truth_set_filter_tab3", selected = "All Truth Sets")
-    updateSelectInput(session, "truth_set_filter_tab4", selected = "All Truth Sets")
+    updateSelectInput(session, "truth_set_filter_tab2", selected = "ALL")
+    updateSelectInput(session, "truth_set_filter_tab3", selected = "ALL")
+    updateSelectInput(session, "truth_set_filter_tab4", selected = "ALL")
     
     # Clear table selection
     dataTableProxy('experiments_table') %>% selectRows(NULL)
@@ -483,7 +483,7 @@ setup_observers <- function(input, output, session, data_reactives) {
       enhanced_data <- tryCatch({
         db$get_stratified_performance_by_regions(
           ids_json, 
-          VARIANT_TYPES,
+          VARIANT_TYPE_OPTIONS,
           regions_list
         )
       }, error = function(e) {

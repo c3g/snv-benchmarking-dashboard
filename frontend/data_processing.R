@@ -47,7 +47,7 @@ setup_data_reactives <- function(input, output, session) {
   display_experiment_ids <- reactiveVal(numeric(0))
   
   # Currently active truth set filter
-  active_truth_set_filter <- reactiveVal("All Truth Sets")
+  active_truth_set_filter <- reactiveVal("All")
 
   # Visibility filter mode -- not used 
   # visibility_filter <- reactiveVal("all")  # "all", "public", "mine"
@@ -187,8 +187,8 @@ setup_data_reactives <- function(input, output, session) {
     ids <- performance_experiment_ids()
     truth_set_filter <- active_truth_set_filter() 
     
-    # If "All Truth Sets" selected, return all IDs
-    if (is.null(truth_set_filter) || truth_set_filter == "All Truth Sets") {
+    # If "ALL" selected, return all IDs
+    if (is.null(truth_set_filter) || truth_set_filter == "ALL") {
       return(ids)
     }
     
