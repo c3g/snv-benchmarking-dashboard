@@ -14,105 +14,21 @@ from utils import clean_value, safe_float
 
 logger = logging.getLogger(__name__)
 
+# import all mapping functions from enum_mappings.py
+from enum_mappings import ENUM_MAPPINGS, map_enum, map_boolean  
+
 # ============================================================================
-# ENUM MAPPING
+# NORMALIZATION FOR COMPARISON
 # ============================================================================
 
-ENUM_MAPPINGS = {
-    'technology': {
-        'illumina': SeqTechName.ILLUMINA,
-        'mgi': SeqTechName.MGI,
-        'ont': SeqTechName.ONT,
-        'pacbio': SeqTechName.PACBIO,
-        '10x': SeqTechName.TENX,
-    },
-    'target': {
-        'wgs': SeqTechTarget.WGS,
-        'wes': SeqTechTarget.WES,
-    },
-    'platform_type': {
-        'srs': SeqTechPlatformType.SRS,
-        'lrs': SeqTechPlatformType.LRS,
-        'synthetic': SeqTechPlatformType.SYNTHETIC,
-    },
-    'caller_name': {
-        'deepvariant': CallerName.DEEPVARIANT,
-        'gatk3': CallerName.GATK3,
-        'gatk4': CallerName.GATK4,
-        'clair3': CallerName.CLAIR3,
-        'dragen': CallerName.DRAGEN,
-        'longranger': CallerName.LONGRANGER,
-        'megabolt': CallerName.MEGABOLT,
-        'nanocaller': CallerName.NANOCALLER,
-        'parabrick': CallerName.PARABRICK,
-        'pepper': CallerName.PEPPER,
-    },
-    'caller_type': {
-        'ml': CallerType.ML,
-        'traditional': CallerType.TRADITIONAL,
-    },
-    'truth_set_name': {
-        'giab': TruthSetName.GIAB,
-        'cmrg': TruthSetName.CMRG,
-        't2t': TruthSetName.T2T,
-    },
-    'truth_set_reference': {
-        'grch37': TruthSetReference.GRCH37,
-        'grch38': TruthSetReference.GRCH38,
-    },
-    'truth_set_sample': {
-        'hg001': TruthSetSample.HG001,
-        'hg002': TruthSetSample.HG002,
-        'hg003': TruthSetSample.HG003,
-        'hg004': TruthSetSample.HG004,
-        'hcc1395': TruthSetSample.HCC1395,
-    },
-    'variant_origin': {
-        'germline': VariantOrigin.GERMLINE,
-        'somatic': VariantOrigin.SOMATIC,
-    },
-    'variant_size': {
-        'small': VariantSize.SMALL,
-        'large': VariantSize.LARGE,
-    },
-    'variant_type': {
-        'snp': VariantType.SNP,
-        'indel': VariantType.INDEL,
-        'ins': VariantType.INS,
-        'del': VariantType.DEL,
-        'snp+indel': VariantType.SNPINDEL,
-    },
-    'benchmark_tool_name': {
-        'hap.py': BenchmarkToolName.HAPPY,
-        'vcfdist': BenchmarkToolName.VCFDIST,
-        'truvari': BenchmarkToolName.TRUVARI,
-    }
-}
-
-def map_enum(field_name, value):
-    """Map string values to enum types"""
-    if not value or value == '' or value is None:
-        return None
-    
-    value_clean = str(value).strip().lower()
-    
-    if field_name not in ENUM_MAPPINGS:
-        logger.warning(f"Unknown enum field: {field_name}")
-        return None
-    
-    field_mappings = ENUM_MAPPINGS[field_name]
-    
-    if value_clean not in field_mappings:
-        logger.warning(f"Unknown {field_name} value: '{value}'")
-        return None
-    
-    return field_mappings[value_clean]
-
-def map_boolean(value):
-    """Convert string/bool to boolean"""
-    if isinstance(value, bool):
-        return value
-    return str(value).lower() == 'true'
+def normalize_for_comparison(value):
+    """ 
+    Normalize string for comparison only .
+    to handle case insensitivity and spaces when injesting strings like platform name, aligner name, etc.
+    """
+    if not value:
+        return ''
+    return str(value).strip().lower().replace(' ', '')
 
 # ============================================================================
 # RECORD CREATION
@@ -121,7 +37,8 @@ def map_boolean(value):
 def get_or_create_record(session, model_class, filter_fields, all_fields=None):
     """
     Get existing record or create new one.
-    
+    <<<<< CASE INSENSITIVE for string fields>>>>>
+
     Args:
         session: Database session
         model_class: SQLAlchemy model
@@ -134,8 +51,19 @@ def get_or_create_record(session, model_class, filter_fields, all_fields=None):
     if all_fields is None:
         all_fields = filter_fields
     
-    existing = session.query(model_class).filter_by(**filter_fields).first()
+    query = session.query(model_class)
+    for key, value in filter_fields.items():
+        column = getattr(model_class, key)
+        if isinstance(value, str) and value:
+            # Compare normalized (no spaces, lowercase)
+            # But this requires stored values to also be compared normalized
+            query = query.filter(
+                func.replace(func.lower(column), ' ', '') == normalize_for_comparison(value)
+            )
+        else:
+            query = query.filter(column == value)
     
+    existing = query.first()
     if existing:
         return existing
     
