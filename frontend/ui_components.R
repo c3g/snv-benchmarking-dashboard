@@ -211,7 +211,7 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       
       # Get performance data for this specific experiment
       tryCatch({
-        performance_data <- db$get_experiments_with_performance(exp_id_json, VARIANT_TYPES)
+        performance_data <- db$get_experiments_with_performance(exp_id_json, VARIANT_TYPE_OPTIONS)
         snp_perf <- performance_data %>% filter(variant_type == "SNP")
         indel_perf <- performance_data %>% filter(variant_type == "INDEL")
       }, error = function(e) {
