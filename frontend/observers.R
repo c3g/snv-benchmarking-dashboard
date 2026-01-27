@@ -1546,7 +1546,7 @@ session$userData$admin_view_exp_id <- as.integer(exp_id)
           tags$tr(tags$td(strong("Owner:"), style = "padding: 4px 8px;"), tags$td(meta$owner_username %||% "N/A"))
         ),
         
-        h5("Sequencing", style = "border-bottom: 1px solid #eee; padding-bottom: 8px; margin: 16px 0 12px 0;"),
+        h5("Sequencing Technology", style = "border-bottom: 1px solid #eee; padding-bottom: 8px; margin: 16px 0 12px 0;"),
         tags$table(style = "width: 100%; font-size: 13px;",
           tags$tr(tags$td(strong("Technology:"), style = "padding: 4px 8px; width: 40%;"), tags$td(meta$technology %||% "N/A")),
           tags$tr(tags$td(strong("Platform:"), style = "padding: 4px 8px;"), tags$td(meta$platform_name %||% "N/A")),
