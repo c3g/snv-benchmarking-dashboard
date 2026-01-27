@@ -43,11 +43,26 @@ Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # DATABSE MANAGEMENT FUNCTIONS
 # ============================================================================
 
-# Creates tables from models.py
+
 def create_tables():
-    Base.metadata.drop_all(bind=engine) #---- for dropping all the existing tables and metadata
+    """Create tables if they don't exist."""
     Base.metadata.create_all(bind=engine)
 
+def drop_and_recreate_tables():
+    """DANGEROUS: Drops all data. Only for development/testing."""
+    logger.warning("DROPPING ALL TABLES - THIS DELETES ALL DATA")
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+
+def is_database_populated():
+    """Check if database has any experiments."""
+    try:
+        with get_db_session() as session:
+            count = session.query(Experiment).count()
+            return count > 0
+    except Exception:
+        return False
+    
 # Creates and returns a database session
 @contextmanager
 def get_db_session(): 
