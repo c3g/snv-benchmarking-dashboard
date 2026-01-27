@@ -645,7 +645,7 @@ upload_modal_ui <- function() {
         ),
         column(4,
                selectInput("target", "Target",
-                           choices = c("WGS" = "wgs", "WES" = "wes"),
+                           choices = TARGET_OPTIONS,
                            selected = "wgs")
         )
       ),
@@ -655,14 +655,15 @@ upload_modal_ui <- function() {
       fluidRow(
         column(3,
           selectInput("technology", "Technology*",
-                      choices = c("", "ILLUMINA", "PACBIO", "ONT", "MGI", "10X"))
+                      choices = c("",TECHNOLOGY_OPTIONS))
         ),
         column(3,
                textInput("platform_name", "Platform*")
         ),
         column(3,
                selectInput("platform_type", "Platform Type*",
-                choices = c("", "SRS" = "srs", "LRS" = "lrs", "Synthetic" = "synthetic"))        ),
+                choices = c("", PLATFORM_TYPE_OPTIONS))        
+        ),
         column(3,
                textInput("platform_version", "Platform Version",
                          placeholder = "Optional")
@@ -686,13 +687,11 @@ upload_modal_ui <- function() {
       fluidRow(
         column(3,
           selectInput("caller_name", "Caller*",
-                      choices = c("", "DEEPVARIANT", "CLAIR3", "DRAGEN",
-                                  "GATK3", "GATK4", "LONGRANGER", "MEGABOLT",
-                                  "NANOCALLER", "PARABRICK", "PEPPER"))
+                      choices = c("", CALLER_OPTIONS))
         ),
         column(3,
                selectInput("caller_type", "Caller Type*",
-                           choices = c("","ML" = "ml", "Traditional" = "traditional"))
+                           choices = c("",CALLER_TYPE_OPTIONS))
         ),
         column(3,
                textInput("caller_version", "Caller Version*",
@@ -722,20 +721,20 @@ upload_modal_ui <- function() {
       fluidRow(
         column(3,
                selectInput("truth_set_name", "Truth Set*",
-                           choices = c("", "GIAB" = "giab", "CMRG" = "cmrg", "T2T" = "t2t"))
+                           choices = c("", TRUTH_SET_OPTIONS))
         ),
         column(3,
                selectInput("truth_set_sample", "Sample",
-                           choices = c("HG001" = "hg001", "HG002" = "hg002", "HG003" = "hg003", "HG004" = "hg004"),
-                           selected = "hg002")
+                           choices = SAMPLE_OPTIONS,
+                           selected = "HG002")
         ),
         column(3,
                textInput("truth_set_version", "Truth Set Version")
         ),
         column(3,
                selectInput("truth_set_reference", "Reference",
-                           choices = c("GRCh37" = "grch37", "GRCh38" = "grch38"),
-                           selected = "grch38")
+                           choices = REFERENCE_OPTIONS,
+                           selected = "GRCH38")
         )
       ),
       
@@ -744,18 +743,18 @@ upload_modal_ui <- function() {
       fluidRow(
         column(3,
                selectInput("variant_type", "Variant Type",
-                           choices = c("SNP+INDEL" = "snp+indel", "SNP" = "snp", "INDEL" = "indel"),
-                           selected = "snp+indel")
+                           choices = VARIANT_TYPE_OPTIONS,
+                           selected = "SNPINDEL")
         ),
         column(3,
                selectInput("variant_size", "Variant Size",
-                           choices = c("Small" = "small", "Large" = "large"),
-                           selected = "small")
+                           choices = c(VARIANT_SIZE_OPTIONS),
+                           selected = "SMALL")
         ),
         column(3,
                selectInput("variant_origin", "Variant Origin",
-                           choices = c("Germline" = "germline", "Somatic" = "somatic"),
-                           selected = "germline")
+                           choices = VARIANT_ORIGIN_OPTIONS,
+                           selected = "GERMLINE")
         ),
         column(3,
                selectInput("is_phased", "Phased",
@@ -769,8 +768,8 @@ upload_modal_ui <- function() {
       fluidRow(
         column(6,
                selectInput("benchmark_tool_name", "Benchmark Tool",
-                           choices = c("hap.py" = "hap.py", "vcfdist" = "vcfdist", "truvari" = "truvari"),
-                           selected = "hap.py")
+                           choices = BECHMARKING_TOOL_OPTIONS,
+                           selected = "HAPPY")
         ),
         column(6,
                textInput("benchmark_tool_version", "Tool Version")
