@@ -87,6 +87,7 @@ tryCatch({
   db <<- import("db_interface")
   upload_handler <<- import("upload_handler")
   file_manager <<- import("file_manager") 
+  enums <<- import("enum_mappings") # enum lists
 }, error = function(e) {
   message("Python backend error: ", e$message) 
   stop("Cannot connect to Python backend.")
