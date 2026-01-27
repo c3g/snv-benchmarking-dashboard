@@ -34,7 +34,7 @@ from sqlalchemy import func
 logger = logging.getLogger(__name__)
 
 # ============================================================================
-# CONSTANTS
+# VALIATION CONSTANTS
 # ============================================================================
 
 # Required fields for upload validation
@@ -46,13 +46,8 @@ REQUIRED_METADATA = [
 # Required columns in hap.py CSV
 REQUIRED_COLS = ['Type', 'Subtype', 'Subset', 'METRIC.Recall', 'METRIC.Precision', 'METRIC.F1_Score']
 
-# Valid enum values
-VALID_TECHNOLOGIES = ['ILLUMINA', 'PACBIO', 'ONT', 'MGI', '10X']
-VALID_CALLERS = [
-    'DEEPVARIANT', 'CLAIR3', 'DRAGEN', 'GATK3', 'GATK4',
-    'LONGRANGER', 'MEGABOLT', 'NANOCALLER', 'PARABRICK', 'PEPPER'
-]
-
+# import enum mappings for validation
+from enum_mappings import VALID_TECHNOLOGIES, VALID_CALLERS 
 # ============================================================================
 # FILE VALIDATION
 # ============================================================================
