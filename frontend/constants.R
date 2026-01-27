@@ -28,21 +28,31 @@ FILTER_TYPES <- list(
   "Variant Caller" = "caller"
 )
 
-# Available options for dropdowns
-TECHNOLOGY_OPTIONS <- c("ILLUMINA", "PACBIO", "ONT", "MGI", "10X")
-CALLER_OPTIONS <- c("DEEPVARIANT", "CLAIR3", "DRAGEN", 
-                    "GATK3", "GATK4", "LONGRANGER", "MEGABOLT", 
-                    "NANOCALLER", "PARABRICK", "PEPPER")
-VARIANT_TYPES <- c("SNP", "INDEL")
-TRUTH_SET_OPTIONS <- c("All Truth Sets", "T2T", "GIAB", "CMRG")
+# Available options for dropdowns - uses enum_mappings.py
 
+TECHNOLOGY_OPTIONS <- enums$VALID_TECHNOLOGIES
+CALLER_OPTIONS <-  enums$VALID_CALLERS
+TRUTH_SET_OPTIONS <-  enums$VALID_TRUTH_SETS
+TARGET_OPTIONS <- enums$VALID_TARGETS
+PLATFORM_TYPE_OPTIONS <- enums$VALID_PLATFORM_TYPES
+CALLER_TYPE_OPTIONS <- enums$VALID_CALLER_TYPES
+REFERENCE_OPTIONS <- enums$VALID_REFERENCES
+SAMPLE_OPTIONS <- enums$VALID_SAMPLES
+VARIANT_TYPE_OPTIONS <- enums$VALID_VARIANT_TYPES
+VARIANT_SIZE_OPTIONS <- enums$VALID_VARIANT_SIZES
+VARIANT_ORIGIN_OPTIONS <- enums$VALID_VARIANT_ORIGINS
+BECHMARKING_TOOL_OPTIONS <- enums$VALID_BENCHMARK_TOOLS
+
+'
+<<<< commented out for now as we only use uppercase versions for now>>>>
 # Display names for UI dropdowns
 TECHNOLOGY_DISPLAY_NAMES <- c(
   "ILLUMINA" = "Illumina",
   "PACBIO" = "PacBio",
   "ONT" = "ONT",
   "MGI" = "MGI",
-  "10X" = "10X"
+  "10X" = "10X",
+  "ULTIMA" = "Ultima"
 )
 
 CALLER_DISPLAY_NAMES <- c(
@@ -57,7 +67,7 @@ CALLER_DISPLAY_NAMES <- c(
   "NANOCALLER" = "NanoCaller",
   "PARABRICK" = "Parabrick",
   "PEPPER" = "Pepper"
-)
+)'
 
 # ============================================================================
 # CSS STYLING CONSTANTS
