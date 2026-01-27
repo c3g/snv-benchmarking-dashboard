@@ -28,6 +28,10 @@ logger = logging.getLogger(__name__)
 # Keep original case for display columns (not converted to lowercase)
 DISPLAY_COLUMNS = ['name', 'description', 'platform_name', 'chemistry_name','caller_model','aligner_name','file_name']
 
+
+# import all mapping functions from enum_mappings.py
+from enum_mappings import ENUM_MAPPINGS, map_enum, map_boolean  
+
 # ============================================================================
 # CSV LOADING AND VALIDATION
 # ============================================================================
@@ -84,109 +88,6 @@ def clean_dataframe_strings(df):
     
     return cleaned_df
 
-# ============================================================================
-# ENUM MAPPING
-# ============================================================================
-
-# Dictionary for converting cleaned strings to enums
-ENUM_MAPPINGS = {
-    'technology': {
-        'illumina': SeqTechName.ILLUMINA,
-        'mgi': SeqTechName.MGI,
-        'ont': SeqTechName.ONT,
-        'pacbio': SeqTechName.PACBIO,
-        '10x': SeqTechName.TENX,             
-        '10x genomics': SeqTechName.TENX,     
-    },
-    'target': {
-        'wgs': SeqTechTarget.WGS,
-        'wes': SeqTechTarget.WES,
-    },
-    'platform_type': {
-        'srs': SeqTechPlatformType.SRS,
-        'lrs': SeqTechPlatformType.LRS,
-        'synthetic': SeqTechPlatformType.SYNTHETIC, 
-    },
-    'caller_name': {
-        'deepvariant': CallerName.DEEPVARIANT,
-        'gatk3': CallerName.GATK3,     
-        'gatk4': CallerName.GATK4,         
-        'clair3': CallerName.CLAIR3,
-        'dragen': CallerName.DRAGEN,
-        'longranger': CallerName.LONGRANGER, 
-        'megabolt': CallerName.MEGABOLT,     
-        'nanocaller': CallerName.NANOCALLER, 
-        'parabrick': CallerName.PARABRICK,     
-        'pepper': CallerName.PEPPER,          
-    },
-    'caller_type': {
-        'ml': CallerType.ML,
-        'traditional': CallerType.TRADITIONAL,
-    },
-    'truth_set_name': {
-        'giab': TruthSetName.GIAB,
-        'cmrg': TruthSetName.CMRG,
-        't2t': TruthSetName.T2T,
-    },
-    'truth_set_reference': {
-        'grch37': TruthSetReference.GRCH37,
-        'grch38': TruthSetReference.GRCH38,
-    },
-    'truth_set_sample': {
-        'hg001': TruthSetSample.HG001,
-        'hg002': TruthSetSample.HG002,
-        'hg003': TruthSetSample.HG003,
-        'hg004': TruthSetSample.HG004,
-        'hcc1395': TruthSetSample.HCC1395,
-    },
-    'variant_origin': {
-        'germline': VariantOrigin.GERMLINE,
-        'somatic': VariantOrigin.SOMATIC,
-    },
-    'variant_size': {
-        'small': VariantSize.SMALL,
-        'large': VariantSize.LARGE,
-    },
-    'variant_type': {
-        'snp': VariantType.SNP,
-        'indel': VariantType.INDEL,
-        'ins': VariantType.INS,
-        'del': VariantType.DEL,
-        'snp+indel': VariantType.SNPINDEL,
-    },
-    'benchmark_tool_name': {
-        'hap.py': BenchmarkToolName.HAPPY,
-        'vcfdist': BenchmarkToolName.VCFDIST,
-        'truvari': BenchmarkToolName.TRUVARI,
-    }
-}
-
-def map_enum(field_name, value):
-    """Map string values to enum types with case-insensitive matching"""
-    
-    if pd.isna(value) or value == '' or value is None:
-        return None
-    
-    # Clean the value
-    value_clean = str(value).strip().lower()
-    
-    # Use the ENUM_MAPPINGS dictionary that already exists
-    if field_name not in ENUM_MAPPINGS:
-        logger.warning(f"Unknown enum field: {field_name}")
-        return None
-    
-    field_mappings = ENUM_MAPPINGS[field_name]
-    
-    if value_clean not in field_mappings:
-        logger.warning(f"Unknown {field_name} value: '{value}' (cleaned: '{value_clean}')")
-        logger.info(f"Valid options: {list(field_mappings.keys())}")
-        return None
-    
-    return field_mappings[value_clean]
-
-def map_boolean(value):
-    """Convert string to boolean"""
-    return clean_value(value) == 'true'
 
 # ============================================================================
 # RECORD CREATION FUNCTIONS
