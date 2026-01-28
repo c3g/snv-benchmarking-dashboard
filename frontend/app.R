@@ -425,7 +425,7 @@ ui <- fluidPage(
               selectInput(
                 "truth_set_filter_tab2",
                 label = NULL,
-                choices = TRUTH_SET_OPTIONS,
+                choices = TRUTH_SET_FILTER_OPTIONS,
                 selected = " ALL",
                 width = "100%"
               ),
@@ -483,7 +483,7 @@ div(
               selectInput(
                 "truth_set_filter_tab3",
                 label = NULL,
-                choices = TRUTH_SET_OPTIONS,
+                choices = TRUTH_SET_FILTER_OPTIONS,
                 selected = "ALL",
                 width = "100%"
               ),
@@ -607,7 +607,7 @@ div(
               selectInput(
                 "truth_set_filter_tab4",
                 label = NULL,
-                choices = TRUTH_SET_OPTIONS,
+                choices = TRUTH_SET_FILTER_OPTIONS,
                 selected = "ALL",
                 width = "100%"
               ),
