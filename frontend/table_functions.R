@@ -187,6 +187,7 @@ create_delete_experiments_table <- function(data) {
       pageLength = 20,
       scrollX = TRUE,
       dom = 'frtip',
+      stateSave = FALSE, #prevents browser caching issues
       columnDefs = list(
         list(targets = "_all", className = "dt-left")
       )
@@ -429,7 +430,11 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
   # DELETE EXPERIMENTS TABLE (MODAL)
   # ====================================================================
   
-  output$delete_experiments_table <- DT::renderDataTable({
+output$delete_experiments_table <- DT::renderDataTable({
+    # Force refresh when modal opens (prevents browser caching)
+    data_reactives$delete_modal_trigger()
+    data_reactives$data_refresh_trigger()
+    
     # Get all experiments for deletion selection
     all_experiments <- tryCatch({
       user_info <- get_user_info(session)
