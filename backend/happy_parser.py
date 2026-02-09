@@ -77,10 +77,14 @@ def parse_happy_csv(happy_file_name, experiment_id, session):
         session: Active SQLAlchemy session for database operations
         
     Returns:
-        dict: Success/failure status with message
-            {"success": True, "message": "Added X results..."}
-            {"success": False, "error": "File not found"}
-            {"success": True, "message": "Results already exist", "skipped": True}
+        dict: Result with keys:
+            - success (bool)
+            - message (str)
+            - skipped (bool, optional): True if results already existed
+            - results_added (int, optional): Count of benchmark results added
+            - overall_added (int, optional): Count of overall results added  
+            - regions_skipped (int, optional): Count of unknown regions skipped
+            - skipped_regions (list, optional): Names of unknown regions
     """
     
     happy_file_path = get_data_file_path(happy_file_name)
@@ -123,13 +127,14 @@ def parse_happy_csv(happy_file_name, experiment_id, session):
        
         results_added = 0
         overall_results_added = 0
+        skipped_regions = []
 
         # Process each row and create database records
         for _, row in filtered_df.iterrows():
             # Convert hap.py region string to enum
             region_enum = RegionType.from_string(row['Subset'])
             if region_enum is None:
-                logger.warning(f"Unknown region '{row['Subset']}' - skipping")
+                skipped_regions.append(row['Subset'])
                 continue
            
             # Create BenchmarkResult for all regions
@@ -209,9 +214,25 @@ def parse_happy_csv(happy_file_name, experiment_id, session):
                 session.add(overall_result)
                 overall_results_added += 1
 
-        success_message = f"Added {results_added} results and {overall_results_added} overall results for experiment {experiment_id}"
-        logger.debug(success_message)
-        return {"success": True, "message": success_message}
+        # Log summary
+        if skipped_regions:
+            unique_skipped = list(set(skipped_regions))
+            logger.warning(f"Skipped {len(skipped_regions)} rows with unknown regions: {unique_skipped}")
+        
+        success_message = f"Added {results_added} results and {overall_results_added} overall results"
+        if skipped_regions:
+            success_message += f" ({len(skipped_regions)} rows skipped)"
+        
+        logger.info(f"Experiment {experiment_id}: {success_message}")
+        
+        return {
+            "success": True, 
+            "message": success_message,
+            "results_added": results_added,
+            "overall_added": overall_results_added,
+            "regions_skipped": len(skipped_regions),
+            "skipped_regions": list(set(skipped_regions))
+        }
        
     except Exception as e:
         error_message = f"Error parsing {happy_file_path}: {e}"
