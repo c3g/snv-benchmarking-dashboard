@@ -291,16 +291,16 @@ ui <- fluidPage(
                 style = "font-size: 13px; padding: 6px 12px;"
               )
             ),
-            # Upload button - ONLY VISIBLE TO AUTHENTICATED USERS _ FOR NOW
-            conditionalPanel(
-              condition = "output.user_authenticated",
-              actionButton(
-                "show_upload_modal", 
-                label = tagList(icon("upload"), "Upload Dataset"),
-                class = "btn-primary btn-sm",
-                style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px; border-radius: 3px;"
-              )
-            ),
+            # Upload button - COMMENTED OUT UNTIL THE COMANAGE USER ROLES ARE FIXED
+            #conditionalPanel(
+            #  condition = "output.user_authenticated",
+            #  actionButton(
+            #    "show_upload_modal", 
+            #    label = tagList(icon("upload"), "Upload Dataset"),
+            #    class = "btn-primary btn-sm",
+            #    style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px; border-radius: 3px;"
+            #  )
+            #),
             
             # Download button - ALWAYS VISIBLE (anonymous users can download)
             downloadButton(
