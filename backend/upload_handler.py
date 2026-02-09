@@ -270,6 +270,8 @@ def process_upload_direct(temp_file_path, metadata_json_string):
     5. Create experiment in database
     6. Parse and load hap.py results
     
+    On failure after experiment creation, performs compensating delete.
+    
     Args:
         temp_file_path: Path to uploaded temp file
         metadata_json_string: JSON metadata from form
@@ -278,6 +280,8 @@ def process_upload_direct(temp_file_path, metadata_json_string):
         dict: {"success": bool, "message": str, "filename": str, "experiment_id": int}
     """
     temp_work_dir = None
+    experiment_id = None
+    final_file_path = None
     
     try:
         logger.info("Starting direct database upload...")
@@ -307,19 +311,14 @@ def process_upload_direct(temp_file_path, metadata_json_string):
         # Validate owner_id for private uploads
         if not is_public and not db_metadata.get('owner_id'):
             logger.warning("Private upload without owner_id - this shouldn't happen")
-            # Could reject here, but let's allow it with just username tracking
         
         logger.info(f"Upload visibility: {'PUBLIC' if is_public else 'PRIVATE'}")
         
-        # STEP 4: database auto-generates ID
-        experiment_id = None  # assigned by database
-        logger.info(f"Visibility: {'PUBLIC' if is_public else 'PRIVATE'} (ID will be auto-assigned)")
-        
-        # STEP 5: Setup working directory
+        # STEP 4: Setup working directory
         temp_work_dir = tempfile.mkdtemp(prefix="upload_")
         logger.debug(f"Working in {temp_work_dir}")
         
-        # STEP 6: Copy file temporarily (filename generated after DB assigns ID)
+        # STEP 5: Copy file temporarily (filename generated after DB assigns ID)
         temp_filename = f"temp_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
         temp_file_copy = os.path.join(temp_work_dir, temp_filename)
         shutil.copy2(temp_file_path, temp_file_copy)
@@ -327,11 +326,7 @@ def process_upload_direct(temp_file_path, metadata_json_string):
         
         # STEP 7: Create experiment in database (ID auto-assigned)
         logger.debug("Creating experiment in database...")
-        db_result = create_experiment_direct(
-            metadata=db_metadata,
-            experiment_id=None,  # Let DB auto-generate
-            filename=None  # Will add file after we get ID
-        )
+        db_result = create_experiment_direct(metadata=db_metadata)
         
         if not db_result["success"]:
             return {
@@ -351,13 +346,20 @@ def process_upload_direct(temp_file_path, metadata_json_string):
         shutil.copy2(temp_file_copy, final_file_path)
         logger.info(f"File saved to: {final_file_path}")
         
-# STEP 9: Parse hap.py results into database
+        # STEP 9: Parse hap.py results into database
         from happy_parser import parse_happy_csv
         from database import get_db_session
         with get_db_session() as session:
             parse_result = parse_happy_csv(filename, experiment_id, session)
-            if not parse_result["success"]:
-                logger.warning(f"Failed to parse hap.py: {parse_result.get('error')}")
+            if not parse_result["success"] and not parse_result.get("skipped"):
+                # Compensating delete - rollback experiment creation
+                logger.error(f"Parse failed, rolling back experiment {experiment_id}")
+                _rollback_experiment(experiment_id, final_file_path)
+                return {
+                    "success": False,
+                    "message": f"Failed to parse hap.py results: {parse_result.get('error')}",
+                    "filename": None
+                }
         
         # STEP 10: Add to CSV backup
         try:
@@ -384,6 +386,12 @@ def process_upload_direct(temp_file_path, metadata_json_string):
         logger.error(error_msg)
         import traceback
         logger.error(traceback.format_exc())
+        
+        # Rollback if experiment was created before failure
+        if experiment_id:
+            logger.info(f"Rolling back experiment {experiment_id} due to exception")
+            _rollback_experiment(experiment_id, final_file_path)
+        
         return {"success": False, "message": error_msg, "filename": None}
         
     finally:
@@ -395,6 +403,48 @@ def process_upload_direct(temp_file_path, metadata_json_string):
             except:
                 logger.warning("Could not cleanup working directory")
 
+def _rollback_experiment(experiment_id, file_path=None, session=None):
+    """
+    Compensating delete when upload partially fails.
+    Removes experiment from DB and deletes saved file.
+    
+    Args:
+        experiment_id: ID of experiment to rollback
+        file_path: Path to saved file (will be deleted)
+        session: SQLAlchemy session (if None, creates own session)
+    """
+    from database import Session
+    from models import Experiment, BenchmarkResult, OverallResult
+    
+    # Database cleanup
+    owns_session = session is None
+    if owns_session:
+        session = Session()
+    
+    try:
+        session.query(BenchmarkResult).filter_by(experiment_id=experiment_id).delete()
+        session.query(OverallResult).filter_by(experiment_id=experiment_id).delete()
+        session.query(Experiment).filter_by(id=experiment_id).delete()
+        
+        if owns_session:
+            session.commit()
+            
+        logger.info(f"Rolled back experiment {experiment_id} from database")
+    except Exception as e:
+        logger.error(f"Failed to rollback experiment {experiment_id}: {e}")
+        if owns_session:
+            session.rollback()
+    finally:
+        if owns_session:
+            session.close()
+    
+    # File cleanup (always runs, independent of session)
+    if file_path and os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+            logger.info(f"Removed file: {file_path}")
+        except Exception as e:
+            logger.warning(f"Failed to remove file {file_path}: {e}")
 # ============================================================================
 # R/PYTHON INTERFACE
 # ============================================================================
