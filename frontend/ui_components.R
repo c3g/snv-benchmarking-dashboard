@@ -606,6 +606,7 @@ upload_modal_ui <- function() {
         tags$li(code("Type"), " - Variant type (SNP/INDEL)"),
         tags$li(code("Subtype"), " - Variant subtype"),
         tags$li(code("Subset"), " - Genomic region"),
+        tags$li(code("Filter"), " - Filter status (e.g., PASS)"),
         tags$li(code("METRIC.Recall"), " - Recall metric"),
         tags$li(code("METRIC.Precision"), " - Precision metric"),
         tags$li(code("METRIC.F1_Score"), " - F1 score metric")
