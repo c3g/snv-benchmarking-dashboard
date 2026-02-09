@@ -182,13 +182,12 @@ create_delete_experiments_table <- function(data) {
   # Create DataTable with selection enabled
   dt <- DT::datatable(
     delete_data,
-    selection = list(mode = 'multiple'),
+    selection = list(mode = 'multiple', target = 'row'),
     options = list(
       pageLength = 20,
       scrollX = TRUE,
       dom = 'frtip',
       columnDefs = list(
-        list(targets = 0, className = "dt-center", width = "50px"),
         list(targets = "_all", className = "dt-left")
       )
     ),
@@ -441,8 +440,11 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
       data.frame()
     })
     
+    # Store data for use in delete confirmation
+    session$userData$delete_table_data <- all_experiments
+    
     create_delete_experiments_table(all_experiments)
-  }, server = FALSE)
+  }, server = TRUE)  # Server-side for reliable selection
   outputOptions(output, "delete_experiments_table", suspendWhenHidden = FALSE)
   
 }
