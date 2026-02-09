@@ -74,7 +74,7 @@ setup_observers <- function(input, output, session, data_reactives) {
       caller_count <- if(has_caller_selection) length(names(caller_selection)) else 0
       
       label_text <- if (has_tech_selection && has_caller_selection) {
-        paste0("Compare (", tech_count, " tech × ", caller_count, " caller)")
+        paste0("Compare (", tech_count, " tech x ", caller_count, " caller)")
       } else if (has_tech_selection) {
         paste0("Compare (", tech_count, " tech selected)")
       } else {
@@ -703,7 +703,7 @@ setup_observers <- function(input, output, session, data_reactives) {
       
       # Call Python upload handler
       result <- tryCatch({
-        upload_handler$upload_experiment_v2(
+        upload_handler$upload_experiment(
           file_path = input$upload_file$datapath,
           metadata_json = metadata_json,
           username = user_info$username,
@@ -797,20 +797,20 @@ observeEvent(input$confirm_delete_selected, {
     return()
   }
   
-  all_experiments <- tryCatch({
-    user_info <- get_user_info(session)
-    user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
-    is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
-    db$get_experiments_overview(NULL, NULL, user_id, is_admin_user)
-  }, error = function(e) {
-    showNotification("Unable to load experiments", type = "error", duration = 4)
-    return(data.frame())
-  })
+  # Use stored table data to ensure row indices match what user sees
+  all_experiments <- session$userData$delete_table_data
   
-  if (nrow(all_experiments) == 0) return()
+  if (is.null(all_experiments) || nrow(all_experiments) == 0) {
+    showNotification("Table data not available. Please reopen the delete modal.", type = "error", duration = 4)
+    return()
+  }
   
-  selected_ids <- all_experiments$id[selected_rows]
+  selected_ids <- as.integer(all_experiments$id[selected_rows])
   session$userData$selected_delete_ids <- selected_ids
+  
+  # Log for debugging
+  message(paste("Delete modal: selected rows =", paste(selected_rows, collapse=","), 
+                "-> IDs =", paste(selected_ids, collapse=",")))
   
   showModal(modalDialog(
     title = "Final Confirmation",
@@ -869,8 +869,9 @@ observeEvent(input$final_confirm_delete, {
   sorted_ids <- sort(selected_ids, decreasing = TRUE)
   
   for (exp_id in sorted_ids) {
+    # Ensure experiment_id is passed as integer
     result <- delete_handler$delete_experiment(
-      exp_id, 
+      experiment_id = as.integer(exp_id), 
       username = user_info$username,
       is_admin = user_info$is_admin
     )
@@ -906,12 +907,17 @@ observeEvent(input$final_confirm_delete, {
   
   toggleModal(session, "delete_modal", toggle = "close")
   data_reactives$data_refresh_trigger(data_reactives$data_refresh_trigger() + 1)
+  # Clean up stored data
   session$userData$selected_delete_ids <- NULL
+  session$userData$delete_table_data <- NULL
 })
 
 # Handle cancel delete
 observeEvent(input$cancel_delete, {
   toggleModal(session, "delete_modal", toggle = "close")
+  # Clean up stored data
+  session$userData$delete_table_data <- NULL
+  session$userData$selected_delete_ids <- NULL
 })
 # ============================================================================
 # FILE BROWSER OBSERVERS

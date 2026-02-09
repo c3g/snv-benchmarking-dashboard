@@ -449,7 +449,7 @@ def _rollback_experiment(experiment_id, file_path=None, session=None):
 # R/PYTHON INTERFACE
 # ============================================================================
 
-def upload_experiment_v2(file_path, metadata_json, username=None, is_admin=False):
+def upload_experiment(file_path, metadata_json, username=None, is_admin=False):
     """
     Upload experiment to database.
     
