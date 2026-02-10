@@ -153,9 +153,9 @@ ui <- fluidPage(
                   actionLink("logo_home_btn",
                     div(style = "display: flex; align-items: center; gap: 12px; cursor: pointer;",
                         # Logo
-                        img(src = "C3G_Logo.png", 
+                        img(src = "C3G_Logo_New.png", 
                             alt = "Reset Dashboard", 
-                            style = "height: 50px; width: 55px; object-fit: contain;"),
+                            style = "height: 65px; width: 65px; object-fit: contain;"),
                         # Title
                         h4("SNV Benchmarking Dashboard", 
                           style = "margin: 0; font-size: 1.25em; font-weight: 600; line-height: 1.2; color: white;")
