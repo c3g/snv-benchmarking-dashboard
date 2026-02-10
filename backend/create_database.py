@@ -21,11 +21,11 @@ def check_existing_database():
         return {"exists": False, "has_data": False}
     
     try:
-        from database import get_db_session
-        from models import Experiment
-        
-        with get_db_session() as session:
-            count = session.query(Experiment).count()
+        from sqlalchemy import text
+        engine = get_engine()
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT COUNT(*) FROM experiments"))
+            count = result.scalar() # add missing columns to experiments table
             return {"exists": True, "has_data": count > 0, "experiment_count": count}
     except Exception as e:
         logger.warning(f"Could not check existing data: {e}")

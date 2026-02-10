@@ -67,9 +67,32 @@ def get_engine():
 # INITIALIZATION & TESTING
 # ============================================================================
 
+def migrate_database():
+    """Add missing columns to existing tables."""
+    migrations = [
+        # experiments table - new columns for public/private functionality
+        ("experiments", "is_public", "BOOLEAN DEFAULT 1"),
+        ("experiments", "created_by_username", "VARCHAR(100)"),
+        ("experiments", "owner_id", "INTEGER REFERENCES users(id)"),
+    ]
+    
+    with engine.connect() as conn:
+        for table, column, col_type in migrations:
+            try:
+                conn.execute(text(f"SELECT {column} FROM {table} LIMIT 1"))
+            except Exception:
+                try:
+                    conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"))
+                    conn.commit()
+                    logger.info(f"Added column {column} to {table}")
+                except Exception as e:
+                    logger.warning(f"Could not add {column} to {table}: {e}")
+
+
 def create_tables():
-    """Create tables if they don't exist. Safe to call multiple times."""
+    """Create tables if they don't exist, then run migrations."""
     Base.metadata.create_all(bind=engine)
+    migrate_database()
 
 def test_connection():
     """Test database connectivity."""
