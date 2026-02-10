@@ -210,17 +210,20 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
   output$experiments_table <- DT::renderDataTable({
     df <- data_reactives$experiments_data()
     
-    if (nrow(df) == 0) {
+    # Handle NULL or empty dataframes
+    if (is.null(df) || !is.data.frame(df) || nrow(df) == 0) {
       return(DT::datatable(data.frame(Message = "No experiments found")))
     }
     
-    # Add visibility indicator column
-    if ("is_public" %in% colnames(df)) {
-      df$Visibility <- ifelse(
-        df$is_public == TRUE | is.na(df$is_public),
-        "Public",
-        "Private"
-      )
+    # Add visibility indicator column with safe NULL/NA handling
+    if ("is_public" %in% colnames(df) && nrow(df) > 0) {
+      df$Visibility <- sapply(df$is_public, function(x) {
+        if (is.null(x) || length(x) == 0 || is.na(x) || isTRUE(x)) {
+          "Public"
+        } else {
+          "Private"
+        }
+      })
     } else {
       df$Visibility <- "Public"
     }
@@ -439,7 +442,7 @@ output$delete_experiments_table <- DT::renderDataTable({
     all_experiments <- tryCatch({
       user_info <- get_user_info(session)
       user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
-      is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+      is_admin_user <- if (!is.null(user_info)) isTRUE(user_info$is_admin) else FALSE
       db$get_experiments_overview(NULL, NULL, user_id, is_admin_user)
     }, error = function(e) {
       data.frame()

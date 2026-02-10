@@ -19,10 +19,11 @@ Main components:
 
 # Filter experiments by visibility mode (applied after database query)
 apply_visibility_filter_local <- function(df, filter_mode, user_id) {
-  if (nrow(df) == 0) return(df)
+  if (is.null(df) || nrow(df) == 0) return(if(is.null(df)) data.frame() else df)
   
+  # Handle NA values in is_public column - treat NA as public (legacy data)
   switch(filter_mode,
-    "public" = df %>% filter(is_public == TRUE | is.na(owner_id)),
+    "public" = df %>% filter(is_public == TRUE | is.na(is_public) | is.na(owner_id)),
     "mine" = if (!is.null(user_id)) df %>% filter(owner_id == user_id & is_public == FALSE) else df[0,],
     df  # "all" returns unchanged
   )
@@ -103,14 +104,19 @@ setup_data_reactives <- function(input, output, session) {
       # Get user context for visibility filtering
       user_info <- get_user_info(session)
       user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
-      is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+      is_admin_user <- if (!is.null(user_info)) isTRUE(user_info$is_admin) else FALSE
       
       if (input$filter_type == "tech") {
-        return(db$get_experiments_by_technology(input$filter_technology, user_id, is_admin_user))
+        result <- db$get_experiments_by_technology(input$filter_technology, user_id, is_admin_user)
+        if (is.null(result) || length(result) == 0) return(numeric(0))
+        return(result)
       } else if (input$filter_type == "caller") {
-        return(db$get_experiments_by_caller(input$filter_caller, user_id, is_admin_user))
+        result <- db$get_experiments_by_caller(input$filter_caller, user_id, is_admin_user)
+        if (is.null(result) || length(result) == 0) return(numeric(0))
+        return(result)
       } else {
         overview <- db$get_experiments_overview(NULL, NULL, user_id, is_admin_user)
+        if (is.null(overview) || nrow(overview) == 0) return(numeric(0))
         return(overview$id)
       }
     }, error = function(e) {
@@ -126,43 +132,51 @@ setup_data_reactives <- function(input, output, session) {
     data_refresh_trigger()
     input$user_authenticated
 
-    # Get user context
-    user_info <- get_user_info(session)
-    user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
-    is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
-    
-    # Get visibility filter (default to "all" if not set)
-    vis_filter <- if (!is.null(input$visibility_filter)) input$visibility_filter else "all"
+    tryCatch({
+      # Get user context (use isTRUE to safely handle NA values)
+      user_info <- get_user_info(session)
+      user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+      is_admin_user <- if (!is.null(user_info)) isTRUE(user_info$is_admin) else FALSE
+      
+      # Get visibility filter (default to "all" if not set)
+      vis_filter <- if (!is.null(input$visibility_filter)) input$visibility_filter else "all"
 
-    # Comparison mode - show comparison results
-    if (comparison_submitted() && length(comparison_results()) > 0) {
-      exp_ids_json <- json_param(comparison_results())
-      df <- db$get_experiments_overview(NULL, exp_ids_json, user_id, is_admin_user)
-      return(apply_visibility_filter_local(df, vis_filter, user_id))
-    }
-    
-    # Manual selection mode
-    if (current_mode() == "manual_selection") {
+      # Comparison mode - show comparison results
+      if (comparison_submitted() && length(comparison_results()) > 0) {
+        exp_ids_json <- json_param(comparison_results())
+        df <- db$get_experiments_overview(NULL, exp_ids_json, user_id, is_admin_user)
+        if (is.null(df) || !is.data.frame(df)) return(data.frame())
+        return(apply_visibility_filter_local(df, vis_filter, user_id))
+      }
+      
+      # Manual selection mode
+      if (current_mode() == "manual_selection") {
+        filters <- NULL
+        if (input$filter_type == "tech") {
+          filters <- list(technology = input$filter_technology)
+        } else if (input$filter_type == "caller") {
+          filters <- list(caller = input$filter_caller)
+        }
+        df <- db$get_experiments_overview(filters, NULL, user_id, is_admin_user)
+        if (is.null(df) || !is.data.frame(df)) return(data.frame())
+        return(apply_visibility_filter_local(df, vis_filter, user_id))
+      }
+      
+      # Standard filter mode
       filters <- NULL
       if (input$filter_type == "tech") {
         filters <- list(technology = input$filter_technology)
       } else if (input$filter_type == "caller") {
         filters <- list(caller = input$filter_caller)
       }
+      
       df <- db$get_experiments_overview(filters, NULL, user_id, is_admin_user)
+      if (is.null(df) || !is.data.frame(df)) return(data.frame())
       return(apply_visibility_filter_local(df, vis_filter, user_id))
-    }
-    
-    # Standard filter mode
-    filters <- NULL
-    if (input$filter_type == "tech") {
-      filters <- list(technology = input$filter_technology)
-    } else if (input$filter_type == "caller") {
-      filters <- list(caller = input$filter_caller)
-    }
-    
-    df <- db$get_experiments_overview(filters, NULL, user_id, is_admin_user)
-    return(apply_visibility_filter_local(df, vis_filter, user_id))
+    }, error = function(e) {
+      cat("Error in experiments_data:", e$message, "\n")
+      return(data.frame())
+    })
   })
   
   # Get experiment IDs for performance analysis
@@ -199,7 +213,7 @@ setup_data_reactives <- function(input, output, session) {
     tryCatch({
       user_info <- get_user_info(session)
       user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
-      is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+      is_admin_user <- if (!is.null(user_info)) isTRUE(user_info$is_admin) else FALSE
       overview <- db$get_experiments_overview(NULL, json_param(ids), user_id, is_admin_user)
       filtered <- overview %>%
         filter(toupper(truth_set) == toupper(truth_set_filter)) %>%

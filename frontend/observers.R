@@ -241,7 +241,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     # Get user context
     user_info <- get_user_info(session)
     user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
-    is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+    is_admin_user <- if (!is.null(user_info)) isTRUE(user_info$is_admin) else FALSE
   
 
     tech_selection <- input$tech_hierarchy_selection
@@ -412,7 +412,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     # Get user context for visibility filtering
     user_info <- get_user_info(session)
     user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
-    is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+    is_admin_user <- if (!is.null(user_info)) isTRUE(user_info$is_admin) else FALSE
     
     # Get metadata with user context
     py_ids <- r_to_py(list(as.numeric(exp_id)))
@@ -848,7 +848,7 @@ observeEvent(input$final_confirm_delete, {
     return()
   }
   
-  if (!user_info$is_admin) {
+  if (!isTRUE(user_info$is_admin)) {
     removeModal()
     showNotification("Admin privileges required", type = "error", duration = 5)
     return()
@@ -1197,7 +1197,7 @@ observeEvent(input$main_tabs, {
   if (input$main_tabs != "admin_tab") return()
   
   user_info <- get_user_info(session)
-  if (is.null(user_info) || !user_info$is_admin) return()
+  if (is.null(user_info) || !isTRUE(user_info$is_admin)) return()
   
   stats <- tryCatch({
     db$get_admin_stats()
@@ -1214,7 +1214,7 @@ observeEvent(input$main_tabs, {
 # Also refresh stats when data changes
 observeEvent(data_reactives$data_refresh_trigger(), {
   user_info <- get_user_info(session)
-  if (is.null(user_info) || !user_info$is_admin) return()
+  if (is.null(user_info) || !isTRUE(user_info$is_admin)) return()
   
   stats <- tryCatch({
     db$get_admin_stats()
@@ -1273,7 +1273,7 @@ output$admin_private_experiments_ui <- renderUI({
   data_reactives$data_refresh_trigger()
   
   user_info <- get_user_info(session)
-  if (is.null(user_info) || !user_info$is_admin) {
+  if (is.null(user_info) || !isTRUE(user_info$is_admin)) {
     return(p("Access denied", style = "padding: 20px; color: #999;"))
   }
   
@@ -1350,7 +1350,7 @@ output$admin_users_ui <- renderUI({
   data_reactives$data_refresh_trigger()
   
   user_info <- get_user_info(session)
-  if (is.null(user_info) || !user_info$is_admin) {
+  if (is.null(user_info) || !isTRUE(user_info$is_admin)) {
     return(p("Access denied", style = "padding: 20px; color: #999;"))
   }
   
@@ -1370,7 +1370,7 @@ output$admin_users_ui <- renderUI({
   # Build table rows
   rows <- lapply(1:nrow(users), function(i) {
     user <- users[i, ]
-    admin_badge <- if (user$is_admin) {
+    admin_badge <- if (isTRUE(user$is_admin)) {
       span("Admin", style = "background: #e3f2fd; color: #1976d2; padding: 2px 6px; border-radius: 3px; font-size: 11px;")
     } else {
       span("User", style = "background: #f5f5f5; color: #666; padding: 2px 6px; border-radius: 3px; font-size: 11px;")
