@@ -247,7 +247,7 @@ def get_experiment_metadata(experiment_ids_param, user_id=None, is_admin=False):
                     # Visibility
                     'is_public': exp.is_public if exp.is_public is not None else True,
                     'owner_id': exp.owner_id,
-                    'owner_username': exp.owner.username if exp.owner else None,
+                    'owner_username': exp.owner.email if exp.owner else None,
                     
                     # Sequencing Technology
                     'technology': exp.sequencing_technology.technology.value if exp.sequencing_technology else None,
