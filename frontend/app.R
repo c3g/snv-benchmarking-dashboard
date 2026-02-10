@@ -277,7 +277,7 @@ ui <- fluidPage(
                 "show_my_uploads_modal",
                 label = tagList(icon("folder-open"), "My Uploads"),
                 class = "btn-primary btn-sm",
-                style = "font-size: 13px; padding: 6px 12px;"
+                style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px; border-radius: 3px;"
               )
             ),
             # Beta feature notice

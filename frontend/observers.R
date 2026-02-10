@@ -720,6 +720,8 @@ setup_observers <- function(input, output, session, data_reactives) {
       
       # Handle result
       if (result$success) {
+        # Reset form fields
+        reset("upload_modal")
         showNotification(
           HTML(paste("Upload Successful!<br>", result$message)), 
           type = "message", 
