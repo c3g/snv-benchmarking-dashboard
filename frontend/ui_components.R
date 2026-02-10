@@ -401,7 +401,10 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
     # Use json_param for reliable JSON formatting
     tryCatch({
       ids_json <- json_param(experiment_ids)
-      metadata <- db$get_experiment_metadata(ids_json)
+      user_info <- get_user_info(session)
+      user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+      is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+      metadata <- db$get_experiment_metadata(ids_json, user_id, is_admin_user)
       
       if (nrow(metadata) == 0) {
         return(p("Unable to load experiment metadata", style = "color: #dc3545;"))
@@ -816,10 +819,10 @@ upload_modal_ui <- function() {
                  "experiment_visibility",
                  NULL,
                  choices = list(
-                   "Public" = "public",
+                   "Public (admin only)" = "public",
                    "Private" = "private"
                  ),
-                 selected = "public"
+                 selected = "private"
                ),
         ),
         column(6,
