@@ -1376,7 +1376,7 @@ output$admin_users_ui <- renderUI({
     
     tags$tr(
       tags$td(user$id, style = "padding: 8px; border-bottom: 1px solid #eee; text-align: center;"),
-      tags$td(user$username, style = "padding: 8px; border-bottom: 1px solid #eee;"),
+      tags$td(user$full_name %||% user$username, style = "padding: 8px; border-bottom: 1px solid #eee;"),
       tags$td(user$email %||% "N/A", style = "padding: 8px; border-bottom: 1px solid #eee;"),
       tags$td(user$upload_count, style = "padding: 8px; border-bottom: 1px solid #eee; text-align: center;"),
       tags$td(user$last_login %||% "Never", style = "padding: 8px; border-bottom: 1px solid #eee;"),
@@ -1391,7 +1391,7 @@ output$admin_users_ui <- renderUI({
       tags$tr(
         style = "background: #f8f9fa; text-align: left;",
         tags$th("ID", style = "padding: 10px; border-bottom: 2px solid #dee2e6; font-weight: 600; text-align: center; width: 50px;"),
-        tags$th("Username", style = "padding: 10px; border-bottom: 2px solid #dee2e6; font-weight: 600;"),
+        tags$th("Name", style = "padding: 10px; border-bottom: 2px solid #dee2e6; font-weight: 600;"),
         tags$th("Email", style = "padding: 10px; border-bottom: 2px solid #dee2e6; font-weight: 600;"),
         tags$th("Uploads", style = "padding: 10px; border-bottom: 2px solid #dee2e6; font-weight: 600; text-align: center; width: 80px;"),
         tags$th("Last Login", style = "padding: 10px; border-bottom: 2px solid #dee2e6; font-weight: 600;"),
