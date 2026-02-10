@@ -609,7 +609,7 @@ upload_modal_ui <- function() {
         tags$li(code("Type"), " - Variant type (SNP/INDEL)"),
         tags$li(code("Subtype"), " - Variant subtype"),
         tags$li(code("Subset"), " - Genomic region"),
-        tags$li(code("Filter"), " - Filter status (e.g., PASS)"),
+        tags$li(code("Filter"), " - Filter status (e.g., ALL)"),
         tags$li(code("METRIC.Recall"), " - Recall metric"),
         tags$li(code("METRIC.Precision"), " - Precision metric"),
         tags$li(code("METRIC.F1_Score"), " - F1 score metric")
@@ -880,7 +880,44 @@ delete_modal_ui <- function() {
     div(id = "delete_status", style = "margin-top: 15px;")
   )
 }
-
+# ============================================================================
+# MY UPLOADS MODAL (for regular users to manage their experiments)
+# ============================================================================
+my_uploads_modal_ui <- function() {
+  bsModal(
+    "my_uploads_modal",
+    "My Uploads",
+    "show_my_uploads_modal",
+    size = "large",
+    
+    # Info message
+    div(
+      class = "alert alert-info",
+      style = "margin-bottom: 20px;",
+      p(icon("info-circle"), " Here you can view and delete your private uploads.")
+    ),
+    
+    # Experiment table
+    div(
+      style = "max-height: 400px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px;",
+      DT::dataTableOutput("my_uploads_table")
+    ),
+    
+    # Selected count
+    div(
+      style = "margin-top: 10px;",
+      textOutput("my_uploads_selected_count")
+    ),
+    
+    # Action buttons
+    div(
+      style = "text-align: right; margin-top: 20px;",
+      actionButton("cancel_my_uploads", "Close", class = "btn-secondary"),
+      actionButton("delete_my_uploads", "Delete Selected",
+                   class = "btn-danger", style = "margin-left: 10px;")
+    )
+  )
+}
 # ============================================================================
 # FILE BROWSER UI COMPONENTS  
 # ============================================================================

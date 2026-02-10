@@ -270,6 +270,16 @@ ui <- fluidPage(
           div(
             style = "display: flex; gap: 8px; align-items: center; padding-top: 5px;",
             
+            # My Uploads button - for authenticated non-admin users
+            conditionalPanel(
+              condition = "output.user_authenticated && !output.user_is_admin",
+              actionButton(
+                "show_my_uploads_modal",
+                label = tagList(icon("folder-open"), "My Uploads"),
+                class = "btn-primary btn-sm",
+                style = "font-size: 13px; padding: 6px 12px;"
+              )
+            ),
             # Beta feature notice
             #conditionalPanel(
             #  condition = "output.user_authenticated && !output.user_is_admin",
@@ -1136,6 +1146,8 @@ div(
         delete_modal_ui(),
         file_browser_modal_ui(),
         admin_modal_ui(),
+        my_uploads_modal_ui(),
+
     )
   )
 )

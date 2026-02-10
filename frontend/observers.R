@@ -1716,4 +1716,141 @@ observeEvent(input$show_admin_modal, {
    toggleModal(session, "admin_modal", toggle = "open")
  }
 })
+# ====================================================================
+# MY UPLOADS MODAL (for regular users)
+# ====================================================================
+
+output$my_uploads_table <- DT::renderDataTable({
+  data_reactives$data_refresh_trigger()
+  
+  user_info <- get_user_info(session)
+  if (is.null(user_info)) {
+    return(DT::datatable(data.frame(Message = "Please sign in")))
+  }
+  
+  user_id <- session$userData$user_id
+  
+  my_experiments <- tryCatch({
+    db$get_user_experiments(user_id)
+  }, error = function(e) {
+    data.frame()
+  })
+  
+  session$userData$my_uploads_data <- my_experiments
+  
+  if (nrow(my_experiments) == 0) {
+    return(DT::datatable(data.frame(Message = "You have no uploads yet")))
+  }
+  
+  display_data <- my_experiments %>%
+    select(id, name, technology, caller, created_at)
+  
+  DT::datatable(
+    display_data,
+    selection = list(mode = 'multiple', target = 'row'),
+    options = list(
+      pageLength = 10,
+      dom = 't',
+      ordering = FALSE
+    ),
+    rownames = FALSE,
+    colnames = c("ID", "Name", "Technology", "Caller", "Created"),
+    class = 'compact'
+  )
+}, server = TRUE)
+
+# Selected count display
+output$my_uploads_selected_count <- renderText({
+  selected <- input$my_uploads_table_rows_selected
+  if (length(selected) == 0) {
+    "No experiments selected"
+  } else {
+    paste("Selected:", length(selected), "experiment(s)")
+  }
+})
+
+# Close button
+observeEvent(input$cancel_my_uploads, {
+  toggleModal(session, "my_uploads_modal", toggle = "close")
+})
+
+# Delete selected uploads
+observeEvent(input$delete_my_uploads, {
+  selected_rows <- input$my_uploads_table_rows_selected
+  
+  if (length(selected_rows) == 0) {
+    showNotification("Please select experiments to delete", type = "warning")
+    return()
+  }
+  
+  my_data <- session$userData$my_uploads_data
+  if (is.null(my_data) || nrow(my_data) == 0) return()
+  
+  selected_ids <- my_data$id[selected_rows]
+  session$userData$my_uploads_delete_ids <- selected_ids
+  
+  # Confirmation modal
+  showModal(modalDialog(
+    title = tagList(icon("exclamation-triangle"), " Confirm Delete"),
+    div(
+      class = "alert alert-danger",
+      p(strong("You are about to delete:")),
+      tags$ul(
+        lapply(selected_ids, function(id) {
+          exp_name <- my_data$name[my_data$id == id]
+          tags$li(paste("ID", id, "-", exp_name))
+        })
+      ),
+      p("This action cannot be undone.", style = "font-weight: bold;")
+    ),
+    footer = tagList(
+      modalButton("Cancel"),
+      actionButton("confirm_my_uploads_delete", "Delete", class = "btn-danger")
+    )
+  ))
+})
+
+# Confirm delete from my uploads
+observeEvent(input$confirm_my_uploads_delete, {
+  user_info <- get_user_info(session)
+  selected_ids <- session$userData$my_uploads_delete_ids
+  
+  if (is.null(selected_ids) || length(selected_ids) == 0) {
+    removeModal()
+    return()
+  }
+  
+  removeModal()
+  
+  success_count <- 0
+  for (exp_id in selected_ids) {
+    result <- tryCatch({
+      delete_handler$delete_experiment(
+        experiment_id = as.integer(exp_id),
+        user_id = user_info$user_id,
+        username = user_info$username,
+        is_admin = user_info$is_admin
+      )
+    }, error = function(e) {
+      list(success = FALSE, error = e$message)
+    })
+    
+    if (result$success) {
+      success_count <- success_count + 1
+    }
+  }
+  
+  if (success_count > 0) {
+    showNotification(
+      paste("Deleted", success_count, "experiment(s)"),
+      type = "message", duration = 5
+    )
+    data_reactives$data_refresh_trigger(data_reactives$data_refresh_trigger() + 1)
+    toggleModal(session, "my_uploads_modal", toggle = "close") 
+  } else {
+    showNotification("Delete failed", type = "error", duration = 5)
+  }
+  
+  session$userData$my_uploads_delete_ids <- NULL
+})
 }
