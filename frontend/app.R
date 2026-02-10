@@ -271,16 +271,16 @@ ui <- fluidPage(
             style = "display: flex; gap: 8px; align-items: center; padding-top: 5px;",
             
             # Beta feature notice
-            conditionalPanel(
-              condition = "output.user_authenticated && !output.user_is_admin",
-              div(
-                style = "display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; background-color: #fff8e1; border-left: 3px solid #ffc107; border-radius: 3px; font-size: 11px; margin-right: 8px;",
-                icon("info-circle", style = "color: #f57c00; font-size: 12px;"),
-                span(style = "font-size: 13px;",
-                  strong("Beta Access:"), " Authentication is active. Additional features for registered users will be available in upcoming releases."
-                )
-              )
-            ),
+            #conditionalPanel(
+            #  condition = "output.user_authenticated && !output.user_is_admin",
+            #  div(
+            #    style = "display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; background-color: #fff8e1; border-left: 3px solid #ffc107; border-radius: 3px; font-size: 11px; margin-right: 8px;",
+            #    icon("info-circle", style = "color: #f57c00; font-size: 12px;"),
+            #    span(style = "font-size: 13px;",
+            #      strong("Beta Access:"), " Authentication is active. Additional features for registered users will be available in upcoming releases."
+            #    )
+            #  )
+            #),
             # Admin button - only visible to admins
             conditionalPanel(
               condition = "output.user_is_admin",
@@ -291,16 +291,16 @@ ui <- fluidPage(
                 style = "font-size: 13px; padding: 6px 12px;"
               )
             ),
-            # Upload button - COMMENTED OUT UNTIL THE COMANAGE USER ROLES ARE FIXED
-            #conditionalPanel(
-            #  condition = "output.user_authenticated",
-            #  actionButton(
-            #    "show_upload_modal", 
-            #    label = tagList(icon("upload"), "Upload Dataset"),
-            #    class = "btn-primary btn-sm",
-            #    style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px; border-radius: 3px;"
-            #  )
-            #),
+             #Upload button 
+            conditionalPanel(
+              condition = "output.user_authenticated",
+              actionButton(
+                "show_upload_modal", 
+                label = tagList(icon("upload"), "Upload Dataset"),
+                class = "btn-primary btn-sm",
+                style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px; border-radius: 3px;"
+              )
+            ),
             
             # Download button - ALWAYS VISIBLE (anonymous users can download)
             downloadButton(
