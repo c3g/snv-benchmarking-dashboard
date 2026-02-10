@@ -24,7 +24,7 @@ Helper functions:
 # DATA PROCESSING FOR TABLES
 # ============================================================================
 create_experiment_details_html <- function(metadata) {
-  if (nrow(metadata) == 0) return(NULL)
+  if (is.null(metadata) || !is.data.frame(metadata) || nrow(metadata) == 0) return(NULL)
   
   meta <- metadata[1, ]
   exp_id <- meta$id
@@ -76,7 +76,7 @@ create_experiment_details_html <- function(metadata) {
 # ------------------------------------------------
 # Create metrics tables for stratified analysis
 create_f1_table <- function(data) {
-  if (nrow(data) == 0) {
+  if (is.null(data) || !is.data.frame(data) || nrow(data) == 0) {
     return(data.frame(Message = "No data available"))
   }
   
@@ -97,6 +97,11 @@ create_f1_table <- function(data) {
 # ------------------------------------------------
 # Create metric tables for stratified analysis with highlighting
 create_metric_table <- function(stratified_data, variant_filter, selected_metric) {
+  # Handle NULL or empty input
+  if (is.null(stratified_data) || !is.data.frame(stratified_data) || nrow(stratified_data) == 0) {
+    return(data.frame(Message = paste("No", variant_filter, "data available for selected regions")))
+  }
+  
   # Filter for specific variant type
   filtered_data <- stratified_data %>%
     filter(variant_type == variant_filter) 
@@ -168,7 +173,8 @@ create_metric_table <- function(stratified_data, variant_filter, selected_metric
 # ------------------------------------------------
 # Create table for delete modal
 create_delete_experiments_table <- function(data) {
-  if (nrow(data) == 0) {
+  # Handle NULL or empty dataframes
+  if (is.null(data) || !is.data.frame(data) || nrow(data) == 0) {
     return(DT::datatable(data.frame(Message = "No experiments found")))
   }
   
