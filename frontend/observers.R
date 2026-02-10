@@ -693,7 +693,7 @@ setup_observers <- function(input, output, session, data_reactives) {
 
         # OWNERSHIP AND VISIBILITY
         experiment_visibility = upload_visibility,
-        owner_username = user_info$username,
+        owner_username = user_info$email,
         owner_id = user_info$user_id  # Database user ID from session
         
       ), auto_unbox = TRUE)

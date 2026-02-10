@@ -187,7 +187,7 @@ def get_experiments_overview(filters=None, experiment_ids_param=None, user_id=No
                     # Visibility info
                     'is_public': exp.is_public if exp.is_public is not None else True,
                     'owner_id': exp.owner_id,
-                    'owner_username': exp.owner.username if exp.owner else None,
+                    'owner_username': exp.owner.email if exp.owner else None,
                 })
             
             return pd.DataFrame(data)
@@ -1032,7 +1032,7 @@ def get_all_private_experiments():
                 data.append({
                     'id': exp.id,
                     'name': exp.name,
-                    'owner_username': exp.owner.username if exp.owner else "Unknown",
+                    'owner_username': exp.owner.email if exp.owner else "Unknown",
                     'owner_email': exp.owner.email if exp.owner else "N/A",
                     'technology': exp.sequencing_technology.technology.value if exp.sequencing_technology else "N/A",
                     'caller': exp.variant_caller.name.value if exp.variant_caller else "N/A",
