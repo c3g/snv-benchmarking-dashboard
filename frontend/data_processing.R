@@ -14,6 +14,20 @@ Main components:
 "
 
 # ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+
+# Filter experiments by visibility mode (applied after database query)
+apply_visibility_filter_local <- function(df, filter_mode, user_id) {
+  if (nrow(df) == 0) return(df)
+  
+  switch(filter_mode,
+    "public" = df %>% filter(is_public == TRUE | is.na(owner_id)),
+    "mine" = if (!is.null(user_id)) df %>% filter(owner_id == user_id & is_public == FALSE) else df[0,],
+    df  # "all" returns unchanged
+  )
+}
+# ============================================================================
 # SETUP FUNCTION - CREATES ALL REACTIVE VALUES AND DATA PROCESSING
 # ============================================================================
 
@@ -22,7 +36,7 @@ setup_data_reactives <- function(input, output, session) {
   # ====================================================================
   # REACTIVE VALUES FOR STATE MANAGEMENT
   # ====================================================================
-  
+
   # Trigger to refresh all data
    data_refresh_trigger <- reactiveVal(0)
   # Trigger to refresh delete modal table (prevents browser caching issues)
@@ -36,7 +50,10 @@ setup_data_reactives <- function(input, output, session) {
   display_experiment_ids <- reactiveVal(numeric(0))
   
   # Currently active truth set filter
-  active_truth_set_filter <- reactiveVal("All Truth Sets")
+  active_truth_set_filter <- reactiveVal("All")
+
+  # Visibility filter mode -- not used 
+  # visibility_filter <- reactiveVal("all")  # "all", "public", "mine"
 
   # User-selected experiments from table clicks
   table_selected_ids <- reactiveVal(numeric(0))
@@ -64,6 +81,9 @@ setup_data_reactives <- function(input, output, session) {
   
   # Has stratified analysis been run (shows/hides Tab 4)
   stratified_triggered <- reactiveVal(FALSE)
+
+  # admin ralated stats
+  admin_stats <- reactiveVal(NULL)
   
   # ====================================================================
   # CORE DATA PROCESSING FUNCTIONS
@@ -71,17 +91,26 @@ setup_data_reactives <- function(input, output, session) {
   
   # Get experiment IDs based on current filter settings
   experiment_ids <- reactive({
+    
+    # Re-run when auth state changes
+    input$user_authenticated
+    
     tryCatch({
       if (length(display_experiment_ids()) > 0) {
         return(display_experiment_ids())
       }
       
+      # Get user context for visibility filtering
+      user_info <- get_user_info(session)
+      user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+      is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+      
       if (input$filter_type == "tech") {
-        return(db$get_experiments_by_technology(input$filter_technology))
+        return(db$get_experiments_by_technology(input$filter_technology, user_id, is_admin_user))
       } else if (input$filter_type == "caller") {
-        return(db$get_experiments_by_caller(input$filter_caller))
+        return(db$get_experiments_by_caller(input$filter_caller, user_id, is_admin_user))
       } else {
-        overview <- db$get_experiments_overview()
+        overview <- db$get_experiments_overview(NULL, NULL, user_id, is_admin_user)
         return(overview$id)
       }
     }, error = function(e) {
@@ -94,13 +123,25 @@ setup_data_reactives <- function(input, output, session) {
   # Get overview metadata for selected experiments
   experiments_data <- reactive({
 
-    data_refresh_trigger() #depend on refresh trigger
+    data_refresh_trigger()
+    input$user_authenticated
 
+    # Get user context
+    user_info <- get_user_info(session)
+    user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+    is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+    
+    # Get visibility filter (default to "all" if not set)
+    vis_filter <- if (!is.null(input$visibility_filter)) input$visibility_filter else "all"
+
+    # Comparison mode - show comparison results
     if (comparison_submitted() && length(comparison_results()) > 0) {
       exp_ids_json <- json_param(comparison_results())
-      return(db$get_experiments_overview(NULL, exp_ids_json))
+      df <- db$get_experiments_overview(NULL, exp_ids_json, user_id, is_admin_user)
+      return(apply_visibility_filter_local(df, vis_filter, user_id))
     }
     
+    # Manual selection mode
     if (current_mode() == "manual_selection") {
       filters <- NULL
       if (input$filter_type == "tech") {
@@ -108,9 +149,11 @@ setup_data_reactives <- function(input, output, session) {
       } else if (input$filter_type == "caller") {
         filters <- list(caller = input$filter_caller)
       }
-      return(db$get_experiments_overview(filters, NULL))
+      df <- db$get_experiments_overview(filters, NULL, user_id, is_admin_user)
+      return(apply_visibility_filter_local(df, vis_filter, user_id))
     }
     
+    # Standard filter mode
     filters <- NULL
     if (input$filter_type == "tech") {
       filters <- list(technology = input$filter_technology)
@@ -118,11 +161,16 @@ setup_data_reactives <- function(input, output, session) {
       filters <- list(caller = input$filter_caller)
     }
     
-    return(db$get_experiments_overview(filters, NULL))
+    df <- db$get_experiments_overview(filters, NULL, user_id, is_admin_user)
+    return(apply_visibility_filter_local(df, vis_filter, user_id))
   })
   
   # Get experiment IDs for performance analysis
   performance_experiment_ids <- reactive({
+    
+    # Re-run when auth state changes
+    input$user_authenticated
+    
     if (current_mode() == "manual_selection") {
       selected_ids <- table_selected_ids()
       if (length(selected_ids) > 0) {
@@ -142,14 +190,17 @@ setup_data_reactives <- function(input, output, session) {
     ids <- performance_experiment_ids()
     truth_set_filter <- active_truth_set_filter() 
     
-    # If "All Truth Sets" selected, return all IDs
-    if (is.null(truth_set_filter) || truth_set_filter == "All Truth Sets") {
+    # If "ALL" selected, return all IDs
+    if (is.null(truth_set_filter) || truth_set_filter == "ALL") {
       return(ids)
     }
     
     # filter experiments by truth set
     tryCatch({
-      overview <- db$get_experiments_overview(NULL, json_param(ids))
+      user_info <- get_user_info(session)
+      user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+      is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+      overview <- db$get_experiments_overview(NULL, json_param(ids), user_id, is_admin_user)
       filtered <- overview %>%
         filter(toupper(truth_set) == toupper(truth_set_filter)) %>%
         pull(id)
@@ -174,7 +225,7 @@ setup_data_reactives <- function(input, output, session) {
     
     tryCatch({
       ids_json <- json_param(ids)
-      enhanced_data <- db$get_experiments_with_performance(ids_json, VARIANT_TYPES)
+      enhanced_data <- db$get_experiments_with_performance(ids_json, VARIANT_TYPE_OPTIONS)
       
       # Additional validation
       if (nrow(enhanced_data) == 0) {
@@ -289,7 +340,6 @@ setup_data_reactives <- function(input, output, session) {
                            coalesce(technology, "Unknown"), "-", 
                            coalesce(caller, "Unknown"), 
                            ")")
-                          # "-", coalesce(chemistry_name, ""),  ---------remove chemistry name from stratifed results
       ) %>%
       arrange(subset, variant_type, desc(experiment_id))
     
@@ -326,6 +376,7 @@ setup_data_reactives <- function(input, output, session) {
   
   return(list(
     # State management
+    admin_stats = admin_stats,
     current_mode = current_mode,
     display_experiment_ids = display_experiment_ids,
     active_truth_set_filter = active_truth_set_filter,

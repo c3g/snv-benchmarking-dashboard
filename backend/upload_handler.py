@@ -2,16 +2,17 @@
 # upload_handler.py
 # ============================================================================
 """
-File upload processing and validation for SNV Benchmarking Dashboard.
+Direct-to-database upload handler for SNV Benchmarking Dashboard.
 
-Main components:
+Key features:
+- Writes directly to database (CSV is backup only)
+- Ownership tracking via owner_id
+- Visibility control via is_public flag
 
-*Require admin previleges for upload*
-
-- Hap.py CSV file validation
-- Metadata validation and processing
-- Filename generation and file handling
-- Database integration after upload
+Visibility Rules:
+- Admins can upload public or private experiments
+- Regular users can only upload private experiments
+- Private experiments visible only to owner + admins
 
 """
 
@@ -24,18 +25,29 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from config import DATA_FOLDER, METADATA_CSV_PATH
-from populate_metadata import populate_database_from_csv
-from authorization import require_admin
+from config import DATA_FOLDER
+from direct_db_population import create_experiment_direct
+from database import get_db_session
+from models import Experiment
+from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
 
+# ============================================================================
+# VALIATION CONSTANTS
+# ============================================================================
 
-# required metadata fields for upload
-REQUIRED_METADATA = ['exp_name', 'technology', 'platform_name', 'platform_type' ,'caller_name', 'caller_version','caller_type', 'mean_coverage', 'truth_set_name']
-# required happy columns 
+# Required fields for upload validation
+REQUIRED_METADATA = [
+    'exp_name', 'technology', 'platform_name', 'platform_type',
+    'caller_name', 'caller_version', 'caller_type', 'mean_coverage', 'truth_set_name'
+]
+
+# Required columns in hap.py CSV
 REQUIRED_COLS = ['Type', 'Subtype', 'Subset', 'METRIC.Recall', 'METRIC.Precision', 'METRIC.F1_Score']
 
+# import enum mappings for validation
+from enum_mappings import VALID_TECHNOLOGIES, VALID_CALLERS 
 # ============================================================================
 # FILE VALIDATION
 # ============================================================================
@@ -44,14 +56,11 @@ def validate_happy_file(file_path):
     """
     Validate uploaded hap.py CSV file format and content.
     
-    Checks for file existence, required columns, and expected data types.
-    Ensures the file contains SNP/INDEL variant data before processing.
-    
     Args:
-        file_path (str): Path to uploaded hap.py CSV file
+        file_path: Path to uploaded CSV file
         
     Returns:
-        tuple: (is_valid: bool, message: str) - validation result and description
+        tuple: (is_valid: bool, message: str)
     """
     try:
         if not os.path.exists(file_path):
@@ -60,6 +69,7 @@ def validate_happy_file(file_path):
             
         df = pd.read_csv(file_path)
         
+        # Check required columns
         missing = [col for col in REQUIRED_COLS if col not in df.columns]
         if missing:
             return False, f"Missing columns: {', '.join(missing)}"
@@ -84,30 +94,26 @@ def validate_metadata(metadata):
     """
     Validate required metadata fields and enum values.
     
-    Ensures all required fields are present and technology/caller values
-    are valid before attempting database insertion.
-    
     Args:
-        metadata (dict): Metadata dictionary from upload form
+        metadata: Dictionary from upload form
         
     Returns:
-        tuple: (is_valid: bool, message: str) - validation result and description
+        tuple: (is_valid: bool, message: str)
     """
-    
+    # Check required fields
     for field in REQUIRED_METADATA:
         value = metadata.get(field, "")
         if not value or str(value).strip() == "":
             logger.error(f"Metadata validation failed: missing required field '{field}'")
             return False, f"Required field '{field}' is missing"
     
-    # Validate enums
-    if metadata['technology'].upper() not in ['ILLUMINA', 'PACBIO', 'ONT', 'MGI', '10X']:
+    # Validate technology enum
+    if metadata['technology'].upper() not in VALID_TECHNOLOGIES:
         logger.error(f"Metadata validation failed: invalid technology '{metadata['technology']}'")
         return False, f"Invalid technology: {metadata['technology']}"
-        
-    if metadata['caller_name'].upper() not in ['DEEPVARIANT', 'CLAIR3', 'DRAGEN', 
-                                                'GATK3', 'GATK4', 'LONGRANGER', 'MEGABOLT', 
-                                                'NANOCALLER', 'PARABRICK', 'PEPPER']:
+    
+    # Validate caller enum
+    if metadata['caller_name'].upper() not in VALID_CALLERS:
         logger.error(f"Metadata validation failed: invalid caller '{metadata['caller_name']}'")
         return False, f"Invalid caller: {metadata['caller_name']}"
     
@@ -115,45 +121,24 @@ def validate_metadata(metadata):
     return True, "Metadata is valid"
 
 # ============================================================================
-# FILE PROCESSING
+# FILENAME GENERATION
 # ============================================================================
 
-def get_next_experiment_id():
+def generate_filename(metadata, experiment_id, is_public):
     """
-    Get the next available experiment ID by finding max ID + 1
-    """
-    try:
-        if os.path.exists(METADATA_CSV_PATH):
-            existing_df = pd.read_csv(METADATA_CSV_PATH)
-            
-            if len(existing_df) == 0:
-                return 1  # First experiment
-            
-            # Find maximum ID and add 1
-            max_id = existing_df['ID'].max()
-            return int(max_id) + 1
-        else:
-            return 1  # First experiment
-    except Exception as e:
-        logger.error(f"Error getting next ID: {e}")
-        return 1  # Fallback to 1
-
-def generate_filename(metadata, experiment_id):
-    """
-    Generate standardized filename using experiment metadata.
+    Generate standardized filename for hap.py file.
     
-    Creates filename in format: {experiment_id:03d}_{sample}_{technology}_{platform}_{caller}_{truthset}.csv
-    Falls back to timestamp-based naming if metadata processing fails.
+    Format: {ID}_{sample}_{technology}_{platform}_{caller}_{truthset}.csv
     
     Args:
-        metadata (dict): Experiment metadata
-        experiment_id (int): Assigned experiment ID
+        metadata: Experiment metadata dict
+        experiment_id: Assigned experiment ID
+        is_public: Whether experiment is public (affects ID padding)
         
     Returns:
         str: Generated filename
     """
-    
-    def strip_value(value):
+    def strip_value(value): # to remove spaces from the filename 
         if value is None or pd.isna(value): 
             return ""
         return str(value).strip()
@@ -168,35 +153,31 @@ def generate_filename(metadata, experiment_id):
         caller = strip_value(metadata.get('caller_name', '')).lower().replace(" ", "")
         truthset = strip_value(metadata.get('truth_set_name', '')).lower().replace(" ", "")
         
-        # Build filename with 3 zero padding
+        # Build filename - 3-digit padding for all public and private records
         filename = f"{experiment_id:03d}_{sample}_{technology}_{platform}_{caller}_{truthset}.csv"
-        
         return filename
-        
-    except Exception as e:
-        # generate filename with timestamp if anything fails
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        sample = metadata['exp_name'].split('_')[0]
-        logger.warning(f"Filename generation failed, using timestamp fallback: {e}")
-        return f"{timestamp}_{sample}_{metadata['technology']}_{metadata['caller_name']}.csv"
-
-def create_metadata_entry(metadata, filename, experiment_id):
-    """
-    Create metadata row for CSV file from upload form data.
     
-    Converts upload form metadata into the format expected by the metadata CSV,
-    with proper type conversion and default values.
+    except Exception as e:
+        # Fallback: timestamp-based filename
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        sample = metadata.get('exp_name', 'unknown').split('_')[0]
+        logger.warning(f"Filename generation failed, using timestamp fallback: {e}")
+        return f"{experiment_id}_{timestamp}_{sample}.csv"
+
+# ============================================================================
+# METADATA PREPARATION
+# ============================================================================
+
+def prepare_metadata_dict(metadata):
+    """
+    Convert upload form metadata to database-ready format.
     
     Args:
-        metadata (dict): Raw metadata from upload form
-        filename (str): Generated filename for the hap.py file
-        experiment_id (int): Assigned experiment ID
+        metadata: Raw metadata from upload form
         
     Returns:
-        dict: Formatted metadata entry for CSV insertion
+        dict: Cleaned and formatted metadata for database insertion
     """
-    
-     # Helper function for safe conversion
     def safe_float(value):
         try:
             return float(value) if value and str(value).strip() else None
@@ -204,78 +185,108 @@ def create_metadata_entry(metadata, filename, experiment_id):
             return None
     
     def safe_bool(value):
+        if isinstance(value, bool):
+            return value
         return str(value).lower() == 'true'
     
     def safe_upper(value):
-        """Safely convert to uppercase, handle empty values"""
         if not value or str(value).strip() == '':
             return ''
         return str(value).strip().upper()
     
+    # Determine visibility
+    is_public = metadata.get('experiment_visibility', 'private') == 'public'
+    
     return {
-        'ID': experiment_id,
-        'name': metadata['exp_name'],
+        # Basic info
+        'exp_name': metadata['exp_name'],
+        'description': metadata.get('description', ''),
+        
+        # Sequencing technology
         'technology': safe_upper(metadata['technology']),
         'target': safe_upper(metadata.get('target', 'wgs')),
         'platform_name': metadata['platform_name'],
         'platform_type': safe_upper(metadata.get('platform_type', '')),
         'platform_version': metadata.get('platform_version', ''),
+        
+        # Chemistry
         'chemistry_name': metadata.get('chemistry_name', ''),
+        'chemistry_version': metadata.get('chemistry_version', ''),
+        
+        # Variant caller
         'caller_name': safe_upper(metadata['caller_name']),
         'caller_type': safe_upper(metadata.get('caller_type', '')),
         'caller_version': metadata.get('caller_version', ''),
         'caller_model': metadata.get('caller_model', ''),
+        
+        # Aligner
         'aligner_name': metadata.get('aligner_name', ''),
         'aligner_version': metadata.get('aligner_version', ''),
+        
+        # Truth set
         'truth_set_name': safe_upper(metadata.get('truth_set_name', '')),
         'truth_set_sample': safe_upper(metadata.get('truth_set_sample', 'hg002')),
         'truth_set_version': metadata.get('truth_set_version', ''),
         'truth_set_reference': safe_upper(metadata.get('truth_set_reference', '')),
+        
+        # Variant info
         'variant_type': safe_upper(metadata.get('variant_type', 'snp+indel')),
         'variant_size': safe_upper(metadata.get('variant_size', '')),
         'variant_origin': safe_upper(metadata.get('variant_origin', '')),
         'is_phased': safe_bool(metadata.get('is_phased', 'false')),
+        
+        # Benchmark tool
         'benchmark_tool_name': safe_upper(metadata.get('benchmark_tool_name', 'hap.py')),
         'benchmark_tool_version': metadata.get('benchmark_tool_version', ''),
+        
+        # Quality metrics
         'mean_coverage': safe_float(metadata.get('mean_coverage')),
         'read_length': safe_float(metadata.get('read_length')),
         'mean_insert_size': safe_float(metadata.get('mean_insert_size')),
         'mean_read_length': metadata.get('mean_read_length', ''),
-        'file_name': filename,
-        'file_path': None,
+        
+        # Timestamps
         'created_at': datetime.now().strftime('%Y-%m-%d'),
+        
+        # Ownership and visibility
+        'is_public': is_public,
+        'owner_username': metadata.get('owner_username'),
+        'owner_id': metadata.get('owner_id'),
     }
+
 # ============================================================================
 # MAIN UPLOAD PROCESSING
 # ============================================================================
 
-def process_upload(temp_file_path, metadata_json_string):
+def process_upload_direct(temp_file_path, metadata_json_string):
     """
-    Complete upload processing workflow with validation, file handling, and database integration.
+    Process upload directly to database.
     
-    Handles the upload process:
-    1. Validate file and metadata
-    2. Generate filename and setup working directory
-    3. Copy files to final location
-    4. Update metadata CSV
-    5. Populate database with new experiment
-    6. Cleanup temporary files
+    Workflow:
+    1. Parse and validate metadata
+    2. Validate hap.py file
+    3. Determine visibility and generate appropriate ID
+    4. Generate filename and save file
+    5. Create experiment in database
+    6. Parse and load hap.py results
+    
+    On failure after experiment creation, performs compensating delete.
     
     Args:
-        temp_file_path (str): Path to uploaded temporary file
-        metadata_json_string (str): JSON string containing experiment metadata
+        temp_file_path: Path to uploaded temp file
+        metadata_json_string: JSON metadata from form
         
     Returns:
-        dict: Result with success status, message, and filename
-              {"success": bool, "message": str, "filename": str or None}
+        dict: {"success": bool, "message": str, "filename": str, "experiment_id": int}
     """
-    
     temp_work_dir = None
+    experiment_id = None
+    final_file_path = None
     
     try:
-        logger.info("Starting upload process...")
+        logger.info("Starting direct database upload...")
         
-        # Parse metadata
+        # Parse metadata JSON
         try:
             metadata = json.loads(metadata_json_string)
         except json.JSONDecodeError as e:
@@ -283,93 +294,104 @@ def process_upload(temp_file_path, metadata_json_string):
         
         logger.info(f"Processing experiment: {metadata.get('exp_name', 'Unknown')}")
         
-        # STEP 1: Validation
-        logger.debug("Validating file...")
+        # STEP 1: Validate file
         is_valid_file, file_msg = validate_happy_file(temp_file_path)
         if not is_valid_file:
             return {"success": False, "message": f"File validation failed: {file_msg}", "filename": None}
         
-        logger.debug("Validating metadata...")
+        # STEP 2: Validate metadata
         is_valid_meta, meta_msg = validate_metadata(metadata)
         if not is_valid_meta:
             return {"success": False, "message": f"Metadata validation failed: {meta_msg}", "filename": None}
         
-        # STEP 2: Get experiment ID
-        experiment_id = get_next_experiment_id()
-        logger.info(f"Assigned experiment ID: {experiment_id}")
+        # STEP 3: Prepare metadata and determine visibility
+        db_metadata = prepare_metadata_dict(metadata)
+        is_public = db_metadata['is_public']
         
-        # STEP 3: Setup working directory
+        # Validate owner_id for private uploads
+        if not is_public and not db_metadata.get('owner_id'):
+            logger.warning("Private upload without owner_id - this shouldn't happen")
+        
+        logger.info(f"Upload visibility: {'PUBLIC' if is_public else 'PRIVATE'}")
+        
+        # STEP 4: Setup working directory
         temp_work_dir = tempfile.mkdtemp(prefix="upload_")
         logger.debug(f"Working in {temp_work_dir}")
         
-        # STEP 4: Generate filename and prepare data
-        filename = generate_filename(metadata, experiment_id)
-        temp_file_copy = os.path.join(temp_work_dir, filename)
-        
-        # Copy file to working directory first
+        # STEP 5: Copy file temporarily (filename generated after DB assigns ID)
+        temp_filename = f"temp_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        temp_file_copy = os.path.join(temp_work_dir, temp_filename)
         shutil.copy2(temp_file_path, temp_file_copy)
         logger.debug("File copied to working directory")
         
-        # STEP 5: Prepare metadata update
-        metadata_entry = create_metadata_entry(metadata, filename, experiment_id)
+        # STEP 7: Create experiment in database (ID auto-assigned)
+        logger.debug("Creating experiment in database...")
+        db_result = create_experiment_direct(metadata=db_metadata)
         
-        # Read existing metadata or create new
-        if os.path.exists(METADATA_CSV_PATH):
-            existing_df = pd.read_csv(METADATA_CSV_PATH)
-        else:
-            existing_df = pd.DataFrame(columns=[
-                'ID', 'name', 'technology', 'target', 'platform_name', 'platform_type',
-                'platform_version', 'chemistry_name', 'caller_name', 'caller_type',
-                'caller_version', 'caller_model', 'aligner_name', 'aligner_version',
-                'truth_set_name', 'truth_set_sample', 'truth_set_version',
-                'truth_set_reference', 'variant_type', 'variant_size', 'variant_origin',
-                'is_phased', 'benchmark_tool_name', 'benchmark_tool_version',
-                'mean_coverage', 'read_length', 'mean_insert_size', 'mean_read_length',
-                'file_name', 'file_path', 'created_at'
-            ])
+        if not db_result["success"]:
+            return {
+                "success": False,
+                "message": f"Database creation failed: {db_result['message']}",
+                "filename": None
+            }
         
-        # Add new entry
-        updated_df = pd.concat([existing_df, pd.DataFrame([metadata_entry])], ignore_index=True)
+        # Get the auto-assigned ID
+        experiment_id = db_result["experiment_id"]
+        logger.info(f"Database assigned experiment ID: {experiment_id}")
         
-        # STEP 6: Commit files
-        logger.debug("Adding/editing files...")
+        # STEP 8: Generate final filename with real ID and save file
+        filename = generate_filename(db_metadata, experiment_id, is_public)
         os.makedirs(DATA_FOLDER, exist_ok=True)
-        
-        # Move file to final location
         final_file_path = os.path.join(DATA_FOLDER, filename)
-        shutil.move(temp_file_copy, final_file_path)
-        logger.info(f"File successfully moved to: {final_file_path}")
-
-        # Update metadata CSV
-        updated_df.to_csv(METADATA_CSV_PATH, index=False)
-        logger.info("Files added/edited successfully")
+        shutil.copy2(temp_file_copy, final_file_path)
+        logger.info(f"File saved to: {final_file_path}")
         
-        # STEP 7: Update database
-        logger.debug("Updating database...")
+        # STEP 9: Parse hap.py results into database
+        from happy_parser import parse_happy_csv
+        from database import get_db_session
+        with get_db_session() as session:
+            parse_result = parse_happy_csv(filename, experiment_id, session)
+            if not parse_result["success"] and not parse_result.get("skipped"):
+                # Compensating delete - rollback experiment creation
+                logger.error(f"Parse failed, rolling back experiment {experiment_id}")
+                _rollback_experiment(experiment_id, final_file_path)
+                return {
+                    "success": False,
+                    "message": f"Failed to parse hap.py results: {parse_result.get('error')}",
+                    "filename": None
+                }
+        
+        # STEP 10: Add to CSV backup
         try:
-            db_success = populate_database_from_csv()
-            if db_success:
-                logger.info("Database updated successfully")
-                db_status = "Database updated"
-            else:
-                logger.warning("Database update failed - but files are saved")
-                db_status = "Database update failed (files saved)"
+            from csv_backup import add_to_backup
+            add_to_backup(experiment_id, db_metadata, filename)
         except Exception as e:
-            logger.error(f"Database update error: {e}")
-            db_status = f"Database error: {str(e)}"
+            logger.warning(f"CSV backup failed (non-critical): {e}")
         
-        success_message = f"Upload successful! File: {filename}. {db_status}"
+        # Success
+        visibility_label = "public" if is_public else "private"
+        success_message = f"Upload successful! {visibility_label.capitalize()} experiment ID: {experiment_id}"
         logger.info(success_message)
         
         return {
             "success": True, 
             "message": success_message,
-            "filename": filename
+            "filename": filename,
+            "experiment_id": experiment_id,
+            "is_public": is_public
         }
         
     except Exception as e:
         error_msg = f"Upload failed: {str(e)}"
         logger.error(error_msg)
+        import traceback
+        logger.error(traceback.format_exc())
+        
+        # Rollback if experiment was created before failure
+        if experiment_id:
+            logger.info(f"Rolling back experiment {experiment_id} due to exception")
+            _rollback_experiment(experiment_id, final_file_path)
+        
         return {"success": False, "message": error_msg, "filename": None}
         
     finally:
@@ -381,19 +403,83 @@ def process_upload(temp_file_path, metadata_json_string):
             except:
                 logger.warning("Could not cleanup working directory")
 
+def _rollback_experiment(experiment_id, file_path=None, session=None):
+    """
+    Compensating delete when upload partially fails.
+    Removes experiment from DB and deletes saved file.
+    
+    Args:
+        experiment_id: ID of experiment to rollback
+        file_path: Path to saved file (will be deleted)
+        session: SQLAlchemy session (if None, creates own session)
+    """
+    from database import Session
+    from models import Experiment, BenchmarkResult, OverallResult
+    
+    # Database cleanup
+    owns_session = session is None
+    if owns_session:
+        session = Session()
+    
+    try:
+        session.query(BenchmarkResult).filter_by(experiment_id=experiment_id).delete()
+        session.query(OverallResult).filter_by(experiment_id=experiment_id).delete()
+        session.query(Experiment).filter_by(id=experiment_id).delete()
+        
+        if owns_session:
+            session.commit()
+            
+        logger.info(f"Rolled back experiment {experiment_id} from database")
+    except Exception as e:
+        logger.error(f"Failed to rollback experiment {experiment_id}: {e}")
+        if owns_session:
+            session.rollback()
+    finally:
+        if owns_session:
+            session.close()
+    
+    # File cleanup (always runs, independent of session)
+    if file_path and os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+            logger.info(f"Removed file: {file_path}")
+        except Exception as e:
+            logger.warning(f"Failed to remove file {file_path}: {e}")
 # ============================================================================
-# PYTHON/R INTERFACE FUNCTION
+# R/PYTHON INTERFACE
 # ============================================================================
 
 def upload_experiment(file_path, metadata_json, username=None, is_admin=False):
     """
-    Upload experiment - ADMIN ONLY
+    Upload experiment to database.
+    
+    Access control:
+    - Admins can upload public or private experiments
+    - Regular users can only upload private experiments
     
     Args:
-        file_path (str): Path to uploaded file
-        metadata_json (str): JSON string containing experiment metadata
+        file_path: Path to uploaded file
+        metadata_json: JSON string with experiment metadata
         username: Username for logging
-        is_admin: Admin status from COManage groups (required for authorization)
+        is_admin: Admin status from OIDC
+    
+    Returns:
+        dict: Result with success status, message, filename, and experiment_id
     """
-    logger.info(f"Upload requested by: {username}")
-    return process_upload(file_path, metadata_json)
+    logger.info(f"Upload requested by: {username} (admin: {is_admin})")
+    
+    # Parse metadata to check visibility
+    try:
+        metadata = json.loads(metadata_json)
+        is_public = metadata.get('experiment_visibility', 'private') == 'public'
+        
+        # Non-admins can only upload private experiments
+        if is_public and not is_admin:
+            logger.warning(f"Non-admin {username} attempted public upload - converting to private")
+            metadata['experiment_visibility'] = 'private'
+            metadata_json = json.dumps(metadata)
+            
+    except json.JSONDecodeError:
+        pass  # Will fail in process_upload_direct with proper error
+    
+    return process_upload_direct(file_path, metadata_json)

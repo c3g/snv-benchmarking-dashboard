@@ -32,7 +32,7 @@ create_experiment_details_html <- function(metadata) {
   # Create compact HTML content for row expansion
   details_html <- paste0(
     '<tr class="detail-row-', exp_id, '">',
-    '<td colspan="11">',
+    '<td colspan="12">',
     '<div class="detail-content">',
     '<div class="detail-grid">',
     
@@ -182,14 +182,13 @@ create_delete_experiments_table <- function(data) {
   # Create DataTable with selection enabled
   dt <- DT::datatable(
     delete_data,
-    selection = list(mode = 'multiple'),
+    selection = list(mode = 'multiple', target = 'row'),
     options = list(
       pageLength = 20,
       scrollX = TRUE,
       dom = 'frtip',
       stateSave = FALSE, #prevents browser caching issues
       columnDefs = list(
-        list(targets = 0, className = "dt-center", width = "50px"),
         list(targets = "_all", className = "dt-left")
       )
     ),
@@ -204,18 +203,26 @@ create_delete_experiments_table <- function(data) {
 # ============================================================================
 # TABLE OUTPUT SETUP FUNCTION
 # ============================================================================
-
 setup_table_outputs <- function(input, output, session, data_reactives) {
-  
   # ====================================================================
   # EXPERIMENTS OVERVIEW TABLE (TAB 1)
   # ====================================================================
-  
   output$experiments_table <- DT::renderDataTable({
     df <- data_reactives$experiments_data()
     
     if (nrow(df) == 0) {
       return(DT::datatable(data.frame(Message = "No experiments found")))
+    }
+    
+    # Add visibility indicator column
+    if ("is_public" %in% colnames(df)) {
+      df$Visibility <- ifelse(
+        df$is_public == TRUE | is.na(df$is_public),
+        "Public",
+        "Private"
+      )
+    } else {
+      df$Visibility <- "Public"
     }
     
     # Add expand button column
@@ -230,13 +237,33 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
       df$created_at <- format(as.Date(df$created_at), "%Y/%m/%d")
     }
     
-    # Reorder columns to put expand button first
-    df <- df[, c("expand_button", setdiff(names(df), "expand_button"))]
+    # Select and reorder columns
+    column_order <- c(
+      "expand_button", 
+      "id", 
+      "name", 
+      "technology", 
+      "platform_name", 
+      "caller", 
+      "caller_version", 
+      "chemistry", 
+      "truth_set", 
+      "sample",
+      "Visibility", 
+      "created_at"
+    )
+    
+    # Keep only columns that exist in df
+    column_order <- column_order[column_order %in% names(df)]
+    df <- df[, column_order]
     
     # Configure table selection based on current mode
     current_mode <- data_reactives$current_mode()
+    
     if (current_mode == "manual_selection") {
-      selection_config <- list(mode = 'multiple')
+      selected_ids <- isolate(data_reactives$table_selected_ids())
+      selected_rows <- which(df$id %in% selected_ids)
+      selection_config <- list(mode = 'multiple', selected = selected_rows)
     } else {
       selection_config <- 'none'
     }
@@ -258,18 +285,36 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
           "}"
         ),
         columnDefs = list(
-          list(targets = 0, orderable = FALSE, width = "20px"),
-          list(targets = 1, width = "20px", className = "dt-center"),
-          list(targets = 2, width = 150)
+          list(targets = 0, orderable = FALSE, width = "20px"),              # Expand button
+          list(targets = 1, width = "20px", className = "dt-center"),        # ID
+          list(targets = 2, width = 150),                                     # Name
+          list(targets = 10, className = "dt-center", width = "80px")        # Visibility (centered)
         )
       ),
       rownames = FALSE,
-      colnames = c("", "ID", "Name", "Technology", "Platform", "Caller", "Version", "Chemistry", "Truth Set", "Sample", "Created")
+      colnames = c(
+        "",            # Expand button
+        "ID", 
+        "Name", 
+        "Technology", 
+        "Platform", 
+        "Caller", 
+        "Version", 
+        "Chemistry", 
+        "Truth Set", 
+        "Sample",
+        "Visibility", 
+        "Created"
+      )
     )
-    
+      dt <- dt %>%
+      formatStyle(
+        "Visibility",
+        backgroundColor = styleEqual("Private", "#fff3cd")  # Light yellow
+      )
+
     return(dt)
   })
-  
   # ====================================================================
   # PERFORMANCE RESULTS TABLE (TAB 2)
   # ====================================================================
@@ -392,13 +437,19 @@ output$delete_experiments_table <- DT::renderDataTable({
     
     # Get all experiments for deletion selection
     all_experiments <- tryCatch({
-      db$get_experiments_overview()
+      user_info <- get_user_info(session)
+      user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+      is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+      db$get_experiments_overview(NULL, NULL, user_id, is_admin_user)
     }, error = function(e) {
       data.frame()
     })
     
+    # Store data for use in delete confirmation
+    session$userData$delete_table_data <- all_experiments
+    
     create_delete_experiments_table(all_experiments)
-  }, server = FALSE)
+  }, server = TRUE)  # Server-side for reliable selection
   outputOptions(output, "delete_experiments_table", suspendWhenHidden = FALSE)
   
 }

@@ -79,7 +79,41 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
     length(data_reactives$table_selected_ids())
   })
   
+  # ====================================================================
+  # VISIBILITY FILTER OUTPUTS 
+  # ====================================================================
   
+  # Count of user's own experiments for visibility filter display
+  output$my_experiments_count <- renderText({
+    input$user_authenticated  # Re-run when auth changes
+    
+    user_info <- get_user_info(session)
+    if (is.null(user_info)) return("")
+    
+    user_id <- session$userData$user_id
+    if (is.null(user_id)) return("")
+    
+    tryCatch({
+      user_exps <- db$get_user_experiments(user_id)
+      count <- nrow(user_exps)
+      
+      if (count == 0) {
+        "No uploads yet"
+      } else {
+        paste0("You have ", count, " upload", ifelse(count != 1, "s", ""))
+      }
+    }, error = function(e) {
+      ""
+    })
+  })
+  
+  # Showing X experiments indicator
+  output$showing_experiments_count <- renderText({
+    df <- data_reactives$experiments_data()
+    count <- nrow(df)
+    paste0("Showing: ", count, " experiment", ifelse(count != 1, "s", ""))
+  })
+
   # ====================================================================
   # EXPERIMENT METADATA OUTPUTS (TAB 3)
   # ====================================================================
@@ -102,7 +136,10 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       
       metadata <- tryCatch({
         exp_id_json <- json_param(list(exp_id))
-        db$get_experiment_metadata(exp_id_json)
+        user_info <- get_user_info(session)
+        user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+        is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+        db$get_experiment_metadata(exp_id_json, user_id, is_admin_user)
       }, error = function(e) {
         data.frame(name = "Error loading metadata")
       })
@@ -161,7 +198,10 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
     tryCatch({
       
       exp_id_json <- json_param(list(exp_id))
-      metadata <- db$get_experiment_metadata(exp_id_json)
+      user_info <- get_user_info(session)
+      user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+      is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+      metadata <- db$get_experiment_metadata(exp_id_json, user_id, is_admin_user)
       
       if (nrow(metadata) == 0) {
         return(p("No metadata found for experiment ID:", exp_id))
@@ -171,7 +211,7 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       
       # Get performance data for this specific experiment
       tryCatch({
-        performance_data <- db$get_experiments_with_performance(exp_id_json, VARIANT_TYPES)
+        performance_data <- db$get_experiments_with_performance(exp_id_json, VARIANT_TYPE_OPTIONS)
         snp_perf <- performance_data %>% filter(variant_type == "SNP")
         indel_perf <- performance_data %>% filter(variant_type == "INDEL")
       }, error = function(e) {
@@ -361,7 +401,10 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
     # Use json_param for reliable JSON formatting
     tryCatch({
       ids_json <- json_param(experiment_ids)
-      metadata <- db$get_experiment_metadata(ids_json)
+      user_info <- get_user_info(session)
+      user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+      is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+      metadata <- db$get_experiment_metadata(ids_json, user_id, is_admin_user)
       
       if (nrow(metadata) == 0) {
         return(p("Unable to load experiment metadata", style = "color: #dc3545;"))
@@ -566,6 +609,7 @@ upload_modal_ui <- function() {
         tags$li(code("Type"), " - Variant type (SNP/INDEL)"),
         tags$li(code("Subtype"), " - Variant subtype"),
         tags$li(code("Subset"), " - Genomic region"),
+        tags$li(code("Filter"), " - Filter status (e.g., ALL)"),
         tags$li(code("METRIC.Recall"), " - Recall metric"),
         tags$li(code("METRIC.Precision"), " - Precision metric"),
         tags$li(code("METRIC.F1_Score"), " - F1 score metric")
@@ -605,7 +649,7 @@ upload_modal_ui <- function() {
         ),
         column(4,
                selectInput("target", "Target",
-                           choices = c("WGS" = "wgs", "WES" = "wes"),
+                           choices = TARGET_OPTIONS,
                            selected = "wgs")
         )
       ),
@@ -615,14 +659,15 @@ upload_modal_ui <- function() {
       fluidRow(
         column(3,
           selectInput("technology", "Technology*",
-                      choices = c("", "ILLUMINA", "PACBIO", "ONT", "MGI", "10X"))
+                      choices = c("",TECHNOLOGY_OPTIONS))
         ),
         column(3,
                textInput("platform_name", "Platform*")
         ),
         column(3,
                selectInput("platform_type", "Platform Type*",
-                choices = c("", "SRS" = "srs", "LRS" = "lrs", "Synthetic" = "synthetic"))        ),
+                choices = c("", PLATFORM_TYPE_OPTIONS))        
+        ),
         column(3,
                textInput("platform_version", "Platform Version",
                          placeholder = "Optional")
@@ -646,13 +691,11 @@ upload_modal_ui <- function() {
       fluidRow(
         column(3,
           selectInput("caller_name", "Caller*",
-                      choices = c("", "DEEPVARIANT", "CLAIR3", "DRAGEN",
-                                  "GATK3", "GATK4", "LONGRANGER", "MEGABOLT",
-                                  "NANOCALLER", "PARABRICK", "PEPPER"))
+                      choices = c("", CALLER_OPTIONS))
         ),
         column(3,
                selectInput("caller_type", "Caller Type*",
-                           choices = c("","ML" = "ml", "Traditional" = "traditional"))
+                           choices = c("",CALLER_TYPE_OPTIONS))
         ),
         column(3,
                textInput("caller_version", "Caller Version*",
@@ -682,20 +725,20 @@ upload_modal_ui <- function() {
       fluidRow(
         column(3,
                selectInput("truth_set_name", "Truth Set*",
-                           choices = c("", "GIAB" = "giab", "CMRG" = "cmrg", "T2T" = "t2t"))
+                           choices = c("", TRUTH_SET_OPTIONS))
         ),
         column(3,
                selectInput("truth_set_sample", "Sample",
-                           choices = c("HG001" = "hg001", "HG002" = "hg002", "HG003" = "hg003", "HG004" = "hg004"),
-                           selected = "hg002")
+                           choices = SAMPLE_OPTIONS,
+                           selected = "HG002")
         ),
         column(3,
                textInput("truth_set_version", "Truth Set Version")
         ),
         column(3,
                selectInput("truth_set_reference", "Reference",
-                           choices = c("GRCh37" = "grch37", "GRCh38" = "grch38"),
-                           selected = "grch38")
+                           choices = REFERENCE_OPTIONS,
+                           selected = "GRCH38")
         )
       ),
       
@@ -704,18 +747,18 @@ upload_modal_ui <- function() {
       fluidRow(
         column(3,
                selectInput("variant_type", "Variant Type",
-                           choices = c("SNP+INDEL" = "snp+indel", "SNP" = "snp", "INDEL" = "indel"),
-                           selected = "snp+indel")
+                           choices = VARIANT_TYPE_OPTIONS,
+                           selected = "SNPINDEL")
         ),
         column(3,
                selectInput("variant_size", "Variant Size",
-                           choices = c("Small" = "small", "Large" = "large"),
-                           selected = "small")
+                           choices = c(VARIANT_SIZE_OPTIONS),
+                           selected = "SMALL")
         ),
         column(3,
                selectInput("variant_origin", "Variant Origin",
-                           choices = c("Germline" = "germline", "Somatic" = "somatic"),
-                           selected = "germline")
+                           choices = VARIANT_ORIGIN_OPTIONS,
+                           selected = "GERMLINE")
         ),
         column(3,
                selectInput("is_phased", "Phased",
@@ -729,8 +772,8 @@ upload_modal_ui <- function() {
       fluidRow(
         column(6,
                selectInput("benchmark_tool_name", "Benchmark Tool",
-                           choices = c("hap.py" = "hap.py", "vcfdist" = "vcfdist", "truvari" = "truvari"),
-                           selected = "hap.py")
+                           choices = BECHMARKING_TOOL_OPTIONS,
+                           selected = "HAPPY")
         ),
         column(6,
                textInput("benchmark_tool_version", "Tool Version")
@@ -759,28 +802,54 @@ upload_modal_ui <- function() {
       )
     ),
     
-    # 3: Preview & Submit
+# 3: Preview & Submit
     wellPanel(
       h4("3. Review & Submit"),
       fluidRow(
-        column(8,
                div(
                  h5("Generated Filename:"),
                  verbatimTextOutput("filename_preview", placeholder = TRUE)
-               )
+        )),
+        fluidRow(
+          column(6,
+            br(),
+            # Visibility toggle - only visible to admins
+            conditionalPanel(
+              condition = "output.user_is_admin",
+              h5("Visibility"),
+              br(),
+              radioButtons(
+                "experiment_visibility",
+                NULL,
+                choices = list(
+                  "Public" = "public",
+                  "Private" = "private"
+                ),
+                selected = "public"
+              )
+            ),
+            # Non-admin info message
+            conditionalPanel(
+              condition = "!output.user_is_admin",
+              div(
+                style = "padding: 10px; background: #f8f9fa; border-radius: 4px; margin-top: 10px;",
+                span(" Your upload will be private (visible only to you)")
+              )
+            )
+          ),
+          column(6,
+                div(style = "text-align: center; padding-top: 35px;",
+                    actionButton("submit_upload", "Add to Database", 
+                                  class = "btn-success btn-lg", 
+                                  style = "min-width: 130px; background-color: #42a65c; border: none;")
+                )
+          )
         ),
-        column(4,
-               div(style = "text-align: center; padding-top: 20px;",
-                   actionButton("submit_upload", "Add to Database", 
-                                class = "btn-success btn-lg", 
-                                style = "min-width: 150px; background-color: #42a65c; border: none;")
-               )
-        )
-      ),
       
       br(),
       div(id = "upload_status", style = "margin-top: 15px;")
     )
+
   )
 }
 
@@ -823,7 +892,44 @@ delete_modal_ui <- function() {
     div(id = "delete_status", style = "margin-top: 15px;")
   )
 }
-
+# ============================================================================
+# MY UPLOADS MODAL (for regular users to manage their experiments)
+# ============================================================================
+my_uploads_modal_ui <- function() {
+  bsModal(
+    "my_uploads_modal",
+    "My Uploads",
+    "show_my_uploads_modal",
+    size = "large",
+    
+    # Info message
+    div(
+      class = "alert alert-info",
+      style = "margin-bottom: 20px;",
+      p(icon("info-circle"), " Here you can view and delete your private uploads.")
+    ),
+    
+    # Experiment table
+    div(
+      style = "max-height: 400px; overflow-y: auto; border: 1px solid #dee2e6; padding: 10px;",
+      DT::dataTableOutput("my_uploads_table")
+    ),
+    
+    # Selected count
+    div(
+      style = "margin-top: 10px;",
+      textOutput("my_uploads_selected_count")
+    ),
+    
+    # Action buttons
+    div(
+      style = "text-align: right; margin-top: 20px;",
+      actionButton("cancel_my_uploads", "Close", class = "btn-secondary"),
+      actionButton("delete_my_uploads", "Delete Selected",
+                   class = "btn-danger", style = "margin-left: 10px;")
+    )
+  )
+}
 # ============================================================================
 # FILE BROWSER UI COMPONENTS  
 # ============================================================================
@@ -909,5 +1015,202 @@ create_experiment_details_panel_ui <- function() {
         }
       }
     "))
+  )
+}
+
+# ============================================================================
+# ADMIN PANEL UI COMPONENTS
+# ============================================================================
+# creates the admin panel UI content
+admin_panel_ui <- function() {
+  div(
+    class = "container-fluid",
+    style = "padding: 20px;",
+    
+    # Header
+    div(
+      style = "margin-bottom: 20px; border-bottom: 1px solid #e4e7ea; padding-bottom: 15px;",
+      h4( " Admin Dashboard", 
+         style = "color: #4472ca; font-weight: 600; margin: 0;"),
+      p("Manage experiments, users, and system settings", 
+        style = "color: #6c757d; margin: 5px 0 0 0; font-size: 13px;")
+    ),
+    
+    # Statistics Cards Row
+    div(
+      class = "row",
+      style = "margin-bottom: 20px;",
+      
+      # Total Experiments
+      div(
+        class = "col-md-2",
+        div(
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; 
+                   padding: 15px; text-align: center;",
+          p("Total Experiments", style = "margin: 0 0 5px 0; font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;"),
+          h3(textOutput("admin_total_experiments", inline = TRUE), 
+             style = "margin: 0; font-weight: 600; font-size: 24px; color: #4472ca;")
+        )
+      ),
+      
+      # Public
+      div(
+        class = "col-md-2",
+        div(
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; 
+                   padding: 15px; text-align: center;",
+          p("Public", style = "margin: 0 0 5px 0; font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;"),
+          h3(textOutput("admin_public_experiments", inline = TRUE), 
+             style = "margin: 0; font-weight: 600; font-size: 24px; color: #2e7d32;")
+        )
+      ),
+      
+      # Private
+      div(
+        class = "col-md-2",
+        div(
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; 
+                   padding: 15px; text-align: center;",
+          p("Private", style = "margin: 0 0 5px 0; font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;"),
+          h3(textOutput("admin_private_experiments", inline = TRUE), 
+             style = "margin: 0; font-weight: 600; font-size: 24px; color: #c62828;")
+        )
+      ),
+      
+      # Users
+      div(
+        class = "col-md-2",
+        div(
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; 
+                   padding: 15px; text-align: center;",
+          p("Users", style = "margin: 0 0 5px 0; font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;"),
+          h3(textOutput("admin_total_users", inline = TRUE), 
+             style = "margin: 0; font-weight: 600; font-size: 24px; color: #4472ca;")
+        )
+      ),
+      
+      # Admins
+      div(
+        class = "col-md-2",
+        div(
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; 
+                   padding: 15px; text-align: center;",
+          p("Admins", style = "margin: 0 0 5px 0; font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;"),
+          h3(textOutput("admin_admin_users", inline = TRUE), 
+             style = "margin: 0; font-weight: 600; font-size: 24px; color: #5c6bc0;")
+        )
+      ),
+      
+      # Storage uploads
+      div(
+        class = "col-md-2",
+        div(
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; 
+                   padding: 15px; text-align: center;",
+          p("Storage (mb)", style = "margin: 0 0 5px 0; font-size: 11px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;"),
+          h3(textOutput("admin_total_storage", inline = TRUE), 
+             style = "margin: 0; font-weight: 600; font-size: 24px; color: #6c757d;")
+        )
+      )
+    ),
+    
+    # Quick Actions Row
+    div(
+      class = "row",
+      style = "margin-bottom: 20px;",
+      div(
+        class = "col-md-12",
+        div(
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; padding: 15px;",
+          h5("Quick Actions", style = "margin: 0 0 12px 0; font-weight: 600; color: #333; font-size: 14px;"),
+          div(
+            style = "display: flex; gap: 10px; flex-wrap: wrap;",
+            actionButton("admin_upload_btn", 
+                        tagList(icon("upload"), " Upload Dataset"),
+                        class = "btn-sm",
+                          style = "padding: 6px 16px; background-color: white; border: 1px solid #4472ca; color: #4472ca;"),
+            actionButton("admin_delete_btn", 
+                        tagList(icon("trash"), " Delete Datasets"),
+                        class = "btn-default btn-sm",
+                        style = "padding: 8px 16px; border: 1px solid #d9534f; color: #d9534f; background: white;"),
+            actionButton("admin_file_browser_btn", 
+                        tagList(icon("folder-open"), " File Browser"),
+                        class = "btn-default btn-sm",
+                        style = "padding: 8px 16px;")
+          )
+        )
+      )
+    ),
+    
+    # Main Content
+    div(
+      div(
+      class = "row",
+      style = "margin-bottom: 20px;",
+        div(
+          class = "col-md-12",
+          div(
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; padding: 15px;",
+            
+            # Header
+            h5("Registered Users", style = "margin: 0 0 12px 0; font-weight: 600; color: #333; font-size: 14px;"),
+            
+            # Users table
+            div(
+              style = "border: 1px solid #e9ecef; border-radius: 4px; max-height: 300px; overflow-y: auto;",
+              uiOutput("admin_users_ui")
+            )
+          )
+        )
+      ),
+      # Private Uploads
+      div(
+        class = "row",
+        style = "margin-bottom: 20px;",
+          div(
+          class = "col-md-12",
+          div(
+          style = "background: #ffffff; border: 1px solid #e4e7ea; border-radius: 6px; padding: 15px;",
+            # Header
+            div(
+              style = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;",
+              h5("Private Uploads", style = "margin: 0; font-weight: 600; color: #333; font-size: 14px;"),
+            ),
+            # Private experiments table
+            div(
+              style = "border: 1px solid #e9ecef; border-radius: 4px; max-height: 300px; overflow-y: auto;",
+              uiOutput("admin_private_experiments_ui")
+            ),
+            
+            # Action buttons
+            div(
+              style = "margin-top: 12px; padding-top: 12px; border-top: 1px solid #e9ecef; display: flex; gap: 8px;",
+              actionButton("admin_make_public_btn", 
+                          tagList(icon("globe"), " Make Public"),
+                          class = "btn-default btn-sm",
+                          style = "padding: 6px 12px; border: 1px solid #5cb85c; color: #5cb85c; background: white;"),
+              actionButton("admin_view_experiment_btn", 
+                          tagList(icon("eye"), " View"),
+                          class = "btn-default btn-sm",
+                          style = "padding: 6px 12px;"),
+              actionButton("admin_delete_private_btn", 
+                          tagList(icon("trash"), " Delete"),
+                          class = "btn-default btn-sm",
+                          style = "padding: 6px 12px; border: 1px solid #d9534f; color: #d9534f; background: white;")
+            )
+          )
+        )
+      )
+    )
+  )
+}
+# Admin Dashboard Modal (wraps panel UI)
+admin_modal_ui <- function() {
+  bsModal(
+    id = "admin_modal",
+    title = tagList("Admin Dashboard"),
+    trigger = NULL,
+    size = "large",
+    admin_panel_ui()
   )
 }

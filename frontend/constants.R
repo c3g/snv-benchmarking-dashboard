@@ -28,21 +28,34 @@ FILTER_TYPES <- list(
   "Variant Caller" = "caller"
 )
 
-# Available options for dropdowns
-TECHNOLOGY_OPTIONS <- c("ILLUMINA", "PACBIO", "ONT", "MGI", "10X")
-CALLER_OPTIONS <- c("DEEPVARIANT", "CLAIR3", "DRAGEN", 
-                    "GATK3", "GATK4", "LONGRANGER", "MEGABOLT", 
-                    "NANOCALLER", "PARABRICK", "PEPPER")
-VARIANT_TYPES <- c("SNP", "INDEL")
-TRUTH_SET_OPTIONS <- c("All Truth Sets", "T2T", "GIAB", "CMRG")
+# Available options for dropdowns - uses enum_mappings.py
 
+TECHNOLOGY_OPTIONS <- enums$VALID_TECHNOLOGIES
+CALLER_OPTIONS <-  enums$VALID_CALLERS
+
+TRUTH_SET_OPTIONS <-  enums$VALID_TRUTH_SETS # for upload modal
+TRUTH_SET_FILTER_OPTIONS <-  c("ALL", enums$VALID_TRUTH_SETS) # for filtering results 
+
+TARGET_OPTIONS <- enums$VALID_TARGETS
+PLATFORM_TYPE_OPTIONS <- enums$VALID_PLATFORM_TYPES
+CALLER_TYPE_OPTIONS <- enums$VALID_CALLER_TYPES
+REFERENCE_OPTIONS <- enums$VALID_REFERENCES
+SAMPLE_OPTIONS <- enums$VALID_SAMPLES
+VARIANT_TYPE_OPTIONS <- enums$VALID_VARIANT_TYPES
+VARIANT_SIZE_OPTIONS <- enums$VALID_VARIANT_SIZES
+VARIANT_ORIGIN_OPTIONS <- enums$VALID_VARIANT_ORIGINS
+BECHMARKING_TOOL_OPTIONS <- enums$VALID_BENCHMARK_TOOLS
+
+'
+<<<< commented out for now as we only use uppercase versions for now>>>>
 # Display names for UI dropdowns
 TECHNOLOGY_DISPLAY_NAMES <- c(
   "ILLUMINA" = "Illumina",
   "PACBIO" = "PacBio",
   "ONT" = "ONT",
   "MGI" = "MGI",
-  "10X" = "10X"
+  "10X" = "10X",
+  "ULTIMA" = "Ultima"
 )
 
 CALLER_DISPLAY_NAMES <- c(
@@ -57,7 +70,7 @@ CALLER_DISPLAY_NAMES <- c(
   "NANOCALLER" = "NanoCaller",
   "PARABRICK" = "Parabrick",
   "PEPPER" = "Pepper"
-)
+)'
 
 # ============================================================================
 # CSS STYLING CONSTANTS
@@ -493,7 +506,199 @@ METADATA_CSS_STYLES <- "
     .metadata-card:hover {
       box-shadow: 0 4px 8px rgba(0,0,0,0.15);
     }
+
+    /* Visibility filter row (frirst tab) */
+    .visibility-filter-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 15px;
+      padding: 10px 15px;
+      background: #f4f5f7;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
+    }
+    
+    .visibility-filter-row .visibility-label {
+      font-weight: 600;
+      color: #333;
+      line-height: 1;
+    }
+    
+    .visibility-filter-row .form-group {
+      margin: 0;
+    }
+    
+    .visibility-filter-row .shiny-options-group {
+      display: flex;
+      gap: 0;
+    }
+    
+    .visibility-filter-row .radio-inline {
+      padding: 7px 16px;
+      margin: 0;
+      background: white;
+      border: 1px solid #ccc;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: #555;
+      line-height: 1;
+    }
+    
+    .visibility-filter-row .radio-inline:first-child {
+      border-radius: 5px 0 0 5px;
+    }
+    
+    .visibility-filter-row .radio-inline:last-child {
+      border-radius: 0 5px 5px 0;
+      border-left: none;
+    }
+    
+    .visibility-filter-row .radio-inline:not(:first-child):not(:last-child) {
+      border-left: none;
+    }
+    
+    .visibility-filter-row .radio-inline:hover {
+      background: #e9ecef;
+    }
+    
+    .visibility-filter-row .radio-inline input[type='radio'] {
+      display: none;
+    }
+    
+    .visibility-filter-row .radio-inline:has(input:checked) {
+      background: #4472ca;
+      color: white;
+      border-color: #4472ca;
+      
+    }
+
+    .experiment-count-badge {
+    margin-left: 12px;
+    padding: 4px 10px;
+    background: #e9ecef;
+    border-radius: 12px;
+    font-size: 12px;
+    color: #495057;
+    font-weight: 500;
+  }
+  
+  /* Admin Panel Styles */
+  .admin-stat-card {
+    background: #ffffff;
+    border: 1px solid #e4e7ea;
+    border-radius: 6px;
+    padding: 15px;
+    text-align: center;
+  }
+  
+  .admin-panel-section {
+    background: #ffffff;
+    border: 1px solid #e4e7ea;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .admin-panel-section h5 {
+    margin-bottom: 12px;
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+  }
+
+  /* Fix modal scrolling */
+  .modal-body {
+    max-height: 80vh;
+    overflow-y: auto;
+  }
 "
+# Region selection CSS
+REGION_INFO_CSS <- "
+  .region-info-icon {
+    color: #007bff;
+    cursor: help;
+    margin-left: 5px;
+    font-size: 14px;
+  }
+  
+  .tooltip-inner {
+    max-width: 350px;
+    text-align: left;
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 12px 15px;
+    background-color: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #bbdefb;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    opacity: 1;
+  }
+  
+  .tooltip {
+    opacity: 1 !important;
+  }
+  
+  .tooltip.bs-tooltip-right .arrow::before {
+    border-right-color: #e3f2fd;
+  }
+  
+  .tooltip.bs-tooltip-left .arrow::before {
+    border-left-color: #e3f2fd;
+  }
+  
+  .tooltip.bs-tooltip-top .arrow::before {
+    border-top-color: #e3f2fd;
+  }
+  
+  .tooltip.bs-tooltip-bottom .arrow::before {
+    border-bottom-color: #e3f2fd;
+  }
+"
+# Truth set filter panel styling
+TRUTH_SET_FILTER_CSS <- "
+  .truth-set-filter-panel {
+    background-color: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  
+  .truth-set-filter-panel label {
+    margin: 0;
+    font-weight: 500;
+    font-size: 14px;
+    color: #495057;
+    white-space: nowrap;
+  }
+  
+  .truth-set-filter-panel .form-group {
+    margin: 0;
+    flex: 1;
+    max-width: 250px;
+  }
+  
+  .truth-set-filter-panel select {
+    font-size: 13px;
+    padding: 6px 10px;
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+  }
+  
+  .truth-set-filter-panel .info-icon {
+    color: #6c757d;
+    cursor: help;
+    font-size: 16px;
+  }
+"
+
 # ============================================================================
 # JAVASCRIPT INTERACTION HANDLERS
 # ============================================================================
@@ -653,50 +858,6 @@ METRIC_SELECTION_JS <- "
 "
 
 
-# Region selection CSS
-REGION_INFO_CSS <- "
-  .region-info-icon {
-    color: #007bff;
-    cursor: help;
-    margin-left: 5px;
-    font-size: 14px;
-  }
-  
-  .tooltip-inner {
-    max-width: 350px;
-    text-align: left;
-    font-size: 13px;
-    line-height: 1.5;
-    padding: 12px 15px;
-    background-color: #e3f2fd;
-    color: #1565c0;
-    border: 1px solid #bbdefb;
-    border-radius: 6px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    opacity: 1;
-  }
-  
-  .tooltip {
-    opacity: 1 !important;
-  }
-  
-  .tooltip.bs-tooltip-right .arrow::before {
-    border-right-color: #e3f2fd;
-  }
-  
-  .tooltip.bs-tooltip-left .arrow::before {
-    border-left-color: #e3f2fd;
-  }
-  
-  .tooltip.bs-tooltip-top .arrow::before {
-    border-top-color: #e3f2fd;
-  }
-  
-  .tooltip.bs-tooltip-bottom .arrow::before {
-    border-bottom-color: #e3f2fd;
-  }
-"
-
 # tooltip JavaScript
 REGION_TOOLTIPS_JS <- "
   $(document).ready(function(){
@@ -707,47 +868,6 @@ REGION_TOOLTIPS_JS <- "
     });
   });
 
-"
-# Truth set filter panel styling
-TRUTH_SET_FILTER_CSS <- "
-  .truth-set-filter-panel {
-    background-color: #f8f9fa;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  }
-  
-  .truth-set-filter-panel label {
-    margin: 0;
-    font-weight: 500;
-    font-size: 14px;
-    color: #495057;
-    white-space: nowrap;
-  }
-  
-  .truth-set-filter-panel .form-group {
-    margin: 0;
-    flex: 1;
-    max-width: 250px;
-  }
-  
-  .truth-set-filter-panel select {
-    font-size: 13px;
-    padding: 6px 10px;
-    border-radius: 4px;
-    border: 1px solid #ced4da;
-  }
-  
-  .truth-set-filter-panel .info-icon {
-    color: #6c757d;
-    cursor: help;
-    font-size: 16px;
-  }
 "
 # Plotly refresh on tab 3
 PLOTLY_REFRESH_JS <- "

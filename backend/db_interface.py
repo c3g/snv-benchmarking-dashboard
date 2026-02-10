@@ -2,31 +2,49 @@
 # db_interface.py
 # ============================================================================
 """
-Database interface and query functions for SNV Benchmarking Dashboard frontend (R) to access the data.
+Database interface and query functions for SNV Benchmarking Dashboard.
 
 Main components:
 - Experiment overview and metadata retrieval
 - Performance data queries
 - Stratified analysis data retrieval  
+- Visibility filtering (public/private experiments)
 - Technology and caller-based filtering
 - JSON parameter handling for R Shiny integration
+
+Visibility Rules:
+- Public experiments (is_public=True): visible to everyone
+- Private experiments (is_public=False): visible only to owner + admins
+- Legacy experiments (owner_id=NULL): treated as public
 """
 
 import pandas as pd
 import json
 import logging
 from sqlalchemy.orm import joinedload
+from sqlalchemy import or_
 from database import get_db_session
 from models import *
+from authorization import require_admin
+import os
+from config import DATA_FOLDER
+
 
 logger = logging.getLogger(__name__)
 
 # ============================================================================
-# db_interface.py
+# HELPER FUNCTIONS
 # ============================================================================
+
 def parse_experiment_ids(experiment_ids_param):
     """
-    Parse experiment IDs from various input formats (JSON string, list, or single value) and returns a list.
+    Parse experiment IDs from various input formats.
+    
+    Args:
+        experiment_ids_param: JSON string, list, or single value
+        
+    Returns:
+        list: List of experiment IDs
     """
     if experiment_ids_param is None:
         return []
@@ -35,11 +53,10 @@ def parse_experiment_ids(experiment_ids_param):
         if isinstance(experiment_ids_param, str):
             experiment_ids = json.loads(experiment_ids_param)
             if not isinstance(experiment_ids, list):
-                experiment_ids = [experiment_ids]  # Convert single value to list
+                experiment_ids = [experiment_ids]
         elif isinstance(experiment_ids_param, list):
             experiment_ids = experiment_ids_param
         else:
-            # Single value (int/float)
             experiment_ids = [experiment_ids_param]
             
         return experiment_ids
@@ -51,44 +68,85 @@ def parse_experiment_ids(experiment_ids_param):
         logger.error(f"Error processing experiment_ids: {e}")
         return []
 
+def apply_visibility_filter(query, user_id=None, is_admin=False):
+    """
+    Apply visibility filtering to experiment query.
+    
+    Visibility Rules:
+    - Admins see everything
+    - Authenticated users see: public + their own private
+    - Anonymous users see: public only
+    - Legacy data (owner_id=NULL) is treated as public
+    
+    Args:
+        query: SQLAlchemy query object
+        user_id: Current user's database ID (None if anonymous)
+        is_admin: Whether current user is admin
+        
+    Returns:
+        query: Filtered query object
+    """
+    if is_admin:
+        # Admins see everything
+        return query
+    elif user_id:
+        # Authenticated: public + own private + legacy (owner_id=NULL)
+        return query.filter(
+            or_(
+                Experiment.is_public == True,
+                Experiment.owner_id == user_id,
+                Experiment.owner_id.is_(None)  # Legacy public data
+            )
+        )
+    else:
+        # Anonymous: public only + legacy
+        return query.filter(
+            or_(
+                Experiment.is_public == True,
+                Experiment.owner_id.is_(None)
+            )
+        )
+
 # ============================================================================
 # EXPERIMENT OVERVIEW AND METADATA
 # ============================================================================
 
-def get_experiments_overview(filters=None, experiment_ids_param=None):
+def get_experiments_overview(filters=None, experiment_ids_param=None, user_id=None, is_admin=False):
     """
     Get basic experiment information for dashboard overview table.
     
-    Retrieves experiments key metadata for the main dashboard table. 
-    Supports filtering by technology/caller and specific experiment ID selection.
+    Retrieves experiment metadata for the main dashboard table with visibility filtering.
     
     Args:
         filters (dict): Optional filters like {'technology': 'ILLUMINA', 'caller': 'DEEPVARIANT'}
-        experiment_ids_param (str/list): JSON string or list of specific experiment IDs (picked in frontend)
+        experiment_ids_param (str/list): JSON string or list of specific experiment IDs
+        user_id (int): Current user's database ID for visibility filtering
+        is_admin (bool): Whether current user is admin
         
     Returns:
-        pandas.DataFrame: Experiment overview data with columns: id, name, technology, 
-                         platform_name, caller, caller_version, chemistry, truth_set, sample, created_at
+        pandas.DataFrame: Experiment overview with visibility info
     """
-    # Parse JSON IDs
     experiment_ids = parse_experiment_ids(experiment_ids_param)
 
-    # Get metadata from database
     try:
         with get_db_session() as session:
-            # Base query with necessary joins
+            # Base query with joins
             query = session.query(Experiment).options(
                 joinedload(Experiment.sequencing_technology),
                 joinedload(Experiment.variant_caller),
                 joinedload(Experiment.truth_set), 
-                joinedload(Experiment.chemistry)
+                joinedload(Experiment.chemistry),
+                joinedload(Experiment.owner)
             )
             
-            # If specific experiment IDs provided, filter by them first
+            # Apply visibility filter
+            query = apply_visibility_filter(query, user_id, is_admin)
+            
+            # Filter by specific IDs if provided
             if experiment_ids and len(experiment_ids) > 0:
                 query = query.filter(Experiment.id.in_(experiment_ids))
             
-            # Apply additional filters if provided
+            # Apply additional filters
             if filters:
                 if 'technology' in filters:
                     try:
@@ -112,7 +170,7 @@ def get_experiments_overview(filters=None, experiment_ids_param=None):
             
             experiments = query.all()
             
-            # Extract essential data
+            # Build result data
             data = []
             for exp in experiments:
                 data.append({ 
@@ -125,41 +183,41 @@ def get_experiments_overview(filters=None, experiment_ids_param=None):
                     'chemistry': exp.chemistry.name if (exp.chemistry and exp.chemistry.name) else "N/A",
                     'truth_set': exp.truth_set.name.value if exp.truth_set else "N/A",
                     'sample': exp.truth_set.sample.value if exp.truth_set else "N/A",
-                    'created_at': exp.created_at.strftime('%Y-%m-%d') if exp.created_at else "N/A"
+                    'created_at': exp.created_at.strftime('%Y-%m-%d') if exp.created_at else "N/A",
+                    # Visibility info
+                    'is_public': exp.is_public if exp.is_public is not None else True,
+                    'owner_id': exp.owner_id,
+                    'owner_username': exp.owner.email if exp.owner else None,
                 })
             
             return pd.DataFrame(data)
             
     except Exception as e:
         logger.error(f"Error in get_experiments_overview: {e}")
+        import traceback
+        traceback.print_exc()
         return pd.DataFrame()
 
-def get_experiment_metadata(experiment_ids_param):
+def get_experiment_metadata(experiment_ids_param, user_id=None, is_admin=False):
     """
     Get complete metadata for specific experiments.
     
-    Retrieves detailed metadata for selected experiments including all related
-    tables (technology, caller, aligner, truth set, etc.). 
-    Used in Tab 1 (row expansion)
-    
     Args:
-        experiment_ids_param (str/list): JSON string or list of experiment IDs to get metadata for
+        experiment_ids_param (str/list): JSON string or list of experiment IDs
+        user_id (int): Current user's database ID for visibility filtering
+        is_admin (bool): Whether current user is admin
         
     Returns:
-        pandas.DataFrame: Complete metadata for selected experiments with all available fields
+        pandas.DataFrame: Complete metadata for selected experiments
     """
-    # Parse JSON IDs
     experiment_ids = parse_experiment_ids(experiment_ids_param)
 
-    # check if list is empty
     if not experiment_ids or len(experiment_ids) == 0:
         logger.warning("No experiment IDs provided to get_experiment_metadata")
         return pd.DataFrame()
     
-    # Get full metadata   
     try:
         with get_db_session() as session:
-            # Complete query of all tables with metadata joins
             query = session.query(Experiment).options(
                 joinedload(Experiment.sequencing_technology),
                 joinedload(Experiment.variant_caller),
@@ -168,12 +226,15 @@ def get_experiment_metadata(experiment_ids_param):
                 joinedload(Experiment.benchmark_tool),
                 joinedload(Experiment.variant),
                 joinedload(Experiment.chemistry),
-                joinedload(Experiment.quality_control)
+                joinedload(Experiment.quality_control),
+                joinedload(Experiment.owner)
             ).filter(Experiment.id.in_(experiment_ids))
+            
+            # Apply visibility filter
+            query = apply_visibility_filter(query, user_id, is_admin)
             
             experiments = query.all()
             
-            # Extract complete metadata
             data = []
             for exp in experiments:
                 data.append({
@@ -182,6 +243,11 @@ def get_experiment_metadata(experiment_ids_param):
                     'name': exp.name,
                     'description': exp.description,
                     'created_at': exp.created_at.isoformat() if exp.created_at else None,
+                    
+                    # Visibility
+                    'is_public': exp.is_public if exp.is_public is not None else True,
+                    'owner_id': exp.owner_id,
+                    'owner_username': exp.owner.email if exp.owner else None,
                     
                     # Sequencing Technology
                     'technology': exp.sequencing_technology.technology.value if exp.sequencing_technology else None,
@@ -233,6 +299,89 @@ def get_experiment_metadata(experiment_ids_param):
         logger.error(f"Error in get_experiment_metadata: {e}")
         return pd.DataFrame()
 
+def get_experiments_filtered(technology=None, platform=None, caller=None, version=None, user_id=None, is_admin=False):
+    """
+    Get experiment IDs matching technology, platform, caller, and version criteria.
+    
+    Args:
+        technology: Technology name (optional)
+        platform: Platform name (optional)
+        caller: Caller name (optional)
+        version: Caller version (optional)
+        user_id: Current user's database ID for visibility filtering
+        is_admin: Whether current user is admin
+        
+    Returns:
+        list: Experiment IDs matching all specified criteria
+    """
+    try:
+        with get_db_session() as session:
+            query = session.query(Experiment.id)
+            
+            # Join tables as needed
+            if technology or platform:
+                query = query.join(SequencingTechnology)
+            if caller or version:
+                query = query.join(VariantCaller)
+            
+            # Apply filters
+            if technology:
+                tech_enum = SeqTechName(technology.upper())
+                query = query.filter(SequencingTechnology.technology == tech_enum)
+            if platform:
+                query = query.filter(SequencingTechnology.platform_name == platform)
+            if caller:
+                caller_enum = CallerName(caller.upper())
+                query = query.filter(VariantCaller.name == caller_enum)
+            if version:
+                query = query.filter(VariantCaller.version == version)
+            
+            # Apply visibility filter
+            query = apply_visibility_filter(query, user_id, is_admin)
+            
+            result = query.all()
+            return [row[0] for row in result]
+            
+    except Exception as e:
+        logger.error(f"Error in get_experiments_filtered: {e}")
+        return []
+def get_platforms_for_technology(technology, user_id=None, is_admin=False):
+    """Get platforms available for a specific technology (visible to user)."""
+    try:
+        with get_db_session() as session:
+            tech_enum = SeqTechName(technology.upper())
+            query = session.query(SequencingTechnology.platform_name).join(Experiment).filter(
+                SequencingTechnology.technology == tech_enum,
+                SequencingTechnology.platform_name.isnot(None)
+            ).distinct()
+            
+            # Apply visibility filter
+            query = apply_visibility_filter(query, user_id, is_admin)
+            
+            result = query.all()
+            return [row[0] for row in result if row[0]]
+    except Exception as e:
+        logger.error(f"Error getting platforms for {technology}: {e}")
+        return []
+
+def get_versions_for_caller(caller, user_id=None, is_admin=False):
+    """Get versions available for a specific caller (visible to user)."""
+    try:
+        with get_db_session() as session:
+            caller_enum = CallerName(caller.upper())
+            query = session.query(VariantCaller.version).join(Experiment).filter(
+                VariantCaller.name == caller_enum,
+                VariantCaller.version.isnot(None)
+            ).distinct()
+            
+            # Apply visibility filter
+            query = apply_visibility_filter(query, user_id, is_admin)
+            
+            result = query.all()
+            return [row[0] for row in result if row[0]]
+    except Exception as e:
+        logger.error(f"Error getting versions for {caller}: {e}")
+        return []
 # ============================================================================
 # PERFORMANCE DATA QUERIES
 # ============================================================================
@@ -240,29 +389,44 @@ def get_experiment_metadata(experiment_ids_param):
 def get_experiments_with_performance(experiment_ids_param, variant_types=['SNP', 'INDEL']):
     """
     Get performance data combined with metadata for selected experiments.
-    
-    Joins performance results from OverallResult table with complete experiment metadata. 
-    Used for performance tables and visualizations in the dashboard (Tabs 2 and 3).
-    
-    Args:
-        experiment_ids_param (str/list): JSON string or list of experiment IDs
-        variant_types (list): List of variant types to include (default: ['SNP', 'INDEL'])
-        
-    Returns:
-        pandas.DataFrame: Combined performance metrics and metadata for each experiment/variant type
     """
-    # Parse JSON IDs
     experiment_ids = parse_experiment_ids(experiment_ids_param)
 
-    if not experiment_ids:
-        logger.warning("No valid experiment IDs provided to get_experiments_with_performance")
+    if not experiment_ids or len(experiment_ids) == 0:
+        logger.warning("No experiment IDs provided to get_experiments_with_performance")
         return pd.DataFrame()
-
+    
     try:
         with get_db_session() as session:
             query = session.query(
-                # Performance metrics 
-                OverallResult.experiment_id,
+                Experiment.id.label('experiment_id'),
+                Experiment.name.label('experiment_name'),
+                Experiment.is_public,
+                Experiment.owner_id,
+                SequencingTechnology.technology,
+                SequencingTechnology.platform_name,
+                SequencingTechnology.platform_type,
+                SequencingTechnology.target,
+                VariantCaller.name.label('caller'),
+                VariantCaller.version.label('caller_version'),
+                VariantCaller.type.label('caller_type'),
+                VariantCaller.model.label('caller_model'),
+                TruthSet.name.label('truth_set'),
+                TruthSet.sample.label('truth_set_sample'),
+                TruthSet.version.label('truth_set_version'),
+                TruthSet.reference.label('truth_set_reference'),
+                BenchmarkTool.name.label('benchmark_tool_name'),
+                BenchmarkTool.version.label('benchmark_tool_version'),
+                Variant.type.label('variant_type_detail'),
+                Variant.origin.label('variant_origin'),
+                Variant.size.label('variant_size'),
+                Variant.is_phased,
+                QualityControl.mean_coverage,
+                QualityControl.read_length,
+                QualityControl.mean_read_length,
+                QualityControl.mean_insert_size,
+                Chemistry.name.label('chemistry_name'),
+                Chemistry.version.label('chemistry_version'),
                 OverallResult.variant_type,
                 OverallResult.metric_recall.label('recall'),
                 OverallResult.metric_precision.label('precision'),
@@ -272,66 +436,11 @@ def get_experiments_with_performance(experiment_ids_param, variant_types=['SNP',
                 OverallResult.truth_fn,
                 OverallResult.query_total,
                 OverallResult.query_tp,
-                OverallResult.query_fp,
-                
-                # Basic experiment info
-                Experiment.name.label('experiment_name'),
-                Experiment.description,
-                Experiment.created_at,
-                
-                # Sequencing Technology info
-                SequencingTechnology.technology.label('technology'),
-                SequencingTechnology.target,
-                SequencingTechnology.platform_name,
-                SequencingTechnology.platform_type,
-                SequencingTechnology.platform_version,
-                
-                # Variant Caller info
-                VariantCaller.name.label('caller'),
-                VariantCaller.type.label('caller_type'),
-                VariantCaller.version.label('caller_version'),
-                VariantCaller.model.label('caller_model'),
-                
-                # Aligner info
-                Aligner.name.label('aligner_name'),
-                Aligner.version.label('aligner_version'),
-                
-                # Truth Set info
-                TruthSet.name.label('truth_set_name'),
-                TruthSet.sample.label('truth_set_sample'),
-                TruthSet.version.label('truth_set_version'),
-                TruthSet.reference.label('truth_set_reference'),
-                
-                # Benchmark Tool info
-                BenchmarkTool.name.label('benchmark_tool_name'),
-                BenchmarkTool.version.label('benchmark_tool_version'),
-                
-                # Variant info
-                Variant.type.label('variant_type_detail'),
-                Variant.origin.label('variant_origin'),
-                Variant.size.label('variant_size'),
-                Variant.is_phased,
-                
-                # Quality Control metrics
-                QualityControl.mean_coverage,
-                QualityControl.read_length,
-                QualityControl.mean_read_length,
-                QualityControl.mean_insert_size,
-                
-                # Chemistry info
-                Chemistry.name.label('chemistry_name'),
-                Chemistry.version.label('chemistry_version')
-                
-            ).select_from(OverallResult).join(
-                # Required joins
-                Experiment, OverallResult.experiment_id == Experiment.id
-            ).join(
+                OverallResult.query_fp
+            ).select_from(Experiment).outerjoin(
                 SequencingTechnology, Experiment.sequencing_technology_id == SequencingTechnology.id
-            ).join(
-                VariantCaller, Experiment.variant_caller_id == VariantCaller.id
             ).outerjoin(
-                # Optional joins (outerjoin to avoid missing data)
-                Aligner, Experiment.aligner_id == Aligner.id
+                VariantCaller, Experiment.variant_caller_id == VariantCaller.id
             ).outerjoin(
                 TruthSet, Experiment.truth_set_id == TruthSet.id
             ).outerjoin(
@@ -342,81 +451,56 @@ def get_experiments_with_performance(experiment_ids_param, variant_types=['SNP',
                 QualityControl, Experiment.quality_control_metrics_id == QualityControl.id
             ).outerjoin(
                 Chemistry, Experiment.chemistry_id == Chemistry.id
+            ).outerjoin(
+                OverallResult, Experiment.id == OverallResult.experiment_id
             ).filter(
-                OverallResult.experiment_id.in_(experiment_ids),
+                Experiment.id.in_(experiment_ids),
                 OverallResult.variant_type.in_(variant_types)
-            )
+            ).order_by(Experiment.id, OverallResult.variant_type)
             
             results = query.all()
             
-            if not results:
-                logger.info(f"No performance data found for experiment IDs: {experiment_ids}")
-                return pd.DataFrame()
-            
-            # Convert to DataFrame 
             data = []
-            for result in results:
+            for row in results:
                 data.append({
-                    # Performance metrics
-                    'experiment_id': result.experiment_id,
-                    'experiment_name': result.experiment_name,
-                    'variant_type': result.variant_type,
-                    'recall': result.recall,
-                    'precision': result.precision,
-                    'f1_score': result.f1_score,
-                    'truth_total': result.truth_total,
-                    'truth_tp': result.truth_tp,
-                    'truth_fn': result.truth_fn,
-                    'query_total': result.query_total,
-                    'query_tp': result.query_tp,
-                    'query_fp': result.query_fp,
-                    
-                    # Basic info
-                    'description': result.description,
-                    'created_at': result.created_at.isoformat() if result.created_at else None,
-                    
-                    # Technology info
-                    'technology': result.technology.value if result.technology else 'Unknown',
-                    'target': result.target.value if result.target else None,
-                    'platform_name': result.platform_name,
-                    'platform_type': result.platform_type.value if result.platform_type else None,
-                    'platform_version': result.platform_version,
-                    
-                    # Caller info
-                    'caller': result.caller.value if result.caller else 'Unknown',
-                    'caller_type': result.caller_type.value if result.caller_type else None,
-                    'caller_version': result.caller_version,
-                    'caller_model': result.caller_model,
-                    
-                    # Aligner info
-                    'aligner_name': result.aligner_name,
-                    'aligner_version': result.aligner_version,
-                    
-                    # Truth Set info
-                    'truth_set_name': result.truth_set_name.value if result.truth_set_name else None,
-                    'truth_set_sample': result.truth_set_sample.value if result.truth_set_sample else None,
-                    'truth_set_version': result.truth_set_version,
-                    'truth_set_reference': result.truth_set_reference.value if result.truth_set_reference else None,
-                    
-                    # Benchmark Tool info
-                    'benchmark_tool_name': result.benchmark_tool_name.value if result.benchmark_tool_name else None,
-                    'benchmark_tool_version': result.benchmark_tool_version,
-                    
-                    # Variant info
-                    'variant_type_detail': result.variant_type_detail.value if result.variant_type_detail else None,
-                    'variant_origin': result.variant_origin.value if result.variant_origin else None,
-                    'variant_size': result.variant_size.value if result.variant_size else None,
-                    'is_phased': result.is_phased,
-                    
-                    # Quality Control metrics
-                    'mean_coverage': float(result.mean_coverage) if result.mean_coverage is not None else None,
-                    'read_length': float(result.read_length) if result.read_length is not None else None,
-                    'mean_read_length': float(result.mean_read_length) if result.mean_read_length is not None else None,
-                    'mean_insert_size': float(result.mean_insert_size) if result.mean_insert_size is not None else None,
-                    
-                    # Chemistry info
-                    'chemistry_name': result.chemistry_name,
-                    'chemistry_version': result.chemistry_version
+                    'experiment_id': row.experiment_id,
+                    'experiment_name': row.experiment_name,
+                    'is_public': row.is_public,
+                    'owner_id': row.owner_id,
+                    'technology': row.technology.value if row.technology else None,
+                    'platform_name': row.platform_name,
+                    'platform_type': row.platform_type.value if row.platform_type else None,
+                    'target': row.target.value if row.target else None,
+                    'caller': row.caller.value if row.caller else None,
+                    'caller_version': row.caller_version,
+                    'caller_type': row.caller_type.value if row.caller_type else None,
+                    'caller_model': row.caller_model,
+                    'truth_set': row.truth_set.value if row.truth_set else None,
+                    'truth_set_sample': row.truth_set_sample.value if row.truth_set_sample else None,
+                    'truth_set_version': row.truth_set_version,
+                    'truth_set_reference': row.truth_set_reference.value if row.truth_set_reference else None,
+                    'benchmark_tool_name': row.benchmark_tool_name.value if row.benchmark_tool_name else None,
+                    'benchmark_tool_version': row.benchmark_tool_version,
+                    'variant_type_detail': row.variant_type_detail.value if row.variant_type_detail else None,
+                    'variant_origin': row.variant_origin.value if row.variant_origin else None,
+                    'variant_size': row.variant_size.value if row.variant_size else None,
+                    'is_phased': row.is_phased,
+                    'mean_coverage': float(row.mean_coverage) if row.mean_coverage is not None else None,
+                    'read_length': float(row.read_length) if row.read_length is not None else None,
+                    'mean_read_length': float(row.mean_read_length) if row.mean_read_length is not None else None,
+                    'mean_insert_size': float(row.mean_insert_size) if row.mean_insert_size is not None else None,
+                    'chemistry_name': row.chemistry_name,
+                    'chemistry_version': row.chemistry_version,
+                    'variant_type': row.variant_type,
+                    'recall': row.recall,
+                    'precision': row.precision,
+                    'f1_score': row.f1_score,
+                    'truth_total': row.truth_total,
+                    'truth_tp': row.truth_tp,
+                    'truth_fn': row.truth_fn,
+                    'query_total': row.query_total,
+                    'query_tp': row.query_tp,
+                    'query_fp': row.query_fp
                 })
             
             return pd.DataFrame(data)
@@ -431,20 +515,16 @@ def get_stratified_performance_by_regions(experiment_ids_param, variant_types=['
     """
     Get stratified performance results filtered by specific genomic regions.
     
-    Retrieves detailed performance metrics across different genomic regions
-    (easy/difficult, GC content, functional regions, etc.) for stratified analysis (Tab 4)
-    Only loads data for user-selected regions.
+    Note: Visibility filtering should be applied BEFORE calling this function.
     
     Args:
         experiment_ids_param (str/list): JSON string or list of experiment IDs
-        variant_types (list): List of variant types to include (default: ['SNP', 'INDEL'])  
-        regions (list): List of region names to filter by (e.g., ['All Regions', 'Easy Regions'])
+        variant_types (list): List of variant types to include
+        regions (list): List of region names to filter by
         
     Returns:
-        pandas.DataFrame: Stratified performance data with experiment metadata
+        pandas.DataFrame: Stratified performance data
     """
-    
-    # Parse JSON IDs
     experiment_ids = parse_experiment_ids(experiment_ids_param)
 
     try:
@@ -462,7 +542,6 @@ def get_stratified_performance_by_regions(experiment_ids_param, variant_types=['
             if regions and len(regions) > 0:
                 region_enums = []
                 for region_name in regions:
-                    # Try display name first, then fall back to original string
                     region_enum = RegionType.from_display_name(region_name) or RegionType.from_string(region_name)
                     if region_enum:
                         region_enums.append(region_enum)
@@ -475,7 +554,6 @@ def get_stratified_performance_by_regions(experiment_ids_param, variant_types=['
             
             results = query.all()
             
-            # Convert to dataframe with metadata included
             data = []
             for result in results:
                 data.append({
@@ -486,17 +564,12 @@ def get_stratified_performance_by_regions(experiment_ids_param, variant_types=['
                     'caller': result.experiment.variant_caller.name.value if (result.experiment and result.experiment.variant_caller) else 'Unknown',
                     'caller_version': result.experiment.variant_caller.version if result.experiment.variant_caller else None,
                     'platform_name': result.experiment.sequencing_technology.platform_name if result.experiment.sequencing_technology else None,
-    
                     'subset': result.subset.value,
                     'filter_type': result.filter_type,
-                    'chemistry_name': result.experiment.chemistry.name if (result.experiment and result.experiment.chemistry and result.experiment.chemistry.name) else None,
-                    
-                    # Performance metrics
+                    'chemistry_name': result.experiment.chemistry.name if (result.experiment and result.experiment.chemistry) else None,
                     'recall': result.metric_recall,
                     'precision': result.metric_precision,
                     'f1_score': result.metric_f1_score,
-                    
-                    # Essential counts
                     'truth_total': result.truth_total,
                     'truth_tp': result.truth_tp,
                     'truth_fn': result.truth_fn,
@@ -514,37 +587,38 @@ def get_stratified_performance_by_regions(experiment_ids_param, variant_types=['
         return pd.DataFrame()
 
 # ============================================================================
-# FILTERING FUNCTIONS
+# TECHNOLOGY AND CALLER FILTERING
 # ============================================================================
 
-def get_experiments_by_technology(technology):
+def get_experiments_by_technology(technology, user_id=None, is_admin=False):
     """
-    Get experiment IDs that match a specific sequencing technology.
+    Get experiment IDs matching a specific sequencing technology.
     
     Args:
-        technology (str): Technology name - "ILLUMINA", "PACBIO", "ONT", or "MGI"
+        technology (str): Technology name (e.g., "ILLUMINA", "PACBIO")
+        user_id (int): Current user's database ID for visibility filtering
+        is_admin (bool): Whether current user is admin
         
     Returns:
-        list: List of experiment IDs matching the technology
+        list: List of visible experiment IDs matching the technology
     """
     try:
         with get_db_session() as session:
-            # Convert string to enum
             try:
                 tech_enum = SeqTechName(technology.strip().upper())
             except ValueError:
                 logger.error(f"Invalid technology: {technology}")
-                logger.info(f"Valid options: {[t.value for t in SeqTechName]}")
                 return []
             
-            # Query joining Experiment with Sequencing technologies
             query = session.query(Experiment.id).join(
                 SequencingTechnology
             ).filter(
                 SequencingTechnology.technology == tech_enum
             )
             
-            # Extract IDs
+            # Apply visibility filter
+            query = apply_visibility_filter(query, user_id, is_admin)
+            
             result = query.all()
             return [row[0] for row in result]
             
@@ -552,34 +626,35 @@ def get_experiments_by_technology(technology):
         logger.error(f"Error getting experiments by technology: {e}")
         return []
 
-def get_experiments_by_caller(caller):
+def get_experiments_by_caller(caller, user_id=None, is_admin=False):
     """
-    Get experiment IDs that match a specific variant caller.
+    Get experiment IDs matching a specific variant caller.
     
     Args:
-        caller (str): Caller name - "DEEPVARIANT", "GATK3", or "CLAIR3"
+        caller (str): Caller name (e.g., "DEEPVARIANT", "GATK3")
+        user_id (int): Current user's database ID for visibility filtering
+        is_admin (bool): Whether current user is admin
         
     Returns:
-        list: List of experiment IDs matching the caller
+        list: List of visible experiment IDs matching the caller
     """
     try:
         with get_db_session() as session:
-            # Convert string to enum
             try:
                 caller_enum = CallerName(caller.strip().upper())
             except ValueError:
                 logger.error(f"Invalid caller: {caller}")
-                logger.info(f"Valid options: {[c.value for c in CallerName]}")
                 return []
             
-            # Query joining Experiment with variant caller
             query = session.query(Experiment.id).join(
                 VariantCaller
             ).filter(
                 VariantCaller.name == caller_enum
             )
             
-            # Extract IDs
+            # Apply visibility filter
+            query = apply_visibility_filter(query, user_id, is_admin)
+            
             result = query.all()
             return [row[0] for row in result]
             
@@ -592,26 +667,16 @@ def get_experiments_by_caller(caller):
 # ============================================================================
 
 def get_technology(experiment_id):
-    """
-    Get sequencing technology name for a specific experiment.
-    
-    Args:
-        experiment_id (int): Single experiment ID
-        
-    Returns:
-        str or None: Technology name (e.g., "ILLUMINA", "PACBIO") or None if not found
-    """
+    """Get sequencing technology name for a specific experiment."""
     try:
         with get_db_session() as session:
-            # Query experiment with technology join
             experiment = session.query(Experiment).options(
                 joinedload(Experiment.sequencing_technology)
             ).filter(Experiment.id == experiment_id).first()
             
-            if experiment and experiment.sequencing_technology and experiment.sequencing_technology.technology:
+            if experiment and experiment.sequencing_technology:
                 return experiment.sequencing_technology.technology.value
-            else:
-                return None
+            return None
             
     except Exception as e:
         logger.error(f"Error getting technology for experiment {experiment_id}: {e}")
@@ -629,40 +694,95 @@ def get_caller(experiment_id):
     """
     try:
         with get_db_session() as session:
-            # Query experiment with caller join
             experiment = session.query(Experiment).options(
                 joinedload(Experiment.variant_caller)
             ).filter(Experiment.id == experiment_id).first()
             
-            if experiment and experiment.variant_caller and experiment.variant_caller.name:
+            if experiment and experiment.variant_caller:
                 return experiment.variant_caller.name.value
-            else:
-                return None
+            return None
             
     except Exception as e:
         logger.error(f"Error getting caller for experiment {experiment_id}: {e}")
         return None
 
-# ============================================================================
-# DYNAMIC DROPDOWN OPTIONS
-# ============================================================================
-
-def get_distinct_technologies():
+def get_experiment_owner(experiment_id):
     """
-    Get all unique technology names from database.
+    Get owner information for an experiment.
     
+    Args:
+        experiment_id: Experiment ID
+        
     Returns:
-        list: Sorted list of technology names (e.g., ["ILLUMINA", "ONT", "PACBIO"])
+        dict: Owner info or None
     """
     try:
         with get_db_session() as session:
-            results = session.query(
-                SequencingTechnology.technology
-            ).distinct().all()
+            experiment = session.query(Experiment).options(
+                joinedload(Experiment.owner)
+            ).filter(Experiment.id == experiment_id).first()
             
-            technologies = [r[0].value for r in results if r[0] is not None]
-            return sorted(set(technologies))
+            if experiment:
+                return {
+                    'owner_id': experiment.owner_id,
+                    'owner_username': experiment.owner.username if experiment.owner else None,
+                    'is_public': experiment.is_public
+                }
+            return None
             
+    except Exception as e:
+        logger.error(f"Error getting owner for experiment {experiment_id}: {e}")
+        return None
+
+def can_user_access_experiment(experiment_id, user_id=None, is_admin=False):
+    """
+    Check if user can access a specific experiment.
+    
+    Args:
+        experiment_id: Experiment ID to check
+        user_id: Current user's database ID
+        is_admin: Whether current user is admin
+        
+    Returns:
+        bool: True if user can access the experiment
+    """
+    try:
+        with get_db_session() as session:
+            experiment = session.query(Experiment).filter(
+                Experiment.id == experiment_id
+            ).first()
+            
+            if not experiment:
+                return False
+            
+            # Admins can access everything
+            if is_admin:
+                return True
+            
+            # Public experiments accessible to all
+            if experiment.is_public or experiment.owner_id is None:
+                return True
+            
+            # Private experiments only accessible to owner
+            if user_id and experiment.owner_id == user_id:
+                return True
+            
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error checking access for experiment {experiment_id}: {e}")
+        return False
+
+# ============================================================================
+# DROPDOWN OPTIONS
+# ============================================================================
+
+def get_distinct_technologies():
+    """Get list of distinct technology names in database."""
+    try:
+        with get_db_session() as session:
+            result = session.query(SequencingTechnology.technology).distinct().all()
+            return [row[0].value for row in result if row[0]]
     except Exception as e:
         logger.error(f"Error getting distinct technologies: {e}")
         return []
@@ -676,148 +796,340 @@ def get_distinct_callers():
     """
     try:
         with get_db_session() as session:
-            results = session.query(
-                VariantCaller.name
-            ).distinct().all()
-            
-            callers = [r[0].value for r in results if r[0] is not None]
-            return sorted(set(callers))
-            
+            result = session.query(VariantCaller.name).distinct().all()
+            return [row[0].value for row in result if row[0]]
     except Exception as e:
         logger.error(f"Error getting distinct callers: {e}")
         return []
 
-def get_platforms_for_technology(technology):
-    """
-    Get distinct platform names for a given technology.
-    
-    Args:
-        technology (str): Technology name (e.g., "ILLUMINA")
-        
-    Returns:
-        list: Sorted list of platform names (e.g., ["HiSeq", "NovaSeq X"])
-    """
+def get_distinct_truth_sets():
+    """Get list of distinct truth set names in database."""
+    try:
+        with get_db_session() as session:
+            result = session.query(TruthSet.name).distinct().all()
+            return [row[0].value for row in result if row[0]]
+    except Exception as e:
+        logger.error(f"Error getting distinct truth sets: {e}")
+        return []
+
+def get_platforms_by_technology(technology):
+    """Get platforms available for a specific technology."""
     try:
         with get_db_session() as session:
             tech_enum = SeqTechName(technology.upper())
-            
-            results = session.query(
+            result = session.query(SequencingTechnology.platform_name).filter(
+                SequencingTechnology.technology == tech_enum,
+                SequencingTechnology.platform_name.isnot(None)
+            ).distinct().all()
+            return [row[0] for row in result if row[0]]
+    except Exception as e:
+        logger.error(f"Error getting platforms for {technology}: {e}")
+        return []
+
+# ============================================================================
+# HIERARCHICAL DATA FOR ADVANCED COMPARISONS
+# ============================================================================
+
+def get_technology_hierarchy(user_id=None, is_admin=False):
+    """
+    Get hierarchical technology data for advanced comparison UI.
+    
+    Returns:
+        dict: Nested structure {technology: {platform: [experiment_ids]}}
+    """
+    try:
+        with get_db_session() as session:
+            query = session.query(
+                Experiment.id,
+                SequencingTechnology.technology,
                 SequencingTechnology.platform_name
-            ).filter(
-                SequencingTechnology.technology == tech_enum
-            ).distinct().all()
+            ).join(SequencingTechnology)
             
-            platforms = [r[0] for r in results if r[0] is not None and r[0] != ""]
-            return sorted(set(platforms))
-            
-    except ValueError:
-        logger.error(f"Invalid technology: {technology}")
-        return []
-    except Exception as e:
-        logger.error(f"Error getting platforms for technology {technology}: {e}")
-        return []
-
-def get_versions_for_caller(caller):
-    """
-    Get distinct versions for a given caller.
-    
-    Args:
-        caller (str): Caller name (e.g., "DEEPVARIANT")
-        
-    Returns:
-        list: Sorted list of versions (e.g., ["1.5", "1.6.1"])
-    """
-    try:
-        with get_db_session() as session:
-            caller_enum = CallerName(caller.upper())
-            
-            results = session.query(
-                VariantCaller.version
-            ).filter(
-                VariantCaller.name == caller_enum
-            ).distinct().all()
-            
-            versions = [r[0] for r in results if r[0] is not None and r[0] != ""]
-            return sorted(set(versions))
-            
-    except ValueError:
-        logger.error(f"Invalid caller: {caller}")
-        return []
-    except Exception as e:
-        logger.error(f"Error getting versions for caller {caller}: {e}")
-        return []
-
-def get_chemistries_for_technology(technology):
-    """
-    Get distinct chemistry names for a given technology.
-    
-    Args:
-        technology (str): Technology name (e.g., "PACBIO")
-        
-    Returns:
-        list: Sorted list of chemistry names (e.g., ["SPRQ", "Sequel II"])
-    """
-    try:
-        with get_db_session() as session:
-            tech_enum = SeqTechName(technology.upper())
-            
-            results = session.query(
-                Chemistry.name
-            ).filter(
-                Chemistry.sequencing_technology == tech_enum
-            ).distinct().all()
-            
-            chemistries = [r[0] for r in results if r[0] is not None and r[0] != ""]
-            return sorted(set(chemistries))
-            
-    except ValueError:
-        logger.error(f"Invalid technology: {technology}")
-        return []
-    except Exception as e:
-        logger.error(f"Error getting chemistries for technology {technology}: {e}")
-        return []
-
-def get_experiments_filtered(technology=None, platform=None, caller=None, version=None):
-    """
-    Get experiment IDs matching the specified filters.
-    
-    Args:
-        technology (str): Technology name filter (optional)
-        platform (str): Platform name filter (optional)
-        caller (str): Caller name filter (optional)
-        version (str): Caller version filter (optional)
-        
-    Returns:
-        list: List of matching experiment IDs
-    """
-    try:
-        with get_db_session() as session:
-            query = session.query(Experiment.id)
-            
-            if technology:
-                tech_enum = SeqTechName(technology.upper())
-                query = query.join(SequencingTechnology).filter(
-                    SequencingTechnology.technology == tech_enum
-                )
-                
-                if platform:
-                    query = query.filter(SequencingTechnology.platform_name == platform)
-            
-            if caller:
-                caller_enum = CallerName(caller.upper())
-                query = query.join(VariantCaller).filter(
-                    VariantCaller.name == caller_enum
-                )
-                
-                if version:
-                    query = query.filter(VariantCaller.version == version)
+            # Apply visibility filter
+            query = apply_visibility_filter(query, user_id, is_admin)
             
             results = query.all()
-            return [r[0] for r in results]
             
-    except ValueError as e:
-        logger.error(f"Invalid enum value: {e}")
-        return []
+            hierarchy = {}
+            for exp_id, tech, platform in results:
+                tech_name = tech.value if tech else "Unknown"
+                platform_name = platform or "Unknown"
+                
+                if tech_name not in hierarchy:
+                    hierarchy[tech_name] = {}
+                if platform_name not in hierarchy[tech_name]:
+                    hierarchy[tech_name][platform_name] = []
+                    
+                hierarchy[tech_name][platform_name].append(exp_id)
+            
+            return hierarchy
+            
     except Exception as e:
-        logger.error(f"Error in get_experiments_filtered: {e}")
-        return []
+        logger.error(f"Error getting technology hierarchy: {e}")
+        return {}
+
+def get_caller_hierarchy(user_id=None, is_admin=False):
+    """
+    Get hierarchical caller data for advanced comparison UI.
+    
+    Returns:
+        dict: Nested structure {caller: {version: [experiment_ids]}}
+    """
+    try:
+        with get_db_session() as session:
+            query = session.query(
+                Experiment.id,
+                VariantCaller.name,
+                VariantCaller.version
+            ).join(VariantCaller)
+            
+            # Apply visibility filter
+            query = apply_visibility_filter(query, user_id, is_admin)
+            
+            results = query.all()
+            
+            hierarchy = {}
+            for exp_id, caller, version in results:
+                caller_name = caller.value if caller else "Unknown"
+                version_str = version or "Unknown"
+                
+                if caller_name not in hierarchy:
+                    hierarchy[caller_name] = {}
+                if version_str not in hierarchy[caller_name]:
+                    hierarchy[caller_name][version_str] = []
+                    
+                hierarchy[caller_name][version_str].append(exp_id)
+            
+            return hierarchy
+            
+    except Exception as e:
+        logger.error(f"Error getting caller hierarchy: {e}")
+        return {}
+
+# ============================================================================
+# USER'S EXPERIMENTS
+# ============================================================================
+
+def get_user_experiments(user_id):
+    """
+    Get all experiments owned by a specific user.
+    
+    Args:
+        user_id: User's database ID
+        
+    Returns:
+        pandas.DataFrame: User's experiments
+    """
+    if not user_id:
+        return pd.DataFrame()
+    
+    try:
+        with get_db_session() as session:
+            query = session.query(Experiment).options(
+                joinedload(Experiment.sequencing_technology),
+                joinedload(Experiment.variant_caller)
+            ).filter(Experiment.owner_id == user_id)
+            
+            experiments = query.all()
+            
+            data = []
+            for exp in experiments:
+                data.append({
+                    'id': exp.id,
+                    'name': exp.name,
+                    'technology': exp.sequencing_technology.technology.value if exp.sequencing_technology else "N/A",
+                    'caller': exp.variant_caller.name.value if exp.variant_caller else "N/A",
+                    'is_public': exp.is_public,
+                    'created_at': exp.created_at.strftime('%Y-%m-%d') if exp.created_at else "N/A"
+                })
+            
+            return pd.DataFrame(data)
+            
+    except Exception as e:
+        logger.error(f"Error getting user experiments: {e}")
+        return pd.DataFrame()
+
+# ============================================================================
+# ADMIN PANEL FUNCTIONS
+# ============================================================================
+
+def get_admin_stats():
+    """
+    Get statistics for admin dashboard cards.
+    
+    Returns:
+        dict: Statistics including experiment counts, user counts, storage info
+    """
+    try:
+        with get_db_session() as session:
+            total_experiments = session.query(Experiment).count()
+            public_experiments = session.query(Experiment).filter(
+                or_(Experiment.is_public == True, Experiment.owner_id.is_(None))
+            ).count()
+            private_experiments = session.query(Experiment).filter(
+                Experiment.is_public == False,
+                Experiment.owner_id.isnot(None)
+            ).count()
+            
+            total_users = session.query(User).count()
+            admin_users = session.query(User).filter(User.is_admin == True).count()
+            
+
+            # Calculate total storage
+            total_bytes = sum(
+                os.path.getsize(os.path.join(DATA_FOLDER, f))
+                for f in os.listdir(DATA_FOLDER)
+                if os.path.isfile(os.path.join(DATA_FOLDER, f))
+            )
+            total_storage_mb = round(total_bytes / (1024 * 1024), 1)
+            
+            return {
+                "total_experiments": total_experiments,
+                "public_experiments": public_experiments,
+                "private_experiments": private_experiments,
+                "total_users": total_users,
+                "admin_users": admin_users,
+                "total_storage_mb": total_storage_mb,
+                "success": True
+            }
+            
+    except Exception as e:
+        logger.error(f"Error getting admin stats: {e}")
+        return {
+            "total_experiments": 0,
+            "public_experiments": 0,
+            "private_experiments": 0,
+            "total_users": 0,
+            "admin_users": 0,
+            "recent_uploads": 0,
+            "success": False,
+            "error": str(e)
+        }
+
+def get_all_private_experiments():
+    """
+    Get all private experiments for admin review.
+    Admin-only function to view all private uploads from all users.
+    
+    Returns:
+        pandas.DataFrame: All private experiments with owner info
+    """
+    try:
+        with get_db_session() as session:
+            query = session.query(Experiment).options(
+                joinedload(Experiment.sequencing_technology),
+                joinedload(Experiment.variant_caller),
+                joinedload(Experiment.owner)
+            ).filter(
+                Experiment.is_public == False,
+                Experiment.owner_id.isnot(None)
+            ).order_by(Experiment.created_at.desc())
+            
+            experiments = query.all()
+            
+            data = []
+            for exp in experiments:
+                data.append({
+                    'id': exp.id,
+                    'name': exp.name,
+                    'owner_username': exp.owner.email if exp.owner else "Unknown",
+                    'owner_email': exp.owner.email if exp.owner else "N/A",
+                    'technology': exp.sequencing_technology.technology.value if exp.sequencing_technology else "N/A",
+                    'caller': exp.variant_caller.name.value if exp.variant_caller else "N/A",
+                    'created_at': exp.created_at.strftime('%Y-%m-%d') if exp.created_at else "N/A"
+                })
+            
+            return pd.DataFrame(data)
+            
+    except Exception as e:
+        logger.error(f"Error getting private experiments: {e}")
+        return pd.DataFrame()
+
+def toggle_experiment_visibility(experiment_id, make_public=True):
+    """
+    Toggle experiment visibility between public and private.
+    Admin-only function.
+    
+    Args:
+        experiment_id: ID of experiment to modify
+        make_public: True to make public, False to make private
+        
+    Returns:
+        dict: Result with success status and message
+    """
+    try:
+        with get_db_session() as session:
+            experiment = session.query(Experiment).filter(
+                Experiment.id == experiment_id
+            ).first()
+            
+            if not experiment:
+                return {
+                    "success": False,
+                    "error": f"Experiment {experiment_id} not found"
+                }
+            
+            old_status = "public" if experiment.is_public else "private"
+            experiment.is_public = make_public
+            new_status = "public" if make_public else "private"
+            
+            session.commit()
+            
+            logger.info(f"Experiment {experiment_id} visibility changed: {old_status} -> {new_status}")
+            
+            return {
+                "success": True,
+                "message": f"Experiment '{experiment.name}' is now {new_status}",
+                "experiment_id": experiment_id,
+                "is_public": make_public
+            }
+            
+    except Exception as e:
+        logger.error(f"Error toggling visibility for experiment {experiment_id}: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+def get_all_users_with_stats():
+    """
+    Get all users with their experiment counts for admin panel.
+    
+    Returns:
+        pandas.DataFrame: Users with upload statistics
+    """
+    try:
+        with get_db_session() as session:
+            from sqlalchemy import func
+            
+            # Subquery for experiment counts per user
+            exp_counts = session.query(
+                Experiment.owner_id,
+                func.count(Experiment.id).label('upload_count')
+            ).group_by(Experiment.owner_id).subquery()
+            
+            users = session.query(User).all()
+            
+            data = []
+            for user in users:
+                # Get upload count for this user
+                count_result = session.query(exp_counts.c.upload_count).filter(
+                    exp_counts.c.owner_id == user.id
+                ).scalar() or 0
+                
+                data.append({
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email or "N/A",
+                    'full_name': user.full_name or "N/A",
+                    'is_admin': user.is_admin,
+                    'upload_count': count_result,
+                    'created_at': user.created_at.strftime('%Y-%m-%d') if user.created_at else "N/A",
+                    'last_login': user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else "Never"
+                })
+            
+            return pd.DataFrame(data)
+            
+    except Exception as e:
+        logger.error(f"Error getting users with stats: {e}")
+        return pd.DataFrame()

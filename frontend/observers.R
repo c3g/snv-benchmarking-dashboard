@@ -74,7 +74,7 @@ setup_observers <- function(input, output, session, data_reactives) {
       caller_count <- if(has_caller_selection) length(names(caller_selection)) else 0
       
       label_text <- if (has_tech_selection && has_caller_selection) {
-        paste0("Compare (", tech_count, " tech × ", caller_count, " caller)")
+        paste0("Compare (", tech_count, " tech x ", caller_count, " caller)")
       } else if (has_tech_selection) {
         paste0("Compare (", tech_count, " tech selected)")
       } else {
@@ -150,7 +150,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     data_reactives$comparison_results(numeric(0))
     data_reactives$plot_clicked_id(NULL)
     data_reactives$stratified_triggered(FALSE)
-    data_reactives$active_truth_set_filter("All Truth Sets")
+    data_reactives$active_truth_set_filter("ALL")
     
     # Reset all filter controls
     updateRadioButtons(session, "filter_type", selected = "none")
@@ -161,9 +161,9 @@ setup_observers <- function(input, output, session, data_reactives) {
     session$sendCustomMessage("resetHierarchyCheckboxes", list())
 
     # Reset truth set filters
-    updateSelectInput(session, "truth_set_filter_tab2", selected = "All Truth Sets")
-    updateSelectInput(session, "truth_set_filter_tab3", selected = "All Truth Sets")
-    updateSelectInput(session, "truth_set_filter_tab4", selected = "All Truth Sets")
+    updateSelectInput(session, "truth_set_filter_tab2", selected = "ALL")
+    updateSelectInput(session, "truth_set_filter_tab3", selected = "ALL")
+    updateSelectInput(session, "truth_set_filter_tab4", selected = "ALL")
     
     # Clear table selection
     dataTableProxy('experiments_table') %>% selectRows(NULL)
@@ -188,26 +188,26 @@ setup_observers <- function(input, output, session, data_reactives) {
   # ====================================================================
   # TABLE INTERACTION OBSERVERS
   # ====================================================================
-  
-  # Row selection in experiments table (only in manual selection mode)
   observeEvent(input$experiments_table_rows_selected, {
-    if (data_reactives$current_mode() != "manual_selection") 
-      return()
+    if (data_reactives$current_mode() != "manual_selection") return()
     
     current_data <- data_reactives$experiments_data()
+    if (nrow(current_data) == 0) return()
+    
+    visible_ids <- current_data$id
     selected_rows <- input$experiments_table_rows_selected
+    prev_selected <- isolate(data_reactives$table_selected_ids())
     
-    # Get selected IDs or empty vector if no selection/no data
-    new_ids <- if (nrow(current_data) > 0 && length(selected_rows) > 0) {
-      current_data$id[selected_rows]
-    } else {
-      numeric(0)
-    }
+    # IDs selected in current view
+    selected_in_view <- if (length(selected_rows) > 0) current_data$id[selected_rows] else numeric(0)
     
-    # Update reactive value
-    data_reactives$table_selected_ids(new_ids)
+    # Keep hidden selections + current view selections
+    hidden <- prev_selected[!prev_selected %in% visible_ids]
+    final <- unique(c(hidden, selected_in_view))
+    
+    data_reactives$table_selected_ids(final)
   }, ignoreNULL = FALSE)
-  
+
   # ====================================================================
   # PLOT INTERACTION OBSERVERS
   # ====================================================================
@@ -238,6 +238,12 @@ setup_observers <- function(input, output, session, data_reactives) {
   
   # Unified advanced comparison submission
   observeEvent(input$submit_advanced_comparison, {
+    # Get user context
+    user_info <- get_user_info(session)
+    user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+    is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+  
+
     tech_selection <- input$tech_hierarchy_selection
     caller_selection <- input$caller_hierarchy_selection
     
@@ -257,7 +263,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     techs_to_query <- if (has_tech) names(tech_selection) else db$get_distinct_technologies()
     callers_to_query <- if (has_caller) names(caller_selection) else db$get_distinct_callers()
     
-    # Iterate through all tech × caller combinations
+    # Iterate through all tech x caller combinations
     for (tech in techs_to_query) {
       for (caller in callers_to_query) {
         combo_ids <- c()
@@ -286,7 +292,9 @@ setup_observers <- function(input, output, session, data_reactives) {
                 technology = tech,
                 platform = NULL,
                 caller = caller,
-                version = version
+                version = version,
+                user_id = user_id, 
+                is_admin = is_admin_user 
               )
               combo_ids <- c(combo_ids, version_ids)
             }
@@ -343,7 +351,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     }
     
     showNotification(
-      paste0("Found ", length(all_ids), " experiments matching ", tech_desc, " × ", caller_desc), 
+      paste0("Found ", length(all_ids), " experiments matching ", tech_desc, " x ", caller_desc), 
       type = "message",
       duration = 5
     )
@@ -401,9 +409,14 @@ setup_observers <- function(input, output, session, data_reactives) {
   observeEvent(input$expand_experiment_details, {
     exp_id <- input$expand_experiment_details$id
     
-    # Get metadata
+    # Get user context for visibility filtering
+    user_info <- get_user_info(session)
+    user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
+    is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
+    
+    # Get metadata with user context
     py_ids <- r_to_py(list(as.numeric(exp_id)))
-    metadata <- db$get_experiment_metadata(py_ids)
+    metadata <- db$get_experiment_metadata(py_ids, user_id, is_admin_user)
     
     # Generate HTML using table function
     details_html <- create_experiment_details_html(metadata)
@@ -470,7 +483,7 @@ setup_observers <- function(input, output, session, data_reactives) {
       enhanced_data <- tryCatch({
         db$get_stratified_performance_by_regions(
           ids_json, 
-          VARIANT_TYPES,
+          VARIANT_TYPE_OPTIONS,
           regions_list
         )
       }, error = function(e) {
@@ -611,9 +624,22 @@ setup_observers <- function(input, output, session, data_reactives) {
       duration = NULL,
       closeButton = FALSE
     )
-    
+
     # Prepare complete metadata JSON
     tryCatch({
+      
+      # Determine visibility - non-admins can only upload private
+      upload_visibility <- if (isTRUE(user_info$is_admin)) {
+        safe_input(input$experiment_visibility, "private")
+      } else {
+        "private"  # Force private for non-admins
+      }
+      
+      # Log the upload attempt
+      cat("Upload attempt by:", user_info$username, 
+          "| Admin:", user_info$is_admin, 
+          "| User ID:", user_info$user_id,
+          "| Visibility:", upload_visibility, "\n")
       
       metadata_json <- jsonlite::toJSON(list(
         # REQUIRED FIELDS
@@ -663,7 +689,12 @@ setup_observers <- function(input, output, session, data_reactives) {
         mean_coverage = safe_numeric(input$mean_coverage),
         read_length = safe_numeric(input$read_length),
         mean_insert_size = safe_numeric(input$mean_insert_size),
-        mean_read_length = safe_numeric(input$mean_read_length)
+        mean_read_length = safe_numeric(input$mean_read_length),
+
+        # OWNERSHIP AND VISIBILITY
+        experiment_visibility = upload_visibility,
+        owner_username = user_info$email,
+        owner_id = user_info$user_id  # Database user ID from session
         
       ), auto_unbox = TRUE)
       
@@ -689,6 +720,8 @@ setup_observers <- function(input, output, session, data_reactives) {
       
       # Handle result
       if (result$success) {
+        # Reset form fields
+        reset("upload_modal")
         showNotification(
           HTML(paste("Upload Successful!<br>", result$message)), 
           type = "message", 
@@ -770,17 +803,20 @@ observeEvent(input$confirm_delete_selected, {
     return()
   }
   
-  all_experiments <- tryCatch({
-    db$get_experiments_overview()
-  }, error = function(e) {
-    showNotification("Unable to load experiments", type = "error", duration = 4)
-    return(data.frame())
-  })
+  # Use stored table data to ensure row indices match what user sees
+  all_experiments <- session$userData$delete_table_data
   
-  if (nrow(all_experiments) == 0) return()
+  if (is.null(all_experiments) || nrow(all_experiments) == 0) {
+    showNotification("Table data not available. Please reopen the delete modal.", type = "error", duration = 4)
+    return()
+  }
   
-  selected_ids <- all_experiments$id[selected_rows]
+  selected_ids <- as.integer(all_experiments$id[selected_rows])
   session$userData$selected_delete_ids <- selected_ids
+  
+  # Log for debugging
+  message(paste("Delete modal: selected rows =", paste(selected_rows, collapse=","), 
+                "-> IDs =", paste(selected_ids, collapse=",")))
   
   showModal(modalDialog(
     title = "Final Confirmation",
@@ -812,7 +848,7 @@ observeEvent(input$final_confirm_delete, {
     return()
   }
   
-  if (!is_admin(user_info$group)) {
+  if (!user_info$is_admin) {
     removeModal()
     showNotification("Admin privileges required", type = "error", duration = 5)
     return()
@@ -839,8 +875,9 @@ observeEvent(input$final_confirm_delete, {
   sorted_ids <- sort(selected_ids, decreasing = TRUE)
   
   for (exp_id in sorted_ids) {
+    # Ensure experiment_id is passed as integer
     result <- delete_handler$delete_experiment(
-      exp_id, 
+      experiment_id = as.integer(exp_id), 
       username = user_info$username,
       is_admin = user_info$is_admin
     )
@@ -862,7 +899,7 @@ observeEvent(input$final_confirm_delete, {
   
   if (success_count == total_count) {
     showNotification(
-      paste("Successfully deleted", success_count, "experiments and rebuilt database."),
+      paste("Successfully deleted", success_count, "experiments."),
       type = "message",
       duration = 6
     )
@@ -876,12 +913,17 @@ observeEvent(input$final_confirm_delete, {
   
   toggleModal(session, "delete_modal", toggle = "close")
   data_reactives$data_refresh_trigger(data_reactives$data_refresh_trigger() + 1)
+  # Clean up stored data
   session$userData$selected_delete_ids <- NULL
+  session$userData$delete_table_data <- NULL
 })
 
 # Handle cancel delete
 observeEvent(input$cancel_delete, {
   toggleModal(session, "delete_modal", toggle = "close")
+  # Clean up stored data
+  session$userData$delete_table_data <- NULL
+  session$userData$selected_delete_ids <- NULL
 })
 # ============================================================================
 # FILE BROWSER OBSERVERS
@@ -1144,4 +1186,673 @@ output$fb_download_all_btn <- downloadHandler(
       showNotification(result$error, type = "warning", duration = 8)
     }
   }
-)}
+)
+
+# ====================================================================
+# ADMIN PANEL OBSERVERS
+# ====================================================================
+
+# Load admin stats when admin tab is shown
+observeEvent(input$main_tabs, {
+  if (input$main_tabs != "admin_tab") return()
+  
+  user_info <- get_user_info(session)
+  if (is.null(user_info) || !user_info$is_admin) return()
+  
+  stats <- tryCatch({
+    db$get_admin_stats()
+  }, error = function(e) {
+    list(
+      total_experiments = 0, public_experiments = 0, private_experiments = 0,
+      total_users = 0, admin_users = 0, recent_uploads = 0, success = FALSE
+    )
+  })
+  
+  data_reactives$admin_stats(stats)
+}, ignoreInit = FALSE)
+
+# Also refresh stats when data changes
+observeEvent(data_reactives$data_refresh_trigger(), {
+  user_info <- get_user_info(session)
+  if (is.null(user_info) || !user_info$is_admin) return()
+  
+  stats <- tryCatch({
+    db$get_admin_stats()
+  }, error = function(e) {
+    list(
+      total_experiments = 0, public_experiments = 0, private_experiments = 0,
+      total_users = 0, admin_users = 0, recent_uploads = 0, success = FALSE
+    )
+  })
+  
+  data_reactives$admin_stats(stats)
+}, ignoreInit = TRUE)
+
+# Statistics card outputs
+output$admin_total_experiments <- renderText({
+  stats <- data_reactives$admin_stats()
+  if (is.null(stats)) return("--")
+  as.character(stats$total_experiments)
+})
+
+output$admin_public_experiments <- renderText({
+  stats <- data_reactives$admin_stats()
+  if (is.null(stats)) return("--")
+  as.character(stats$public_experiments)
+})
+
+output$admin_private_experiments <- renderText({
+  stats <- data_reactives$admin_stats()
+  if (is.null(stats)) return("--")
+  as.character(stats$private_experiments)
+})
+
+output$admin_total_users <- renderText({
+  stats <- data_reactives$admin_stats()
+  if (is.null(stats)) return("--")
+  as.character(stats$total_users)
+})
+
+output$admin_admin_users <- renderText({
+  stats <- data_reactives$admin_stats()
+  if (is.null(stats)) return("--")
+  as.character(stats$admin_users)
+})
+
+output$admin_total_storage <- renderText({
+  stats <- data_reactives$admin_stats()
+  if (is.null(stats)) return("--")
+  paste0(stats$total_storage_mb)
+})
+
+
+# Private experiments table - using renderUI with simple HTML table
+output$admin_private_experiments_ui <- renderUI({
+  # Trigger on tab switch
+  input$main_tabs
+  data_reactives$data_refresh_trigger()
+  
+  user_info <- get_user_info(session)
+  if (is.null(user_info) || !user_info$is_admin) {
+    return(p("Access denied", style = "padding: 20px; color: #999;"))
+  }
+  
+  private_exps <- tryCatch({
+    db$get_all_private_experiments()
+  }, error = function(e) {
+    return(p(paste("Error:", e$message), style = "padding: 20px; color: red;"))
+  })
+  
+  if (is.null(private_exps) || nrow(private_exps) == 0) {
+    return(div(
+      style = "padding: 20px; text-align: center; color: #6c757d;",
+      icon("check-circle", style = "font-size: 24px; margin-bottom: 10px; display: block;"),
+      "No private experiments"
+    ))
+  }
+  
+  # Store data for action buttons
+  session$userData$private_exps_data <- private_exps
+  
+  # Build table rows
+  rows <- lapply(1:nrow(private_exps), function(i) {
+    exp <- private_exps[i, ]
+    tags$tr(
+      id = paste0("exp_row_", exp$id),
+      class = "admin-exp-row",
+      `data-id` = exp$id,
+      tags$td(exp$id, style = "padding: 8px 10px; border-bottom: 1px solid #eee;"),
+      tags$td(exp$name, style = "padding: 8px 10px; border-bottom: 1px solid #eee;"),
+      tags$td(exp$owner_username, style = "padding: 8px 10px; border-bottom: 1px solid #eee;"),
+      tags$td(exp$technology, style = "padding: 8px 10px; border-bottom: 1px solid #eee;"),
+      tags$td(exp$caller, style = "padding: 8px 10px; border-bottom: 1px solid #eee;"),
+      tags$td(exp$created_at, style = "padding: 8px 10px; border-bottom: 1px solid #eee;")
+    )
+  })
+  
+  # Build complete table with CSS and JS
+  tagList(
+    tags$style(HTML("
+      .admin-exp-row { cursor: pointer; transition: background-color 0.15s; }
+      .admin-exp-row:hover { background-color: #f5f5f5; }
+      .admin-exp-row.selected { background-color: #e3f2fd; }
+    ")),
+    tags$table(
+      id = "admin_private_table",
+      style = "width: 100%; border-collapse: collapse; font-size: 13px;",
+      tags$thead(
+        tags$tr(
+          style = "background: #f8f9fa; text-align: left;",
+          tags$th("ID", style = "padding: 10px; border-bottom: 2px solid #dee2e6; font-weight: 600;"),
+          tags$th("Name", style = "padding: 10px; border-bottom: 2px solid #dee2e6; font-weight: 600;"),
+          tags$th("Owner", style = "padding: 10px; border-bottom: 2px solid #dee2e6; font-weight: 600;"),
+          tags$th("Technology", style = "padding: 10px; border-bottom: 2px solid #dee2e6; font-weight: 600;"),
+          tags$th("Caller", style = "padding: 10px; border-bottom: 2px solid #dee2e6; font-weight: 600;"),
+          tags$th("Created", style = "padding: 10px; border-bottom: 2px solid #dee2e6; font-weight: 600;")
+        )
+      ),
+      tags$tbody(rows)
+    ),
+    tags$script(HTML("
+      $(document).on('click', '.admin-exp-row', function() {
+        $('.admin-exp-row').removeClass('selected');
+        $(this).addClass('selected');
+        var expId = $(this).data('id');
+        Shiny.setInputValue('admin_selected_exp', expId, {priority: 'event'});
+      });
+    "))
+  )
+})
+
+# Users table - using renderUI with simple HTML table
+output$admin_users_ui <- renderUI({
+  input$main_tabs
+  data_reactives$data_refresh_trigger()
+  
+  user_info <- get_user_info(session)
+  if (is.null(user_info) || !user_info$is_admin) {
+    return(p("Access denied", style = "padding: 20px; color: #999;"))
+  }
+  
+  users <- tryCatch({
+    db$get_all_users_with_stats()
+  }, error = function(e) {
+    return(p(paste("Error:", e$message), style = "padding: 20px; color: red;"))
+  })
+  
+  if (is.null(users) || nrow(users) == 0) {
+    return(div(
+      style = "padding: 20px; text-align: center; color: #6c757d;",
+      "No users found"
+    ))
+  }
+  
+  # Build table rows
+  rows <- lapply(1:nrow(users), function(i) {
+    user <- users[i, ]
+    admin_badge <- if (user$is_admin) {
+      span("Admin", style = "background: #e3f2fd; color: #1976d2; padding: 2px 6px; border-radius: 3px; font-size: 11px;")
+    } else {
+      span("User", style = "background: #f5f5f5; color: #666; padding: 2px 6px; border-radius: 3px; font-size: 11px;")
+    }
+    
+    tags$tr(
+      tags$td(user$id, style = "padding: 8px; border-bottom: 1px solid #eee; text-align: center;"),
+      tags$td(user$full_name %||% user$username, style = "padding: 8px; border-bottom: 1px solid #eee;"),
+      tags$td(user$email %||% "N/A", style = "padding: 8px; border-bottom: 1px solid #eee;"),
+      tags$td(user$upload_count, style = "padding: 8px; border-bottom: 1px solid #eee; text-align: center;"),
+      tags$td(user$last_login %||% "Never", style = "padding: 8px; border-bottom: 1px solid #eee;"),
+      tags$td(admin_badge, style = "padding: 8px; border-bottom: 1px solid #eee;")
+    )
+  })
+  
+  # Build complete table
+  tags$table(
+    style = "width: 100%; border-collapse: collapse; font-size: 13px;",
+    tags$thead(
+      tags$tr(
+        style = "background: #f8f9fa; text-align: left;",
+        tags$th("ID", style = "padding: 10px; border-bottom: 2px solid #dee2e6; font-weight: 600; text-align: center; width: 50px;"),
+        tags$th("Name", style = "padding: 10px; border-bottom: 2px solid #dee2e6; font-weight: 600;"),
+        tags$th("Email", style = "padding: 10px; border-bottom: 2px solid #dee2e6; font-weight: 600;"),
+        tags$th("Uploads", style = "padding: 10px; border-bottom: 2px solid #dee2e6; font-weight: 600; text-align: center; width: 80px;"),
+        tags$th("Last Login", style = "padding: 10px; border-bottom: 2px solid #dee2e6; font-weight: 600;"),
+        tags$th("Role", style = "padding: 10px; border-bottom: 2px solid #dee2e6; font-weight: 600; width: 70px;")
+      )
+    ),
+    tags$tbody(rows)
+  )
+})
+
+# Quick action: Upload button
+observeEvent(input$admin_upload_btn, {
+  toggleModal(session, "admin_modal", toggle = "close")  # Close admin first
+  toggleModal(session, "upload_modal", toggle = "open")
+})
+
+# Quick action: Delete button
+observeEvent(input$admin_delete_btn, {
+  toggleModal(session, "admin_modal", toggle = "close")  # Close admin first
+  toggleModal(session, "delete_modal", toggle = "open")
+})
+
+# Quick action: File browser button
+observeEvent(input$admin_file_browser_btn, {
+  # Initialize file browser data
+  user <- get_user_info(session)
+  result <- file_manager$list_directory(
+    path = NULL,
+    username = user$username,
+    is_admin = user$is_admin
+  )
+  if (result$success) {
+    fb_directory_data(result)
+  }
+  toggleModal(session, "admin_modal", toggle = "close")  # Close admin first
+  toggleModal(session, "file_browser_modal", toggle = "open")
+})
+
+# Make experiment public
+observeEvent(input$admin_make_public_btn, {
+  exp_id <- input$admin_selected_exp
+  
+  if (is.null(exp_id)) {
+    showNotification("Please click on an experiment row first", type = "warning")
+    return()
+  }
+  
+  # Get experiment info from stored data
+  private_exps <- session$userData$private_exps_data
+  if (is.null(private_exps) || nrow(private_exps) == 0) {
+    private_exps <- tryCatch({
+      db$get_all_private_experiments()
+    }, error = function(e) {
+      data.frame()
+    })
+  }
+  
+  if (nrow(private_exps) == 0) return()
+  
+  exp_row <- private_exps[private_exps$id == exp_id, ]
+  if (nrow(exp_row) == 0) {
+    showNotification("Experiment not found", type = "error")
+    return()
+  }
+  
+  exp_name <- exp_row$name[1]
+  
+  showModal(modalDialog(
+    title = "Confirm Make Public",
+    p(paste0("Make experiment '", exp_name, "' (ID: ", exp_id, ") public?")),
+    p("This will make it visible to all users.", style = "color: #6c757d;"),
+    footer = tagList(
+      modalButton("Cancel"),
+      actionButton("confirm_make_public", "Make Public", class = "btn-success")
+    )
+  ))
+  
+  session$userData$pending_public_exp_id <- exp_id
+})
+
+# Confirm make public
+observeEvent(input$confirm_make_public, {
+  exp_id <- session$userData$pending_public_exp_id
+  if (is.null(exp_id)) return()
+  
+  result <- tryCatch({
+    db$toggle_experiment_visibility(as.integer(exp_id), make_public = TRUE)
+  }, error = function(e) {
+    list(success = FALSE, error = e$message)
+  })
+  
+  removeModal()
+  
+  if (result$success) {
+    showNotification(result$message, type = "message", duration = 5)
+    # Refresh data
+    data_reactives$data_refresh_trigger(data_reactives$data_refresh_trigger() + 1)
+  } else {
+    showNotification(paste("Failed:", result$error), type = "error", duration = 8)
+  }
+  
+  session$userData$pending_public_exp_id <- NULL
+})
+
+# view experiment details
+observeEvent(input$admin_view_experiment_btn, {
+  toggleModal(session, "admin_modal", toggle = "close")  # Close admin first
+  exp_id <- input$admin_selected_exp
+  
+  if (is.null(exp_id)) {
+    showNotification("Please select an experiment first", type = "warning")
+    return()
+  }
+  
+  user_info <- get_user_info(session)
+  metadata <- tryCatch({
+    db$get_experiment_metadata(
+      experiment_ids_param = as.integer(exp_id),
+      user_id = user_info$user_id,
+      is_admin = user_info$is_admin
+    )
+  }, error = function(e) NULL)
+  
+  if (is.null(metadata) || nrow(metadata) == 0) {
+    showNotification("Experiment not found", type = "error")
+    return()
+  }
+  
+  meta <- metadata[1, ]
+  
+  # Store exp_id for download handler
+
+session$userData$admin_view_exp_id <- as.integer(exp_id)
+  
+  showModal(modalDialog(
+    title = tagList(sprintf(" Experiment %s Details", exp_id)),
+    size = "l",
+    easyClose = TRUE,
+    
+    # Header with visibility badge
+    div(style = "margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;",
+      h4(meta$name, style = "margin: 0 0 5px 0;"),
+      span(
+        if (isTRUE(meta$is_public)) "Public" else "Private",
+        style = paste0(
+          "padding: 3px 8px; border-radius: 3px; font-size: 12px; ",
+          if (isTRUE(meta$is_public)) "background: #d4edda; color: #155724;" else "background: #fff3cd; color: #856404;"
+        )
+      ),
+      if (!is.null(meta$owner_username)) span(paste(" | Owner:", meta$owner_username), style = "color: #666; font-size: 13px;")
+    ),
+    fluidRow(
+      # Left column - Basic Info
+      column(6,
+        h5("Basic Information", style = "border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 12px;"),
+        tags$table(style = "width: 100%; font-size: 13px;",
+          tags$tr(tags$td(strong("ID:"), style = "padding: 4px 8px; width: 40%;"), tags$td(meta$id)),
+          tags$tr(tags$td(strong("Name:"), style = "padding: 4px 8px;"), tags$td(meta$name)),
+          tags$tr(tags$td(strong("Created:"), style = "padding: 4px 8px;"), tags$td(meta$created_at)),
+          tags$tr(tags$td(strong("Visibility:"), style = "padding: 4px 8px;"), 
+                  tags$td(if(isTRUE(meta$is_public)) span("Public", class = "label label-success") else span("Private", class = "label label-warning"))),
+          tags$tr(tags$td(strong("Owner:"), style = "padding: 4px 8px;"), tags$td(meta$owner_username %||% "N/A"))
+        ),
+        
+        h5("Sequencing Technology", style = "border-bottom: 1px solid #eee; padding-bottom: 8px; margin: 16px 0 12px 0;"),
+        tags$table(style = "width: 100%; font-size: 13px;",
+          tags$tr(tags$td(strong("Technology:"), style = "padding: 4px 8px; width: 40%;"), tags$td(meta$technology %||% "N/A")),
+          tags$tr(tags$td(strong("Platform:"), style = "padding: 4px 8px;"), tags$td(meta$platform_name %||% "N/A")),
+          tags$tr(tags$td(strong("Platform Type:"), style = "padding: 4px 8px;"), tags$td(meta$platform_type %||% "N/A")),
+          tags$tr(tags$td(strong("Chemistry:"), style = "padding: 4px 8px;"), tags$td(meta$chemistry_name %||% "N/A"))
+        )
+      ),
+      
+      # Right column - Analysis Info
+      column(6,
+        h5("Variant Calling", style = "border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 12px;"),
+        tags$table(style = "width: 100%; font-size: 13px;",
+          tags$tr(tags$td(strong("Caller:"), style = "padding: 4px 8px; width: 40%;"), tags$td(meta$caller %||% "N/A")),
+          tags$tr(tags$td(strong("Version:"), style = "padding: 4px 8px;"), tags$td(meta$caller_version %||% "N/A")),
+          tags$tr(tags$td(strong("Type:"), style = "padding: 4px 8px;"), tags$td(meta$caller_type %||% "N/A")),
+          tags$tr(tags$td(strong("Aligner:"), style = "padding: 4px 8px;"), tags$td(meta$aligner_name %||% "N/A"))
+        ),
+        
+        h5("Truth Set", style = "border-bottom: 1px solid #eee; padding-bottom: 8px; margin: 16px 0 12px 0;"),
+        tags$table(style = "width: 100%; font-size: 13px;",
+          tags$tr(tags$td(strong("Name:"), style = "padding: 4px 8px; width: 40%;"), tags$td(meta$truth_set_name %||% "N/A")),
+          tags$tr(tags$td(strong("Sample:"), style = "padding: 4px 8px;"), tags$td(meta$truth_set_sample %||% "N/A")),
+          tags$tr(tags$td(strong("Reference:"), style = "padding: 4px 8px;"), tags$td(meta$truth_set_reference %||% "N/A"))
+        ),
+        
+        h5("Quality Metrics", style = "border-bottom: 1px solid #eee; padding-bottom: 8px; margin: 16px 0 12px 0;"),
+        tags$table(style = "width: 100%; font-size: 13px;",
+          tags$tr(tags$td(strong("Coverage:"), style = "padding: 4px 8px; width: 40%;"), tags$td(if(!is.na(meta$mean_coverage)) paste0(meta$mean_coverage, "x") else "N/A")),
+          tags$tr(tags$td(strong("Read Length:"), style = "padding: 4px 8px;"), tags$td(meta$read_length %||% "N/A"))
+        )
+      )
+    ),
+        footer = tagList(
+      downloadButton("admin_download_happy", "Download hap.py File", class = "btn-primary"),
+      modalButton("Close")
+    )
+  ))
+})
+
+# Download happy file from admin panel
+output$admin_download_happy <- downloadHandler(
+  filename = function() {
+    exp_id <- session$userData$admin_view_exp_id
+    if (is.null(exp_id)) return("experiment.csv")
+    sprintf("%03d_happy_results.csv", exp_id)
+  },
+  content = function(file) {
+    exp_id <- session$userData$admin_view_exp_id
+    if (is.null(exp_id)) {
+      writeLines("Error: No experiment selected", file)
+      return()
+    }
+    
+    # Import config module to get DATA_FOLDER
+    config <- import("config")
+    data_folder <- config$DATA_FOLDER
+    
+    prefix <- sprintf("%03d_", exp_id)
+    
+    files <- list.files(data_folder, pattern = paste0("^", prefix, ".*\\.csv$"), full.names = TRUE)
+    files <- files[!grepl("^000_", basename(files))]
+    
+    if (length(files) == 0) {
+      writeLines(paste("Happy file not found for experiment", exp_id), file)
+      return()
+    }
+    
+    file.copy(files[1], file)
+  }
+)
+
+# Delete private experiment from admin panel
+observeEvent(input$admin_delete_private_btn, {
+  exp_id <- input$admin_selected_exp
+  
+  if (is.null(exp_id)) {
+    showNotification("Please click on an experiment row first", type = "warning")
+    return()
+  }
+  
+  # Get experiment info from stored data
+  private_exps <- session$userData$private_exps_data
+  if (is.null(private_exps) || nrow(private_exps) == 0) {
+    private_exps <- tryCatch({
+      db$get_all_private_experiments()
+    }, error = function(e) {
+      data.frame()
+    })
+  }
+  
+  if (nrow(private_exps) == 0) return()
+  
+  exp_row <- private_exps[private_exps$id == exp_id, ]
+  if (nrow(exp_row) == 0) {
+    showNotification("Experiment not found", type = "error")
+    return()
+  }
+  
+  exp_name <- exp_row$name[1]
+  owner <- exp_row$owner_username[1]
+  
+  showModal(modalDialog(
+    title = tagList(icon("exclamation-triangle"), " Confirm Delete"),
+    div(
+      class = "alert alert-danger",
+      p(strong("You are about to delete:")),
+      tags$ul(
+        tags$li(paste("Experiment:", exp_name)),
+        tags$li(paste("ID:", exp_id)),
+        tags$li(paste("Owner:", owner))
+      ),
+      p("This action cannot be undone.", style = "font-weight: bold;")
+    ),
+    footer = tagList(
+      modalButton("Cancel"),
+      actionButton("confirm_admin_delete_private", "Delete", class = "btn-danger")
+    )
+  ))
+  
+  session$userData$pending_delete_exp_id <- exp_id
+})
+
+# Confirm delete from admin panel
+observeEvent(input$confirm_admin_delete_private, {
+  exp_id <- session$userData$pending_delete_exp_id
+  if (is.null(exp_id)) return()
+  
+  user_info <- get_user_info(session)
+  
+  result <- tryCatch({
+    delete_handler$delete_experiment(
+      experiment_id = as.integer(exp_id),
+      username = user_info$username,
+      is_admin = user_info$is_admin
+    )
+  }, error = function(e) {
+    list(success = FALSE, error = e$message)
+  })
+  
+  removeModal()
+  
+  if (result$success) {
+    showNotification(result$message, type = "message", duration = 5)
+    data_reactives$data_refresh_trigger(data_reactives$data_refresh_trigger() + 1)
+  } else {
+    showNotification(paste("Delete failed:", result$error), type = "error", duration = 8)
+  }
+  
+  session$userData$pending_delete_exp_id <- NULL
+})
+
+# Dynamic admin tab insertion/removal
+# Open admin modal
+observeEvent(input$show_admin_modal, {
+ user_info <- get_user_info(session)
+ if (!is.null(user_info) && isTRUE(user_info$is_admin)) {
+   toggleModal(session, "admin_modal", toggle = "open")
+ }
+})
+# ====================================================================
+# MY UPLOADS MODAL (for regular users)
+# ====================================================================
+
+output$my_uploads_table <- DT::renderDataTable({
+  data_reactives$data_refresh_trigger()
+  
+  user_info <- get_user_info(session)
+  if (is.null(user_info)) {
+    return(DT::datatable(data.frame(Message = "Please sign in")))
+  }
+  
+  user_id <- session$userData$user_id
+  
+  my_experiments <- tryCatch({
+    db$get_user_experiments(user_id)
+  }, error = function(e) {
+    data.frame()
+  })
+  
+  session$userData$my_uploads_data <- my_experiments
+  
+  if (nrow(my_experiments) == 0) {
+    return(DT::datatable(data.frame(Message = "You have no uploads yet")))
+  }
+  
+  display_data <- my_experiments %>%
+    select(id, name, technology, caller, created_at)
+  
+  DT::datatable(
+    display_data,
+    selection = list(mode = 'multiple', target = 'row'),
+    options = list(
+      pageLength = 10,
+      dom = 't',
+      ordering = FALSE
+    ),
+    rownames = FALSE,
+    colnames = c("ID", "Name", "Technology", "Caller", "Created"),
+    class = 'compact'
+  )
+}, server = TRUE)
+
+# Selected count display
+output$my_uploads_selected_count <- renderText({
+  selected <- input$my_uploads_table_rows_selected
+  if (length(selected) == 0) {
+    "No experiments selected"
+  } else {
+    paste("Selected:", length(selected), "experiment(s)")
+  }
+})
+
+# Close button
+observeEvent(input$cancel_my_uploads, {
+  toggleModal(session, "my_uploads_modal", toggle = "close")
+})
+
+# Delete selected uploads
+observeEvent(input$delete_my_uploads, {
+  selected_rows <- input$my_uploads_table_rows_selected
+  
+  if (length(selected_rows) == 0) {
+    showNotification("Please select experiments to delete", type = "warning")
+    return()
+  }
+  
+  my_data <- session$userData$my_uploads_data
+  if (is.null(my_data) || nrow(my_data) == 0) return()
+  
+  selected_ids <- my_data$id[selected_rows]
+  session$userData$my_uploads_delete_ids <- selected_ids
+  
+  # Confirmation modal
+  showModal(modalDialog(
+    title = tagList(icon("exclamation-triangle"), " Confirm Delete"),
+    div(
+      class = "alert alert-danger",
+      p(strong("You are about to delete:")),
+      tags$ul(
+        lapply(selected_ids, function(id) {
+          exp_name <- my_data$name[my_data$id == id]
+          tags$li(paste("ID", id, "-", exp_name))
+        })
+      ),
+      p("This action cannot be undone.", style = "font-weight: bold;")
+    ),
+    footer = tagList(
+      modalButton("Cancel"),
+      actionButton("confirm_my_uploads_delete", "Delete", class = "btn-danger")
+    )
+  ))
+})
+
+# Confirm delete from my uploads
+observeEvent(input$confirm_my_uploads_delete, {
+  user_info <- get_user_info(session)
+  selected_ids <- session$userData$my_uploads_delete_ids
+  
+  if (is.null(selected_ids) || length(selected_ids) == 0) {
+    removeModal()
+    return()
+  }
+  
+  removeModal()
+  
+  success_count <- 0
+  for (exp_id in selected_ids) {
+    result <- tryCatch({
+      delete_handler$delete_experiment(
+        experiment_id = as.integer(exp_id),
+        user_id = user_info$user_id,
+        username = user_info$username,
+        is_admin = user_info$is_admin
+      )
+    }, error = function(e) {
+      list(success = FALSE, error = e$message)
+    })
+    
+    if (result$success) {
+      success_count <- success_count + 1
+    }
+  }
+  
+  if (success_count > 0) {
+    showNotification(
+      paste("Deleted", success_count, "experiment(s)"),
+      type = "message", duration = 5
+    )
+    data_reactives$data_refresh_trigger(data_reactives$data_refresh_trigger() + 1)
+    toggleModal(session, "my_uploads_modal", toggle = "close") 
+  } else {
+    showNotification("Delete failed", type = "error", duration = 5)
+  }
+  
+  session$userData$my_uploads_delete_ids <- NULL
+})
+}

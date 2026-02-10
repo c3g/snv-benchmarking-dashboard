@@ -79,17 +79,19 @@ shinyOptions(
 # ============================================================================
 # PYTHON BACKEND INTERFACE
 # ============================================================================
-
 tryCatch({
   py_run_string("import sys")
   py_run_string("sys.path.append('../backend')")
+#py_run_string("if 'upload_handler' in sys.modules: del sys.modules['upload_handler']")
+  
   db <<- import("db_interface")
+  upload_handler <<- import("upload_handler")
+  file_manager <<- import("file_manager") 
+  enums <<- import("enum_mappings") # enum lists
 }, error = function(e) {
+  message("Python backend error: ", e$message) 
   stop("Cannot connect to Python backend.")
 })
-
-upload_handler <- import("upload_handler")
-file_manager <<- import("file_manager") 
 # ============================================================================
 # R MODULE IMPORTS
 # ============================================================================
@@ -117,6 +119,7 @@ theme_set(theme_bw())
 ui <- fluidPage(
   
   useShinyjs(), #for auth
+  #uiOutput("admin_tab_css"),  # Dynamic CSS to hide admin tab for non-admins
   # ====================================================================
   # HEAD SECTION - CSS and JavaScript
   # ====================================================================
@@ -150,9 +153,9 @@ ui <- fluidPage(
                   actionLink("logo_home_btn",
                     div(style = "display: flex; align-items: center; gap: 12px; cursor: pointer;",
                         # Logo
-                        img(src = "C3G_Logo.png", 
+                        img(src = "C3G_Logo_New.png", 
                             alt = "Reset Dashboard", 
-                            style = "height: 50px; width: 55px; object-fit: contain;"),
+                            style = "height: 65px; width: 65px; object-fit: contain;"),
                         # Title
                         h4("SNV Benchmarking Dashboard", 
                           style = "margin: 0; font-size: 1.25em; font-weight: 600; line-height: 1.2; color: white;")
@@ -258,7 +261,7 @@ ui <- fluidPage(
     div(class = "main-content",
         width = 9,
         
-        # Header with download, upload, and delete buttons
+        # Header with download button and auth
         div(
           style = "display: flex; justify-content: space-between; align-items: center; margin-bottom: 0; padding-bottom: 0;",
           
@@ -267,37 +270,45 @@ ui <- fluidPage(
           div(
             style = "display: flex; gap: 8px; align-items: center; padding-top: 5px;",
             
-            # Beta feature notice
+            # My Uploads button - for authenticated non-admin users
             conditionalPanel(
               condition = "output.user_authenticated && !output.user_is_admin",
-              div(
-                style = "display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; background-color: #fff8e1; border-left: 3px solid #ffc107; border-radius: 3px; font-size: 11px; margin-right: 8px;",
-                icon("info-circle", style = "color: #f57c00; font-size: 12px;"),
-                span(style = "font-size: 13px;",
-                  strong("Beta Access:"), " Authentication is active. Additional features for registered users will be available in upcoming releases."
-                )
-              )
-            ),
-            
-            # Upload button - ONLY VISIBLE TO ADMIN _ FOR NOW
-            conditionalPanel(
-              condition = "output.user_is_admin",
               actionButton(
-                "show_upload_modal", 
-                label = tagList(icon("upload"), "Upload Dataset"),
-                class = "btn-success btn-sm",
+                "show_my_uploads_modal",
+                label = tagList(icon("folder-open"), "My Uploads"),
+                class = "btn-primary btn-sm",
                 style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px; border-radius: 3px;"
               )
             ),
-            
-            # Delete button - ONLY VISIBLE TO ADMIN
+            # Beta feature notice
+            #conditionalPanel(
+            #  condition = "output.user_authenticated && !output.user_is_admin",
+            #  div(
+            #    style = "display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; background-color: #fff8e1; border-left: 3px solid #ffc107; border-radius: 3px; font-size: 11px; margin-right: 8px;",
+            #    icon("info-circle", style = "color: #f57c00; font-size: 12px;"),
+            #    span(style = "font-size: 13px;",
+            #      strong("Beta Access:"), " Authentication is active. Additional features for registered users will be available in upcoming releases."
+            #    )
+            #  )
+            #),
+            # Admin button - only visible to admins
             conditionalPanel(
               condition = "output.user_is_admin",
               actionButton(
-                "show_delete_modal", 
-                label = tagList(icon("trash"), "Delete Datasets"),
-                class = "btn-danger btn-sm",
-                style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px; border: none !important;"
+                "show_admin_modal",
+                label = tagList(icon("cog"), "Admin"),
+                class = "btn-warning btn-sm",
+                style = "font-size: 13px; padding: 6px 12px;"
+              )
+            ),
+             #Upload button 
+            conditionalPanel(
+              condition = "output.user_authenticated",
+              actionButton(
+                "show_upload_modal", 
+                label = tagList(icon("upload"), "Upload Dataset"),
+                class = "btn-primary btn-sm",
+                style = "font-size: 13px; padding: 6px 12px; white-space: nowrap; min-width: 160px; border-radius: 3px;"
               )
             ),
             
@@ -308,15 +319,6 @@ ui <- fluidPage(
               class = "btn-primary btn-sm",
               style = "font-size: 13px; padding: 6px 22px; white-space: nowrap; min-width: 160px; border: none !important; height: auto;"
             ),
-
-            # File browser button - ONLY VISIBLE TO ADMIN
-            conditionalPanel(
-              condition = "output.user_is_admin",
-              actionButton("show_file_browser", "File Browser", 
-              icon = icon("folder-open"), 
-              class = "btn-secondary btn-sm",
-              style = "width: 100%;")
-              ),
 
              auth_ui()  # Authentication status/button from auth.R
           )
@@ -369,6 +371,26 @@ ui <- fluidPage(
                     )
                   )
                 ),
+                # Visibility filter row - only for authenticated users
+                conditionalPanel(
+                  condition = "output.user_authenticated",
+                  div(
+                    class = "visibility-filter-row",
+                    span("View:", class = "visibility-label"),
+                    radioButtons(
+                      "visibility_filter",
+                      label = NULL,
+                      choices = c(
+                        "All" = "all",
+                        "Public" = "public", 
+                        "My Uploads" = "mine"
+                      ),
+                      selected = "all",
+                      inline = TRUE
+                    ),
+                    span(class = "experiment-count-badge", textOutput("showing_experiments_count", inline = TRUE))
+                  )
+                ),
                 div(style = "width: 100%; overflow-x: auto;",
                     DT::dataTableOutput("experiments_table")
                 )
@@ -409,12 +431,12 @@ ui <- fluidPage(
             ),
             #truthset filter 
             div(class = "truth-set-filter-panel",
-              tags$label("Choose Reference Standards for Comparison:"),
+              tags$label("Choose Truth Set References for Comparison:"),
               selectInput(
                 "truth_set_filter_tab2",
                 label = NULL,
-                choices = TRUTH_SET_OPTIONS,
-                selected = "All Truth Sets",
+                choices = TRUTH_SET_FILTER_OPTIONS,
+                selected = " ALL",
                 width = "100%"
               ),
               tags$span(
@@ -467,12 +489,12 @@ div(
             ),
             #truthset filter 
             div(class = "truth-set-filter-panel",
-              tags$label("Choose Reference Standards for Comparison:"),
+              tags$label("Choose Truth Set References for Comparison:"),
               selectInput(
                 "truth_set_filter_tab3",
                 label = NULL,
-                choices = TRUTH_SET_OPTIONS,
-                selected = "All Truth Sets",
+                choices = TRUTH_SET_FILTER_OPTIONS,
+                selected = "ALL",
                 width = "100%"
               ),
               tags$span(
@@ -591,12 +613,12 @@ div(
             ),
             #truthset filter 
             div(class = "truth-set-filter-panel",
-              tags$label("Choose Reference Standards for Comparison:"),
+              tags$label("Choose Truth Set References for Comparison:"),
               selectInput(
                 "truth_set_filter_tab4",
                 label = NULL,
-                choices = TRUTH_SET_OPTIONS,
-                selected = "All Truth Sets",
+                choices = TRUTH_SET_FILTER_OPTIONS,
+                selected = "ALL",
                 width = "100%"
               ),
               tags$span(
@@ -1115,6 +1137,7 @@ div(
               )
             )
           )
+
         ),
 
         #=======================================================================
@@ -1122,6 +1145,9 @@ div(
         upload_modal_ui(),
         delete_modal_ui(),
         file_browser_modal_ui(),
+        admin_modal_ui(),
+        my_uploads_modal_ui(),
+
     )
   )
 )
@@ -1136,11 +1162,15 @@ server <- function(input, output, session) {
   # INITIALIZE MODULES
   # ====================================================================
   
-  # Initialize auth 
-  auth_server(input, output, session)
-
-  # Setup core data processing (returns reactive values)
+  authenticated <- auth_server(input, output, session)
   data_reactives <- setup_data_reactives(input, output, session)
+
+  # Refresh data when auth state changes (including localStorage restore)
+  observeEvent(authenticated(), {
+    if (authenticated()) {
+      data_reactives$data_refresh_trigger(data_reactives$data_refresh_trigger() + 1)
+    }
+  }, ignoreInit = TRUE)
   
   # Setup all output functions (pass data_reactives to each)
   setup_plot_outputs(input, output, session, data_reactives)

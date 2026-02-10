@@ -48,6 +48,7 @@ DATABASE_PATH = os.path.join(DATA_FOLDER if IS_CONTAINER else os.path.join(PROJE
 
 # Constants
 METADATA_CSV_FILENAME = '000_benchmark_dashboard_default_metadata.csv'
+DELETED_CSV_PATH = os.path.join(DATA_FOLDER, '000_deleted.csv')
 
 def get_data_file_path(filename):
     return os.path.join(DATA_FOLDER, filename)
