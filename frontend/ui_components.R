@@ -811,28 +811,40 @@ upload_modal_ui <- function() {
                  verbatimTextOutput("filename_preview", placeholder = TRUE)
         )),
         fluidRow(
-        column(6,
+          column(6,
+            br(),
+            # Visibility toggle - only visible to admins
+            conditionalPanel(
+              condition = "output.user_is_admin",
+              h5("Visibility"),
               br(),
-               h5("Visibility"),
-               br(),
-               radioButtons(
-                 "experiment_visibility",
-                 NULL,
-                 choices = list(
-                   "Public (admin only)" = "public",
-                   "Private" = "private"
-                 ),
-                 selected = "private"
-               ),
+              radioButtons(
+                "experiment_visibility",
+                NULL,
+                choices = list(
+                  "Public" = "public",
+                  "Private" = "private"
+                ),
+                selected = "public"
+              )
+            ),
+            # Non-admin info message
+            conditionalPanel(
+              condition = "!output.user_is_admin",
+              div(
+                style = "padding: 10px; background: #f8f9fa; border-radius: 4px; margin-top: 10px;",
+                span(" Your upload will be private (visible only to you)")
+              )
+            )
+          ),
+          column(6,
+                div(style = "text-align: center; padding-top: 35px;",
+                    actionButton("submit_upload", "Add to Database", 
+                                  class = "btn-success btn-lg", 
+                                  style = "min-width: 130px; background-color: #42a65c; border: none;")
+                )
+          )
         ),
-        column(6,
-               div(style = "text-align: center; padding-top: 35px;",
-                   actionButton("submit_upload", "Add to Database", 
-                                class = "btn-success btn-lg", 
-                                style = "min-width: 130px; background-color: #42a65c; border: none;")
-               )
-        )
-      ),
       
       br(),
       div(id = "upload_status", style = "margin-top: 15px;")
