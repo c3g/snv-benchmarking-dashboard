@@ -283,7 +283,9 @@ setup_observers <- function(input, output, session, data_reactives) {
               technology = tech,
               platform = NULL,
               caller = caller,
-              version = NULL
+              version = NULL,
+              user_id = user_id,
+              is_admin = is_admin_user
             )
           } else {
             # Specific versions

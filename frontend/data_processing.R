@@ -54,7 +54,7 @@ setup_data_reactives <- function(input, output, session) {
   display_experiment_ids <- reactiveVal(numeric(0))
   
   # Currently active truth set filter
-  active_truth_set_filter <- reactiveVal("All")
+  active_truth_set_filter <- reactiveVal("ALL")
 
   # Visibility filter mode -- not used 
   # visibility_filter <- reactiveVal("all")  # "all", "public", "mine"
@@ -141,8 +141,6 @@ setup_data_reactives <- function(input, output, session) {
       is_admin_user <- if (!is.null(user_info)) isTRUE(user_info$is_admin) else FALSE
       
       # Get visibility filter (default to "all" if not set)
-      cat("visibility_filter:", input$visibility_filter, "length:", length(input$visibility_filter), "\n")
-
       vis_filter <- input$visibility_filter
       if (is.null(vis_filter) || length(vis_filter) == 0 || !nzchar(vis_filter)) {
         vis_filter <- "all"
