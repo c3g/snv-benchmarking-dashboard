@@ -220,7 +220,7 @@ setup_data_reactives <- function(input, output, session) {
       user_info <- get_user_info(session)
       user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
       is_admin_user <- if (!is.null(user_info)) isTRUE(user_info$is_admin) else FALSE
-      overview <- py_df_to_r(verview(NULL, json_param(ids), user_id, is_admin_user))
+      overview <- py_df_to_r(db$get_experiments_overview(NULL, json_param(ids), user_id, is_admin_user))      
       filtered <- overview %>%
         filter(toupper(truth_set) == toupper(truth_set_filter)) %>%
         pull(id)
