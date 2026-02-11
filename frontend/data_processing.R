@@ -19,7 +19,10 @@ Main components:
 
 # Filter experiments by visibility mode (applied after database query)
 apply_visibility_filter_local <- function(df, filter_mode, user_id) {
-  if (is.null(df) || nrow(df) == 0) return(if(is.null(df)) data.frame() else df)
+  # Add at the start:
+  if (is.null(filter_mode) || length(filter_mode) == 0 || !nzchar(filter_mode)) {
+    return(df)
+  }
   
   # Handle NA values in is_public column - treat NA as public (legacy data)
   switch(filter_mode,
@@ -128,7 +131,6 @@ setup_data_reactives <- function(input, output, session) {
   
   # Get overview metadata for selected experiments
   experiments_data <- reactive({
-
     data_refresh_trigger()
     input$user_authenticated
 
@@ -139,8 +141,12 @@ setup_data_reactives <- function(input, output, session) {
       is_admin_user <- if (!is.null(user_info)) isTRUE(user_info$is_admin) else FALSE
       
       # Get visibility filter (default to "all" if not set)
-      vis_filter <- if (!is.null(input$visibility_filter)) input$visibility_filter else "all"
+      cat("visibility_filter:", input$visibility_filter, "length:", length(input$visibility_filter), "\n")
 
+      vis_filter <- input$visibility_filter
+      if (is.null(vis_filter) || length(vis_filter) == 0 || !nzchar(vis_filter)) {
+        vis_filter <- "all"
+      }
       # Comparison mode - show comparison results
       if (comparison_submitted() && length(comparison_results()) > 0) {
         exp_ids_json <- json_param(comparison_results())
