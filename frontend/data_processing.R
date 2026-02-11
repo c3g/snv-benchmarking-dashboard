@@ -289,6 +289,7 @@ setup_data_reactives <- function(input, output, session) {
         experiment_id, experiment_name, 
         technology, platform_name,
         caller, caller_version, chemistry_name, mean_coverage,
+        truth_set,
         variant_type, recall, precision, f1_score
       ) %>%
       mutate(
@@ -311,6 +312,7 @@ setup_data_reactives <- function(input, output, session) {
         "Caller" = caller,
         "Version" = caller_version,
         "Chemistry" = chemistry_name,
+        "Truth Set" = truth_set,
         "Coverage" = mean_coverage,
         "Variant" = variant_type,
         "F1 Score (%)" = f1_score,
