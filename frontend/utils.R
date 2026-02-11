@@ -134,3 +134,13 @@ json_param <- function(data) {
   }
   jsonlite::toJSON(data, auto_unbox = TRUE)
 }
+
+# Safe pandas to R conversion
+py_df_to_r <- function(py_result) {
+  if (is.null(py_result)) return(data.frame())
+  records <- py_result$to_dict("list")
+  records <- lapply(records, function(col) {
+    sapply(col, function(x) if (is.null(x)) NA else x)
+  })
+  as.data.frame(records, stringsAsFactors = FALSE)
+}

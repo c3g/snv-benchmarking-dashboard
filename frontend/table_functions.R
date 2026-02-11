@@ -449,7 +449,7 @@ output$delete_experiments_table <- DT::renderDataTable({
       user_info <- get_user_info(session)
       user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
       is_admin_user <- if (!is.null(user_info)) isTRUE(user_info$is_admin) else FALSE
-      db$get_experiments_overview(NULL, NULL, user_id, is_admin_user)
+      py_df_to_r(db$get_experiments_overview(NULL, NULL, user_id, is_admin_user))
     }, error = function(e) {
       data.frame()
     })

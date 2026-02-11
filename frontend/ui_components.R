@@ -543,7 +543,7 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       tryCatch({
         # Get next experiment ID with fallback
         next_id <- tryCatch({
-          overview <- db$get_experiments_overview()
+          overview <- py_df_to_r(db$get_experiments_overview())
           if (is.null(overview) || nrow(overview) == 0) {
             1
           } else {

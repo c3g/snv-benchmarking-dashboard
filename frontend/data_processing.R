@@ -118,7 +118,7 @@ setup_data_reactives <- function(input, output, session) {
         if (is.null(result) || length(result) == 0) return(numeric(0))
         return(result)
       } else {
-        overview <- db$get_experiments_overview(NULL, NULL, user_id, is_admin_user)
+      overview <- py_df_to_r(db$get_experiments_overview(NULL, NULL, user_id, is_admin_user))
         if (is.null(overview) || nrow(overview) == 0) return(numeric(0))
         return(overview$id)
       }
@@ -150,7 +150,7 @@ setup_data_reactives <- function(input, output, session) {
       # Comparison mode - show comparison results
       if (comparison_submitted() && length(comparison_results()) > 0) {
         exp_ids_json <- json_param(comparison_results())
-        df <- db$get_experiments_overview(NULL, exp_ids_json, user_id, is_admin_user)
+        df <- py_df_to_r(db$get_experiments_overview(NULL, exp_ids_json, user_id, is_admin_user))
         if (is.null(df) || !is.data.frame(df)) return(data.frame())
         return(apply_visibility_filter_local(df, vis_filter, user_id))
       }
@@ -163,7 +163,7 @@ setup_data_reactives <- function(input, output, session) {
         } else if (input$filter_type == "caller") {
           filters <- list(caller = input$filter_caller)
         }
-        df <- db$get_experiments_overview(filters, NULL, user_id, is_admin_user)
+        df <- py_df_to_r(db$get_experiments_overview(filters, NULL, user_id, is_admin_user))
         if (is.null(df) || !is.data.frame(df)) return(data.frame())
         return(apply_visibility_filter_local(df, vis_filter, user_id))
       }
@@ -176,7 +176,7 @@ setup_data_reactives <- function(input, output, session) {
         filters <- list(caller = input$filter_caller)
       }
       
-      df <- db$get_experiments_overview(filters, NULL, user_id, is_admin_user)
+      df <- py_df_to_r(db$get_experiments_overview(filters, NULL, user_id, is_admin_user))
       if (is.null(df) || !is.data.frame(df)) return(data.frame())
       return(apply_visibility_filter_local(df, vis_filter, user_id))
     }, error = function(e) {
@@ -220,7 +220,7 @@ setup_data_reactives <- function(input, output, session) {
       user_info <- get_user_info(session)
       user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
       is_admin_user <- if (!is.null(user_info)) isTRUE(user_info$is_admin) else FALSE
-      overview <- db$get_experiments_overview(NULL, json_param(ids), user_id, is_admin_user)
+      overview <- py_df_to_r(verview(NULL, json_param(ids), user_id, is_admin_user))
       filtered <- overview %>%
         filter(toupper(truth_set) == toupper(truth_set_filter)) %>%
         pull(id)
