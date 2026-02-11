@@ -79,6 +79,21 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
     length(data_reactives$table_selected_ids())
   })
   
+  #selection filter indicator (public/private/all)
+  output$selection_filter_indicator <- renderText({
+  if (length(data_reactives$table_selected_ids()) > 0) {
+    vis <- input$visibility_filter
+    if (is.null(vis) || vis == "all") {
+      "Showing: All experiments"
+    } else if (vis == "public") {
+      "Showing: Public only"
+    } else {
+      "Showing: My uploads only"
+    }
+  } else {
+    ""
+  }
+})
   # ====================================================================
   # VISIBILITY FILTER OUTPUTS 
   # ====================================================================

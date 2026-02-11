@@ -245,7 +245,12 @@ ui <- fluidPage(
                 div(class = "panel-body", style = "padding: 5px;",
                     div(style = "max-height: 90px; overflow-y: auto; overflow-x: auto; border: 0.5px solid #dee2e6;",
                         tableOutput("compact_selected_experiments")
+
                     ),
+                      div(
+                        textOutput("selection_filter_indicator"),
+                        style = "color: #888; font-style: italic; font-size: 12px; margin-top: 4px;"
+                      ),
                     br(),
                     div(style = "text-align: center;",
                         actionButton("submit_bottom_comparison", "Submit Selected Experiments",
