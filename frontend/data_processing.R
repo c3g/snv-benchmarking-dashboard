@@ -110,11 +110,11 @@ setup_data_reactives <- function(input, output, session) {
       is_admin_user <- if (!is.null(user_info)) isTRUE(user_info$is_admin) else FALSE
       
       if (input$filter_type == "tech") {
-        result <- db$get_experiments_by_technology(input$filter_technology, user_id, is_admin_user)
+        result <- py_df_to_r(db$get_experiments_by_technology(input$filter_technology, user_id, is_admin_user))
         if (is.null(result) || length(result) == 0) return(numeric(0))
         return(result)
       } else if (input$filter_type == "caller") {
-        result <- db$get_experiments_by_caller(input$filter_caller, user_id, is_admin_user)
+        result <- py_df_to_r(db$get_experiments_by_caller(input$filter_caller, user_id, is_admin_user))
         if (is.null(result) || length(result) == 0) return(numeric(0))
         return(result)
       } else {
@@ -245,7 +245,7 @@ setup_data_reactives <- function(input, output, session) {
     
     tryCatch({
       ids_json <- json_param(ids)
-      enhanced_data <- db$get_experiments_with_performance(ids_json, VARIANT_TYPE_OPTIONS)
+      enhanced_data <- py_df_to_r(db$get_experiments_with_performance(ids_json, VARIANT_TYPE_OPTIONS))
       
       # Additional validation
       if (nrow(enhanced_data) == 0) {

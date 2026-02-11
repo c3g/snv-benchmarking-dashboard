@@ -304,22 +304,22 @@ setup_observers <- function(input, output, session, data_reactives) {
           for (platform in platforms) {
             if (is.null(versions)) {
               # All versions for this caller
-              platform_ids <- db$get_experiments_filtered(
+              platform_ids <- py_df_to_r(db$get_experiments_filtered(
                 technology = tech,
                 platform = platform,
                 caller = caller,
                 version = NULL
-              )
+              ))
               combo_ids <- c(combo_ids, platform_ids)
             } else {
               # Specific versions
               for (version in versions) {
-                version_combo_ids <- db$get_experiments_filtered(
+                version_combo_ids <- py_df_to_r(db$get_experiments_filtered(
                   technology = tech,
                   platform = platform,
                   caller = caller,
                   version = version
-                )
+                ))
                 combo_ids <- c(combo_ids, version_combo_ids)
               }
             }
@@ -416,7 +416,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     
     # Get metadata with user context
     py_ids <- r_to_py(list(as.numeric(exp_id)))
-    metadata <- db$get_experiment_metadata(py_ids, user_id, is_admin_user)
+    metadata <- py_df_to_r(get_experiment_metadata(py_ids, user_id, is_admin_user))
     
     # Generate HTML using table function
     details_html <- create_experiment_details_html(metadata)
@@ -481,11 +481,11 @@ setup_observers <- function(input, output, session, data_reactives) {
       regions_list <- as.list(selected_regions)
       # Pass regions to database query for SQL filtering
       enhanced_data <- tryCatch({
-        db$get_stratified_performance_by_regions(
+        py_df_to_r(db$get_stratified_performance_by_regions(
           ids_json, 
           VARIANT_TYPE_OPTIONS,
           regions_list
-        )
+        ))
       }, error = function(e) {
         showNotification(paste("Database error:", e$message), type = "error", duration = 8)
         data.frame()  # Return empty data frame
@@ -1200,7 +1200,7 @@ observeEvent(input$main_tabs, {
   if (is.null(user_info) || !isTRUE(user_info$is_admin)) return()
   
   stats <- tryCatch({
-    db$get_admin_stats()
+    py_df_to_r(db$get_admin_stats())
   }, error = function(e) {
     list(
       total_experiments = 0, public_experiments = 0, private_experiments = 0,
@@ -1217,7 +1217,7 @@ observeEvent(data_reactives$data_refresh_trigger(), {
   if (is.null(user_info) || !isTRUE(user_info$is_admin)) return()
   
   stats <- tryCatch({
-    db$get_admin_stats()
+    py_df_to_r(db$get_admin_stats())
   }, error = function(e) {
     list(
       total_experiments = 0, public_experiments = 0, private_experiments = 0,
@@ -1278,7 +1278,7 @@ output$admin_private_experiments_ui <- renderUI({
   }
   
   private_exps <- tryCatch({
-    db$get_all_private_experiments()
+    py_df_to_r(db$get_all_private_experiments())
   }, error = function(e) {
     return(p(paste("Error:", e$message), style = "padding: 20px; color: red;"))
   })
@@ -1355,7 +1355,7 @@ output$admin_users_ui <- renderUI({
   }
   
   users <- tryCatch({
-    db$get_all_users_with_stats()
+    py_df_to_r(db$get_all_users_with_stats())
   }, error = function(e) {
     return(p(paste("Error:", e$message), style = "padding: 20px; color: red;"))
   })
@@ -1445,7 +1445,7 @@ observeEvent(input$admin_make_public_btn, {
   private_exps <- session$userData$private_exps_data
   if (is.null(private_exps) || nrow(private_exps) == 0) {
     private_exps <- tryCatch({
-      db$get_all_private_experiments()
+      py_df_to_r(db$get_all_private_experiments())
     }, error = function(e) {
       data.frame()
     })
@@ -1480,7 +1480,7 @@ observeEvent(input$confirm_make_public, {
   if (is.null(exp_id)) return()
   
   result <- tryCatch({
-    db$toggle_experiment_visibility(as.integer(exp_id), make_public = TRUE)
+   db$toggle_experiment_visibility(as.integer(exp_id), make_public = TRUE)
   }, error = function(e) {
     list(success = FALSE, error = e$message)
   })
@@ -1510,11 +1510,11 @@ observeEvent(input$admin_view_experiment_btn, {
   
   user_info <- get_user_info(session)
   metadata <- tryCatch({
-    db$get_experiment_metadata(
+    py_df_to_r(db$get_experiment_metadata(
       experiment_ids_param = as.integer(exp_id),
       user_id = user_info$user_id,
       is_admin = user_info$is_admin
-    )
+    ))
   }, error = function(e) NULL)
   
   if (is.null(metadata) || nrow(metadata) == 0) {
@@ -1643,7 +1643,7 @@ observeEvent(input$admin_delete_private_btn, {
   private_exps <- session$userData$private_exps_data
   if (is.null(private_exps) || nrow(private_exps) == 0) {
     private_exps <- tryCatch({
-      db$get_all_private_experiments()
+      py_df_to_r(db$get_all_private_experiments())
     }, error = function(e) {
       data.frame()
     })
@@ -1733,7 +1733,7 @@ output$my_uploads_table <- DT::renderDataTable({
   user_id <- session$userData$user_id
   
   my_experiments <- tryCatch({
-    db$get_user_experiments(user_id)
+    py_df_to_r(db$get_user_experiments(user_id))
   }, error = function(e) {
     data.frame()
   })

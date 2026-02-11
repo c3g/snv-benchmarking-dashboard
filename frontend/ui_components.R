@@ -94,7 +94,7 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
     if (is.null(user_id)) return("")
     
     tryCatch({
-      user_exps <- db$get_user_experiments(user_id)
+      user_exps <- py_df_to_r(db$get_user_experiments(user_id))
       count <- nrow(user_exps)
       
       if (count == 0) {
@@ -139,7 +139,7 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
         user_info <- get_user_info(session)
         user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
         is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
-        db$get_experiment_metadata(exp_id_json, user_id, is_admin_user)
+        py_df_to_r(db$get_experiment_metadata(exp_id_json, user_id, is_admin_user))
       }, error = function(e) {
         data.frame(name = "Error loading metadata")
       })
@@ -201,7 +201,7 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       user_info <- get_user_info(session)
       user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
       is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
-      metadata <- db$get_experiment_metadata(exp_id_json, user_id, is_admin_user)
+      metadata <- py_df_to_r(db$get_experiment_metadata(exp_id_json, user_id, is_admin_user))
       
       if (nrow(metadata) == 0) {
         return(p("No metadata found for experiment ID:", exp_id))
@@ -211,7 +211,7 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       
       # Get performance data for this specific experiment
       tryCatch({
-        performance_data <- db$get_experiments_with_performance(exp_id_json, VARIANT_TYPE_OPTIONS)
+        performance_data <- py_df_to_r(get_experiments_with_performance(exp_id_json, VARIANT_TYPE_OPTIONS))
         snp_perf <- performance_data %>% filter(variant_type == "SNP")
         indel_perf <- performance_data %>% filter(variant_type == "INDEL")
       }, error = function(e) {
@@ -404,7 +404,7 @@ setup_ui_outputs <- function(input, output, session, data_reactives) {
       user_info <- get_user_info(session)
       user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
       is_admin_user <- if (!is.null(user_info)) user_info$is_admin else FALSE
-      metadata <- db$get_experiment_metadata(ids_json, user_id, is_admin_user)
+      metadata <- py_df_to_r(db$get_experiment_metadata(ids_json, user_id, is_admin_user))
       
       if (nrow(metadata) == 0) {
         return(p("Unable to load experiment metadata", style = "color: #dc3545;"))
