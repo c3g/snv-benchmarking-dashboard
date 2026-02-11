@@ -416,7 +416,7 @@ setup_observers <- function(input, output, session, data_reactives) {
     
     # Get metadata with user context
     py_ids <- r_to_py(list(as.numeric(exp_id)))
-    metadata <- py_df_to_r(get_experiment_metadata(py_ids, user_id, is_admin_user))
+    metadata <- py_df_to_r(db$get_experiment_metadata(py_ids, user_id, is_admin_user))
     
     # Generate HTML using table function
     details_html <- create_experiment_details_html(metadata)
