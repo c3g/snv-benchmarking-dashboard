@@ -80,6 +80,7 @@ shinyOptions(
 # PYTHON BACKEND INTERFACE
 # ============================================================================
 tryCatch({
+  #py_install("requests")   # --------------------------------- HAVE TO INSTALLL REQUESTs
   py_run_string("import sys")
   py_run_string("sys.path.append('../backend')")
 #py_run_string("if 'upload_handler' in sys.modules: del sys.modules['upload_handler']")
@@ -88,6 +89,7 @@ tryCatch({
   upload_handler <<- import("upload_handler")
   file_manager <<- import("file_manager") 
   enums <<- import("enum_mappings") # enum lists
+
 }, error = function(e) {
   message("Python backend error: ", e$message) 
   stop("Cannot connect to Python backend.")
@@ -107,7 +109,9 @@ source("table_functions.R")
 source("observers.R")
 source("ui_components.R")
 source("html_export.R") 
-
+source("celery_ui.R") 
+source("celery_server.R") 
+setup_celery_client() 
 
 # global theme
 theme_set(theme_bw())
@@ -232,7 +236,9 @@ ui <- fluidPage(
               actionButton("clear_experiment_selection", "Clear Selection",
                            class = "btn-secondary btn-sm", style = "width: 100%")
             ),
-            
+            celery_test_panel_ui(), # celery test panel
+            hr(),
+
             # Selected experiments display (bottom of sidebar)
             conditionalPanel(
               condition = "output.comparison_mode == 'manual_selection' && output.has_selected_experiments",
@@ -1182,6 +1188,7 @@ server <- function(input, output, session) {
   setup_table_outputs(input, output, session, data_reactives)
   setup_ui_outputs(input, output, session, data_reactives)
   setup_observers(input, output, session, data_reactives)
+  setup_celery_observers(input, output, session)
 
   # ====================================================================
   # HTML EXPORT FUNCTIONALITY
