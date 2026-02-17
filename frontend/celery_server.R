@@ -5,11 +5,22 @@
 # job submission, status polling, and result retrieval.
 
 # ============================================================================
+# CONFIG
+# ============================================================================
+
+# Folder to save received CSVs
+CELERY_RESULTS_FOLDER <- "celery_results"
+
+# ============================================================================
 # PYTHON CLIENT SETUP
 # ============================================================================
 
-# Import job_client module (call this in app.R after other py imports)
 setup_celery_client <- function() {
+  # Create results folder if needed
+  if (!dir.exists(CELERY_RESULTS_FOLDER)) {
+    dir.create(CELERY_RESULTS_FOLDER, recursive = TRUE)
+  }
+  
   tryCatch({
     py_run_string("import sys; sys.path.insert(0, '.')")
     job_client <<- import("job_client")
@@ -31,30 +42,27 @@ setup_celery_observers <- function(input, output, session) {
     job_id = NULL,
     status = "IDLE",
     result = NULL,
+    saved_path = NULL,
     polling = FALSE
   )
   
   # ==========================================================================
   # SUBMIT BUTTON HANDLER
   # ==========================================================================
-  # Triggered when user clicks "Test Celery" button.
-  # Sends file to Flask API and starts polling loop.
   
   observeEvent(input$celery_submit, {
     req(input$celery_file)
     
-    # Update UI state
     celery_state$status <- "SUBMITTING..."
     celery_state$result <- NULL
+    celery_state$saved_path <- NULL
     
-    # Call Python client to POST file to Flask
     result <- tryCatch({
       py_to_r(job_client$submit_file(input$celery_file$datapath))
     }, error = function(e) {
       list(error = e$message)
     })
     
-    # Handle response
     if (!is.null(result$job_id)) {
       celery_state$job_id <- result$job_id
       celery_state$status <- "QUEUED"
@@ -70,14 +78,12 @@ setup_celery_observers <- function(input, output, session) {
   # ==========================================================================
   # POLLING LOOP
   # ==========================================================================
-  # Runs every 2 seconds while polling=TRUE.
+    # Runs every 2 seconds while polling=TRUE.
   # Checks job status and fetches result when complete.
-  
   observe({
     req(celery_state$polling, celery_state$job_id)
     
-    # Check current status
-    status <- tryCatch({
+    status <- tryCatch({ # check current status
       py_to_r(job_client$check_status(celery_state$job_id))
     }, error = function(e) {
       list(status = "ERROR", error = e$message)
@@ -86,25 +92,37 @@ setup_celery_observers <- function(input, output, session) {
     celery_state$status <- status$status
     
     if (status$status == "SUCCESS") {
-      # Job complete - fetch result
       celery_state$polling <- FALSE
       result <- py_to_r(job_client$get_result(celery_state$job_id))
       
-      celery_state$result <- if (result$status == "SUCCESS") {
-        paste("Rows:", result$rows_processed, "\n", 
-              substr(result$csv_content, 1, 300))
+      if (result$status == "SUCCESS") {
+        # Save CSV to file
+        filename <- paste0("result_", celery_state$job_id, ".csv")
+        filepath <- file.path(CELERY_RESULTS_FOLDER, filename)
+        
+        tryCatch({
+          writeLines(result$csv_content, filepath)
+          celery_state$saved_path <- filepath
+          
+          celery_state$result <- paste(
+            "Rows:", result$rows_processed,
+            "\nSaved to:", filepath,
+            "\n\nPreview:\n", substr(result$csv_content, 1, 200)
+          )
+          showNotification(paste("Saved:", filepath), type = "message")
+        }, error = function(e) {
+          celery_state$result <- paste("Got result but failed to save:", e$message)
+        })
+        
       } else {
-        paste("Error:", result$error)
+        celery_state$result <- paste("Error:", result$error)
       }
-      showNotification("Done!", type = "message")
       
     } else if (status$status == "FAILURE") {
-      # Job failed
       celery_state$polling <- FALSE
       celery_state$result <- status$error
       
     } else {
-      # Still running - poll again in 2 seconds
       invalidateLater(2000, session)
     }
   })
@@ -124,4 +142,9 @@ setup_celery_observers <- function(input, output, session) {
   output$celery_result <- renderText({
     celery_state$result %||% ""
   })
+  
+  # Return saved path for other modules to use
+  return(list(
+    saved_path = reactive({ celery_state$saved_path })
+  ))
 }
