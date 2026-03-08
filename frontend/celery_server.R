@@ -2,13 +2,12 @@
 # celery_server.R
 # ============================================================================
 # Server logic for Flask/Celery pipeline integration.
-# job submission, status polling, and result retrieval.
+# Job submission, status polling, and result retrieval.
 
 # ============================================================================
 # CONFIG
 # ============================================================================
 
-# Folder to save received CSVs
 CELERY_RESULTS_FOLDER <- "celery_results"
 
 # ============================================================================
@@ -16,7 +15,6 @@ CELERY_RESULTS_FOLDER <- "celery_results"
 # ============================================================================
 
 setup_celery_client <- function() {
-  # Create results folder if needed
   if (!dir.exists(CELERY_RESULTS_FOLDER)) {
     dir.create(CELERY_RESULTS_FOLDER, recursive = TRUE)
   }
@@ -37,13 +35,12 @@ setup_celery_client <- function() {
 
 setup_celery_observers <- function(input, output, session) {
   
-  # State for tracking job progress
   celery_state <- reactiveValues(
-    job_id = NULL,
-    status = "IDLE",
-    result = NULL,
+    job_id     = NULL,
+    status     = "IDLE",
+    result     = NULL,
     saved_path = NULL,
-    polling = FALSE
+    polling    = FALSE
   )
   
   # ==========================================================================
@@ -76,14 +73,13 @@ setup_celery_observers <- function(input, output, session) {
   })
   
   # ==========================================================================
-  # POLLING LOOP
+  # POLLING LOOP — every 2s while polling=TRUE
   # ==========================================================================
-    # Runs every 2 seconds while polling=TRUE.
-  # Checks job status and fetches result when complete.
+  
   observe({
     req(celery_state$polling, celery_state$job_id)
     
-    status <- tryCatch({ # check current status
+    status <- tryCatch({ 
       py_to_r(job_client$check_status(celery_state$job_id))
     }, error = function(e) {
       list(status = "ERROR", error = e$message)
@@ -96,20 +92,17 @@ setup_celery_observers <- function(input, output, session) {
       result <- py_to_r(job_client$get_result(celery_state$job_id))
       
       if (result$status == "SUCCESS") {
-        # Save CSV to file
-        filename <- paste0("result_", celery_state$job_id, ".csv")
-        filepath <- file.path(CELERY_RESULTS_FOLDER, filename)
+        # Copy downloaded VCF from /tmp to results folder
+        src_path  <- result$result_local_path
+        base_name <- result$metadata$original_filename %||% celery_state$job_id
+        filename  <- paste0(base_name, "_result.csv")
+        dest_path <- file.path(CELERY_RESULTS_FOLDER, filename)
         
         tryCatch({
-          writeLines(result$csv_content, filepath)
-          celery_state$saved_path <- filepath
-          
-          celery_state$result <- paste(
-            "Rows:", result$rows_processed,
-            "\nSaved to:", filepath,
-            "\n\nPreview:\n", substr(result$csv_content, 1, 200)
-          )
-          showNotification(paste("Saved:", filepath), type = "message")
+          file.copy(src_path, dest_path, overwrite = TRUE)
+          celery_state$saved_path <- dest_path
+          celery_state$result <- paste("Saved to:", dest_path)
+          showNotification(paste("Result saved:", dest_path), type = "message")
         }, error = function(e) {
           celery_state$result <- paste("Got result but failed to save:", e$message)
         })
@@ -143,7 +136,6 @@ setup_celery_observers <- function(input, output, session) {
     celery_state$result %||% ""
   })
   
-  # Return saved path for other modules to use
   return(list(
     saved_path = reactive({ celery_state$saved_path })
   ))
