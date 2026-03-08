@@ -1,69 +1,102 @@
-# job_client.py
 # ============================================================================
-# Python client for Shiny to communicate with Flask/Celery backend
+# job_client.py — Shiny-side job submission client - INTEGRATED INTO APP
 # ============================================================================
+"""
+Used by the app to:
+  1. Upload input file to S3
+  2. Submit job to Flask with S3 path + metadata
+  3. Poll job status
+  4. Retrieve completed result
 
+Configuration: set FLASK_SERVER and BUCKET_NAME before deployment.
+"""
+
+import boto3
 import requests
-import time
+import os
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-# Flask server URL - change for production
+# deployment environment - TO BE CONFIGURED
 FLASK_SERVER = "http://localhost:5000"
+BUCKET_NAME = "test-bucket"
+
+# set endpoint url for S3 client
+endpoint_url="https://objets.juno.calculquebec.ca" 
+
+# S3 prefix for uploaded input files
+S3_INPUT_PREFIX = "vcf_inputs"
+
 
 # ============================================================================
-# API FUNCTIONS
+# S3 UPLOAD
 # ============================================================================
 
-def submit_file(filepath):
-    """
-    Submit a file to Flask for processing.
+def upload_to_s3(local_path, object_key):
+    """Upload input file to S3 bucket, return full S3 URI."""
+
+    s3 = boto3.client('s3', endpoint_url=endpoint_url)
     
+    s3.upload_file(local_path, BUCKET_NAME, object_key)
+    bucket_path = f"s3://{BUCKET_NAME}/{object_key}"
+    logger.info(f"Uploaded {local_path} to {bucket_path}")
+    return bucket_path
+
+
+# ============================================================================
+# JOB SUBMISSION
+# ============================================================================
+
+def submit_file(filepath, metadata=None):
+    """
+    Upload input file to S3, then submit job to Flask.
+
     Args:
-        filepath: Local path to the file
-        
+        filepath: Local path to input file
+        metadata: Dict with experiment and ownership fields
+
     Returns:
-        dict with job_id and status, or error
+        dict with job_id and status, or error key on failure
     """
     try:
-        with open(filepath, 'rb') as f:
-            files = {'file': f}
-            response = requests.post(
-                f"{FLASK_SERVER}/jobs/submit",
-                files=files,
-                timeout=120  # 2 min timeout for large files
-            )
-        
+        filename   = os.path.basename(filepath)
+        timestamp  = datetime.now().strftime("%Y%m%d_%H%M%S")
+        object_key = f"{S3_INPUT_PREFIX}/{timestamp}_{filename}"
+
+        bucket_path = upload_to_s3(filepath, object_key)
+
+        # pass original filename so tasks.py can use it for the result key
+        meta = metadata or {}
+        meta['original_filename'] = os.path.splitext(filename)[0]
+
+        response = requests.post(
+            f"{FLASK_SERVER}/jobs/submit",
+            json={'bucket_path': bucket_path, 'metadata': meta},
+            timeout=30
+        )
+
         if response.status_code == 200:
             return response.json()
         else:
-            return {
-                "success": False,
-                "error": f"Server returned {response.status_code}: {response.text}"
-            }
-            
-    except requests.exceptions.ConnectionError:
-        return {
-            "success": False,
-            "error": "Cannot connect to processing server. Is Flask running?"
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
+            return {"error": f"Server returned {response.status_code}: {response.text}"}
 
+    except Exception as e:
+        logger.error(f"submit_file failed: {e}")
+        return {"error": str(e)}
+
+
+# ============================================================================
+# STATUS AND RESULT
+# ============================================================================
 
 def check_status(job_id):
     """
-    Check the status of a submitted job.
-    
-    Args:
-        job_id: The job ID from submit_file
-        
+    Poll job status from Flask.
+
     Returns:
-        dict with job_id and status (PENDING, STARTED, SUCCESS, FAILURE)
+        dict with status (PENDING / STARTED / SUCCESS / FAILURE) and job_id
     """
     try:
         response = requests.get(
@@ -71,102 +104,41 @@ def check_status(job_id):
             timeout=10
         )
         return response.json()
-        
-    except requests.exceptions.ConnectionError:
-        return {
-            "job_id": job_id,
-            "status": "ERROR",
-            "error": "Cannot connect to server"
-        }
     except Exception as e:
-        return {
-            "job_id": job_id,
-            "status": "ERROR",
-            "error": str(e)
-        }
+        logger.error(f"check_status failed for {job_id}: {e}")
+        return {"job_id": job_id, "status": "ERROR", "error": str(e)}
 
 
 def get_result(job_id):
     """
-    Get the result of a completed job.
-    
-    Args:
-        job_id: The job ID
-        
+    Get result S3 key from Flask, then download the result file from S3.
+
     Returns:
-        dict with status and csv_content (if successful)
+        dict with status, result_content, and metadata
     """
     try:
         response = requests.get(
             f"{FLASK_SERVER}/jobs/{job_id}/result",
             timeout=30
         )
-        return response.json()
-        
-    except Exception as e:
+        data = response.json()
+
+        if data.get('status') != 'SUCCESS':
+            return data
+
+        # Download result CSV from S3 to a local temp file
+        result_s3_key = data['result_s3_key']
+        local_result  = f"/tmp/{job_id}_result.csv"
+        s3 = boto3.client('s3', endpoint_url=endpoint_url)
+        s3.download_file(BUCKET_NAME, result_s3_key, local_result)
+
+        logger.info(f"Downloaded result from s3://{BUCKET_NAME}/{result_s3_key}")
         return {
-            "status": "ERROR",
-            "error": str(e)
+            'status': 'SUCCESS',
+            'result_local_path': local_result,
+            'metadata': data.get('metadata', {})
         }
 
-
-def submit_and_wait(filepath, poll_interval=2, max_wait=300):
-    """
-    Submit a file and wait for completion (blocking).
-    Useful for testing.
-    
-    Args:
-        filepath: Path to file
-        poll_interval: Seconds between status checks
-        max_wait: Maximum seconds to wait
-        
-    Returns:
-        dict with final result or error
-    """
-    # Submit
-    submit_result = submit_file(filepath)
-    if "error" in submit_result:
-        return submit_result
-    
-    job_id = submit_result.get("job_id")
-    if not job_id:
-        return {"success": False, "error": "No job_id returned"}
-    
-    # Poll
-    elapsed = 0
-    while elapsed < max_wait:
-        status = check_status(job_id)
-        
-        if status.get("status") == "SUCCESS":
-            return get_result(job_id)
-        elif status.get("status") == "FAILURE":
-            return {
-                "success": False,
-                "error": status.get("error", "Task failed")
-            }
-        
-        time.sleep(poll_interval)
-        elapsed += poll_interval
-    
-    return {
-        "success": False,
-        "error": f"Timeout after {max_wait} seconds"
-    }
-
-
-# ============================================================================
-# TEST
-# ============================================================================
-
-if __name__ == "__main__":
-    #  test
-    import sys
-    
-    if len(sys.argv) > 1:
-        filepath = sys.argv[1]
-    else:
-        filepath = "uploads/test.csv"
-    
-    print(f"Testing with: {filepath}")
-    result = submit_and_wait(filepath)
-    print(f"Result: {result}")
+    except Exception as e:
+        logger.error(f"get_result failed for {job_id}: {e}")
+        return {"status": "ERROR", "error": str(e)}
