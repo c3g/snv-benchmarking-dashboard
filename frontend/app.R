@@ -81,6 +81,7 @@ shinyOptions(
 # ============================================================================
 tryCatch({
   #py_install("requests")   # --------------------------------- HAVE TO INSTALLL REQUESTs
+  #py_install("boto3")        # --------------------------------- HAVE TO INSTALL BOTO3
   py_run_string("import sys")
   py_run_string("sys.path.append('../backend')")
 #py_run_string("if 'upload_handler' in sys.modules: del sys.modules['upload_handler']")
