@@ -162,8 +162,11 @@ ui <- fluidPage(
                             alt = "Reset Dashboard", 
                             style = "height: 65px; width: 65px; object-fit: contain;"),
                         # Title
-                        h4("SNV Benchmarking Dashboard", 
-                          style = "margin: 0; font-size: 1.25em; font-weight: 600; line-height: 1.2; color: white;")
+                        h4(
+                          tags$span("VarBench", style = "display: block; color: white"),
+                          tags$span("Dashboard", style = "display: block; color: white; font-weight: 400; font-size: 0.85em;"),
+                          style = "margin: 0; font-size: 1.25em; font-weight: 600; line-height: 1.3;")
+                    
                     ),
 
                   )
