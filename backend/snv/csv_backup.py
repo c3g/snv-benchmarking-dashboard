@@ -12,7 +12,7 @@ import pandas as pd
 import os
 import logging
 from datetime import datetime
-from config import METADATA_CSV_PATH, DATA_FOLDER, DELETED_CSV_PATH
+from backend.shared.config import METADATA_CSV_PATH, DATA_FOLDER, DELETED_CSV_PATH
 
 logger = logging.getLogger(__name__)
 

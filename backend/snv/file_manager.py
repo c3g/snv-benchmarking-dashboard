@@ -17,8 +17,8 @@ import os
 import shutil
 import logging
 from datetime import datetime
-from config import DATA_FOLDER
-from authorization import require_admin
+from backend.shared.config import DATA_FOLDER
+from backend.shared.authorization import require_admin
 import zipfile
 import tempfile
 

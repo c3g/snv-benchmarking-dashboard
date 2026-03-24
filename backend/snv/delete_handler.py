@@ -20,9 +20,9 @@ import os
 import shutil
 import logging
 from datetime import datetime
-from config import DATA_FOLDER
-from database import get_db_session
-from models import Experiment, BenchmarkResult, OverallResult
+from backend.shared.config import DATA_FOLDER
+from backend.shared.database import get_db_session
+from backend.shared.models import Experiment, BenchmarkResult, OverallResult
 
 logger = logging.getLogger(__name__)
 

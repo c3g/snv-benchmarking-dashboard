@@ -23,11 +23,11 @@ import json
 import logging
 from sqlalchemy.orm import joinedload
 from sqlalchemy import or_
-from database import get_db_session
-from models import *
-from authorization import require_admin
+from backend.shared.database import get_db_session
+from backend.shared.models import *
+from backend.shared.authorization import require_admin
 import os
-from config import DATA_FOLDER
+from backend.shared.config import DATA_FOLDER
 
 
 logger = logging.getLogger(__name__)

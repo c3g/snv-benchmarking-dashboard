@@ -10,7 +10,7 @@ Add new enum values ONLY in models.py - this file auto-updates.
 To add aliases (e.g., '10x genomics' -> TENX), add to ALIASES dict below.
 """
 
-from models import (
+from backend.shared.models import (
     SeqTechName, SeqTechTarget, SeqTechPlatformType,
     CallerName, CallerType,
     TruthSetName, TruthSetReference, TruthSetSample,

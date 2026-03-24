@@ -9,9 +9,9 @@ Bypasses CSV file - creates database entries directly from upload form data.
 import logging
 from datetime import datetime
 from sqlalchemy import func
-from models import *
-from utils import clean_value, safe_float
-from enum_mappings import ENUM_MAPPINGS, map_enum, map_boolean
+from backend.shared.models import *
+from backend.shared.utils import clean_value, safe_float
+from backend.shared.enum_mappings import ENUM_MAPPINGS, map_enum, map_boolean
 
 logger = logging.getLogger(__name__)  
 
@@ -224,7 +224,7 @@ def create_experiment_direct(metadata, session=None):
     Returns:
         dict: {"success": bool, "experiment_id": int, "message": str}
     """
-    from database import get_db_session, Session
+    from backend.shared.database import get_db_session, Session
     
     # If no session provided, create one (backward compatibility)
     owns_session = session is None

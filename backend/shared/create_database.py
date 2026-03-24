@@ -9,8 +9,8 @@ only validates environment and ensures DB is ready.
 import sys
 import os
 import logging
-from database import create_tables, test_connection, validate_environment, get_engine
-from config import DATABASE_PATH
+from backend.shared.database import create_tables, test_connection, validate_environment, get_engine
+from backend.shared.config import DATABASE_PATH
 
 logger = logging.getLogger(__name__)
 

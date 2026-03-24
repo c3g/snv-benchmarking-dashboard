@@ -25,10 +25,10 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from config import DATA_FOLDER
+from backend.shared.config import DATA_FOLDER
 from direct_db_population import create_experiment_direct
-from database import get_db_session
-from models import Experiment
+from backend.shared.database import get_db_session
+from backend.shared.models import Experiment
 from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ REQUIRED_METADATA = [
 REQUIRED_COLS = ['Type', 'Subtype', 'Subset', 'METRIC.Recall', 'METRIC.Precision', 'METRIC.F1_Score']
 
 # import enum mappings for validation
-from enum_mappings import VALID_TECHNOLOGIES, VALID_CALLERS 
+from backend.shared.enum_mappings import VALID_TECHNOLOGIES, VALID_CALLERS 
 # ============================================================================
 # FILE VALIDATION
 # ============================================================================
@@ -348,7 +348,7 @@ def process_upload_direct(temp_file_path, metadata_json_string):
         
         # STEP 9: Parse hap.py results into database
         from happy_parser import parse_happy_csv
-        from database import get_db_session
+        from backend.shared.database import get_db_session
         with get_db_session() as session:
             parse_result = parse_happy_csv(filename, experiment_id, session)
             if not parse_result["success"] and not parse_result.get("skipped"):
@@ -413,8 +413,8 @@ def _rollback_experiment(experiment_id, file_path=None, session=None):
         file_path: Path to saved file (will be deleted)
         session: SQLAlchemy session (if None, creates own session)
     """
-    from database import Session
-    from models import Experiment, BenchmarkResult, OverallResult
+    from backend.shared.database import Session
+    from backend.shared.models import Experiment, BenchmarkResult, OverallResult
     
     # Database cleanup
     owns_session = session is None

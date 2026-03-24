@@ -11,8 +11,8 @@ Main components:
 """
 
 from datetime import datetime
-from database import get_db_session
-from models import User
+from backend.shared.database import get_db_session
+from backend.shared.models import User
 import logging
 
 logger = logging.getLogger(__name__)
@@ -197,7 +197,7 @@ def get_user_experiment_count(user_id):
     Returns:
         int: Number of experiments
     """
-    from models import Experiment
+    from backend.shared.models import Experiment
     
     if not user_id:
         return 0

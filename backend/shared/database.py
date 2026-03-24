@@ -15,8 +15,8 @@ import logging
 from contextlib import contextmanager
 from sqlalchemy import create_engine, text, event
 from sqlalchemy.orm import sessionmaker
-from config import DATABASE_PATH, DATA_FOLDER
-from models import Base
+from backend.shared.config import DATABASE_PATH, DATA_FOLDER
+from backend.shared.models import Base
 
 logger = logging.getLogger(__name__)
 

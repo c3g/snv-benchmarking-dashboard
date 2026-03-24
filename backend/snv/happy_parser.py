@@ -14,9 +14,9 @@ Main components:
 import os
 import logging
 import pandas as pd
-from models import RegionType, BenchmarkResult, OverallResult
-from config import get_data_file_path
-from utils import safe_float, safe_int
+from backend.shared.models import RegionType, BenchmarkResult, OverallResult
+from backend.shared.config import get_data_file_path
+from backend.shared.utils import safe_float, safe_int
 
 logger = logging.getLogger(__name__)
 

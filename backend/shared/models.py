@@ -42,7 +42,7 @@ class SeqTechPlatformType(enum.Enum):
     LRS = "LRS" # Long Read Sequencing
     SYNTHETIC = "SYNTHETIC" 
 
-class CallerName(enum.Enum):
+class SNVCallerName(enum.Enum):
     """Variant caller names"""
     DEEPVARIANT = "DEEPVARIANT"
     GATK3 = "GATK3"      
@@ -54,6 +54,9 @@ class CallerName(enum.Enum):
     NANOCALLER = "NANOCALLER"
     PARABRICK = "PARABRICK"
     PEPPER = "PEPPER"     
+
+class SVCallerName(enum.Enum):
+    SAWFISH = "SAWFISH"
 
 class CallerType(enum.Enum):
     """Variant caller types"""
