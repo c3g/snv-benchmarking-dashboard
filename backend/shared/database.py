@@ -2,12 +2,12 @@
 # database.py
 # ============================================================================
 """
-Database connection and session management for SNV Benchmarking Dashboard.
+Database connection and session management.
 
-Main components:
-- SQLite database engine setup and configuration
-- Session context management with automatic commit/rollback
-- Connection testing and environment validation
+Components:
+- SQLite engine setup 
+- Session context manager with automatic commit/rollback
+- Table creation and connection testing
 """
 
 import os
@@ -15,13 +15,13 @@ import logging
 from contextlib import contextmanager
 from sqlalchemy import create_engine, text, event
 from sqlalchemy.orm import sessionmaker
-from backend.shared.config import DATABASE_PATH, DATA_FOLDER
-from backend.shared.models import Base
+from config import DATABASE_PATH, SNV_DATA_FOLDER
+from models import Base
 
 logger = logging.getLogger(__name__)
 
 # ============================================================================
-# DATABASE CONFIGURATION
+# ENGINE SETUP
 # ============================================================================
 
 data_dir = os.path.dirname(DATABASE_PATH)
@@ -29,11 +29,10 @@ if not os.path.exists(data_dir):
     os.makedirs(data_dir, exist_ok=True)
 
 DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
-
 engine = create_engine(DATABASE_URL)
 Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# SQLite safety settings (must be AFTER engine creation)
+
 @event.listens_for(engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor = dbapi_connection.cursor()
@@ -46,8 +45,8 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
 # ============================================================================
 
 @contextmanager
-def get_db_session(): 
-    """Create database session with automatic commit/rollback."""
+def get_db_session():
+    """Session with automatic commit/rollback."""
     session = Session()
     try:
         yield session
@@ -59,16 +58,16 @@ def get_db_session():
     finally:
         session.close()
 
+
 def get_engine():
-    """Return the SQLAlchemy engine."""
     return engine
 
 # ============================================================================
-# INITIALIZATION & TESTING
+# INITIALIZATION
 # ============================================================================
 
 def migrate_database():
-    """Add missing columns to existing tables."""
+    """Add missing columns to existing tables. OPTIONAL"""
     migrations = [
         # experiments table - new columns for public/private functionality
         ("experiments", "is_public", "BOOLEAN DEFAULT 1"),
@@ -88,11 +87,11 @@ def migrate_database():
                 except Exception as e:
                     logger.warning(f"Could not add {column} to {table}: {e}")
 
-
 def create_tables():
-    """Create tables if they don't exist, then run migrations."""
+    """Create all tables defined in models.py if they don't exist."""
     Base.metadata.create_all(bind=engine)
-    migrate_database()
+    logger.info("All tables verified/created")
+
 
 def test_connection():
     """Test database connectivity."""
@@ -105,36 +104,36 @@ def test_connection():
         logger.error(f"Database connection failed: {e}")
         return False
 
+
 def validate_environment():
-    """Validate read/write access to data folder and database directory."""
-    
-    if not os.path.exists(DATA_FOLDER):
-        logger.error(f"DATA_FOLDER does not exist: {DATA_FOLDER}")
-        return False
-    
-    if not os.access(DATA_FOLDER, os.R_OK | os.W_OK):
-        logger.error(f"Cannot read/write to DATA_FOLDER: {DATA_FOLDER}")
-        return False
-    
+    """Validate read/write access to data folders and DB directory."""
+    for folder in [SNV_DATA_FOLDER]:
+        if not os.path.exists(folder):
+            logger.error(f"Folder does not exist: {folder}")
+            return False
+        if not os.access(folder, os.R_OK | os.W_OK):
+            logger.error(f"Cannot read/write: {folder}")
+            return False
+
     db_dir = os.path.dirname(DATABASE_PATH)
     if not os.path.exists(db_dir):
         logger.error(f"Database directory does not exist: {db_dir}")
         return False
-        
     if not os.access(db_dir, os.R_OK | os.W_OK):
-        logger.error(f"Cannot read/write to database directory: {db_dir}")
+        logger.error(f"Cannot read/write database directory: {db_dir}")
         return False
-    
+
     logger.info("Environment validation successful")
     return True
 
+
 def drop_all_data(confirm=False):
-    """Drop all tables and recreate empty structure. Requires explicit confirmation."""
+    """Drop all tables and recreate. Requires explicit confirm=True."""
     if not confirm:
-        logger.error("drop_all_data() called without confirm=True - aborting")
+        logger.error("drop_all_data() called without confirm=True — aborting")
         return False
-    
-    logger.warning("DROPPING ALL TABLES - THIS DELETES ALL DATA")
+
+    logger.warning("DROPPING ALL TABLES — THIS DELETES ALL DATA")
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     logger.info("All data dropped and tables recreated")
