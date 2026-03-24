@@ -2,11 +2,11 @@
 # models.py
 # ============================================================================
 """
-Database models and enums for the Benchmarking Dashboard (SNV + SV).
+Database models and enums for the Varbench Dashboard (SNV + SV).
 
 Structure:
-- Shared enums used by both SNV and SVpipelines
-- SNV-specific enums: SNVCallerName, VariantType, RegionType
+- Shared enums used by both pipelines
+- SNV-specific enums: SNVCallerName, SNVType, RegionType
 - SV-specific enums: SVCallerName, SVType, SVSizeRange
 - Shared reference tables: users, sequencing_technologies, aligners,
   truth_sets, benchmark_tools, quality_control_metrics, chemistries
@@ -35,8 +35,8 @@ class SeqTechName(enum.Enum):
     ULTIMA = "ULTIMA"
 
 class SeqTechTarget(enum.Enum):
-    WGS = "WGS" # whole genome sequencing
-    WES = "WES" # exon sequencing 
+    WGS = "WGS"
+    WES = "WES"
 
 class SeqTechPlatformType(enum.Enum):
     SRS = "SRS"       # Short Read Sequencing
@@ -46,6 +46,10 @@ class SeqTechPlatformType(enum.Enum):
 class CallerType(enum.Enum):
     ML = "ML"
     TRADITIONAL = "TRADITIONAL"
+
+class VariantOrigin(enum.Enum):
+    GERMLINE = "GERMLINE"
+    SOMATIC = "SOMATIC"
 
 class TruthSetName(enum.Enum):
     GIAB = "GIAB"
@@ -90,14 +94,6 @@ class SNVType(enum.Enum):
     SNP = "SNP"
     INDEL = "INDEL"
     SNPINDEL = "SNPINDEL"  # combined SNP+INDEL upload
-
-class VariantOrigin(enum.Enum):
-    GERMLINE = "GERMLINE"
-    SOMATIC = "SOMATIC"
-
-class SNVSize(enum.Enum):
-    SMALL = "SMALL"
-    LARGE = "LARGE"
 
 class RegionType(enum.Enum):
     """
@@ -228,7 +224,7 @@ class RegionType(enum.Enum):
             "ts_contained": cls.TS_CONTAINED
         }
         return mapping.get(region_str_lower)
-    
+
     @classmethod
     def from_display_name(cls, display_name):
         """Reverse-lookup by display value string. OPTIONAL"""
@@ -272,22 +268,23 @@ class SVSizeRange(enum.Enum):
 # ============================================================================
 
 class User(Base):
+    """OIDC-sourced users; is_admin from COManage group membership"""
     __tablename__ = 'users'
-    
+
     id = Column(Integer, primary_key=True)
-    username = Column(String(100), unique=True, nullable=False)  # From OIDC
-    email = Column(String(255), unique=True, nullable=False)     # From OIDC
-    full_name = Column(String(255))                               # From OIDC
-    is_admin = Column(Boolean, default=False)                     # From OIDC group
-    created_at = Column(DateTime, default=func.now())
+    username = Column(String(100), unique=True, nullable=False)
+    email = Column(String(200))
+    full_name = Column(String(200))
+    is_admin = Column(Boolean, default=False)
+    created_at = Column(DateTime)
     last_login = Column(DateTime)
-    
-    # Relationships
-    experiments = relationship("Experiment", back_populates="owner")
-    
+
+    snv_experiments = relationship("SNVExperiment", back_populates="owner")
+    sv_experiments = relationship("SVExperiment", back_populates="owner")
+
     def __repr__(self):
-        return f"<User(username={self.username}, email={self.email})>"
-    
+        return f"<User(username={self.username}, admin={self.is_admin})>"
+
 
 class SequencingTechnology(Base):
     """Sequencing platform metadata"""
@@ -410,20 +407,19 @@ class SNVCaller(Base):
         return f"<SNVCaller(name={self.name.value}, version={self.version})>"
 
 
-class Variant(Base):
-    """SNV-only variant metadata; sv_type lives on sv_results rows"""
-    __tablename__ = 'variants'
+class SNVVariant(Base):
+    """SNV-specific variant metadata. type/origin/is_phased describe the SNV upload target."""
+    __tablename__ = 'snv_variants'
 
     id = Column(Integer, primary_key=True)
-    type = Column(Enum(SNVType))
-    size = Column(Enum(SNVSize))
-    origin = Column(Enum(VariantOrigin))
+    type = Column(Enum(SNVType))        # SNP, INDEL, or SNPINDEL
+    origin = Column(Enum(VariantOrigin))    # GERMLINE or SOMATIC
     is_phased = Column(Boolean, default=False)
 
-    snv_experiments = relationship("SNVExperiment", back_populates="variant")
+    snv_experiments = relationship("SNVExperiment", back_populates="snv_variant")
 
     def __repr__(self):
-        return f"<Variant(type={self.type.value}, origin={self.origin.value})>"
+        return f"<SNVVariant(type={self.type.value}, origin={self.origin.value})>"
 
 
 class SNVExperiment(Base):
@@ -443,17 +439,18 @@ class SNVExperiment(Base):
     aligner_id = Column(Integer, ForeignKey('aligners.id'))
     truth_set_id = Column(Integer, ForeignKey('truth_sets.id'))
     benchmark_tool_id = Column(Integer, ForeignKey('benchmark_tools.id'))
-    variant_id = Column(Integer, ForeignKey('variants.id'))
+    snv_variant_id = Column(Integer, ForeignKey('snv_variants.id'))
     quality_control_metrics_id = Column(Integer, ForeignKey('quality_control_metrics.id'))
     chemistry_id = Column(Integer, ForeignKey('chemistries.id'))
 
+    # Relationships
     owner = relationship("User", back_populates="snv_experiments")
     sequencing_technology = relationship("SequencingTechnology", back_populates="snv_experiments")
     snv_caller = relationship("SNVCaller", back_populates="snv_experiments")
     aligner = relationship("Aligner", back_populates="snv_experiments")
     truth_set = relationship("TruthSet", back_populates="snv_experiments")
     benchmark_tool = relationship("BenchmarkTool", back_populates="snv_experiments")
-    variant = relationship("Variant", back_populates="snv_experiments")
+    snv_variant = relationship("SNVVariant", back_populates="snv_experiments")
     quality_control = relationship("QualityControl", back_populates="snv_experiments")
     chemistry = relationship("Chemistry", back_populates="snv_experiments")
     snv_overall_results = relationship("SNVOverallResult", back_populates="experiment")
@@ -574,9 +571,30 @@ class SVCaller(Base):
     def __repr__(self):
         return f"<SVCaller(name={self.name.value}, version={self.version})>"
 
+class SVVariant(Base):
+    """SV-specific variant metadata."""
+    __tablename__ = 'sv_variants'
+
+    id = Column(Integer, primary_key=True)
+    type = Column(Enum(SVType))
+    origin = Column(Enum(VariantOrigin))
+    is_phased = Column(Boolean, default=False)
+    size_bin = Column(Enum(SVSizeRange))   # ALL means no size filter applied
+
+    sv_experiments = relationship("SVExperiment", back_populates="sv_variant")
+
+    def __repr__(self):
+        return f"<SVVariant(type={self.type.value}, origin={self.origin.value}, size={self.size_bin.value})>"
+    
+class SVResultType(enum.Enum):
+    """ Refind vs Summary"""
+    SUMMARY  = "SUMMARY"   # from summary.json — all truth sets
+    REFINED = "REFINED"  # from refine.variant_summary.json — T2T only
 
 class SVExperiment(Base):
-    """One row per uploaded parent Truvari directory. No variant FK — sv_type lives on sv_results."""
+    """
+    One row per uploaded parent Truvari directory.
+    """
     __tablename__ = 'sv_experiments'
 
     id = Column(Integer, primary_key=True)
@@ -589,6 +607,7 @@ class SVExperiment(Base):
     owner_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     sequencing_technology_id = Column(Integer, ForeignKey('sequencing_technologies.id'))
     sv_caller_id = Column(Integer, ForeignKey('sv_callers.id'))
+    sv_variant_id = Column(Integer, ForeignKey('sv_variants.id'))
     aligner_id = Column(Integer, ForeignKey('aligners.id'))
     truth_set_id = Column(Integer, ForeignKey('truth_sets.id'))
     benchmark_tool_id = Column(Integer, ForeignKey('benchmark_tools.id'))
@@ -603,6 +622,7 @@ class SVExperiment(Base):
     benchmark_tool = relationship("BenchmarkTool", back_populates="sv_experiments")
     quality_control = relationship("QualityControl", back_populates="sv_experiments")
     chemistry = relationship("Chemistry", back_populates="sv_experiments")
+    sv_variant = relationship("SVVariant", back_populates="sv_experiments")
     sv_results = relationship("SVResult", back_populates="experiment")
 
     def __repr__(self):
@@ -611,17 +631,18 @@ class SVExperiment(Base):
 
 class SVResult(Base):
     """
-    One row per JSON file parsed from a Truvari parent directory.
-    gt_concordance and gt_matrix_json are NULL for T2T (refine) runs.
-    has_refinement=True when parsed from refine.variant_summary.json.
+    One row per JSON file parsed from a Truvari subdir.
+    One experiment yields 1 row per (sv_type, size_range) for GIAB/CMRG,
+    and 2 rows for T2T — one SUMMARY and one REFINED.
     """
     __tablename__ = 'sv_results'
 
     id = Column(Integer, primary_key=True)
     experiment_id = Column(Integer, ForeignKey('sv_experiments.id'), nullable=False)
 
-    sv_type = Column(Enum(SVType), nullable=False)       # DEL or INS
+    sv_type = Column(Enum(SVType), nullable=False)
     size_range = Column(Enum(SVSizeRange), nullable=False)
+    result_type = Column(Enum(SVResultType), nullable=False)  # unique key: (experiment_id, sv_type, size_range, result_type)
 
     metric_recall = Column(Float)
     metric_precision = Column(Float)
@@ -634,12 +655,15 @@ class SVResult(Base):
     fp = Column(Integer)
     fn = Column(Integer)
 
-    gt_concordance = Column(Float)   
-    gt_matrix_json = Column(Text)    # TO BE EDITED
-    
-    has_refinement = Column(Boolean, default=False)
+    gt_concordance = Column(Float)   # NULL for REFINED rows
+    gt_matrix_json = Column(Text)    # NULL for REFINED rows; stored as JSON string
+
+    tp_comp_tp_gt = Column(Integer)   # TP-comp_TP-gt — NULL for REFINED
+    tp_comp_fp_gt = Column(Integer)   # TP-comp_FP-gt — NULL for REFINED
+    tp_base_tp_gt = Column(Integer)   # TP-base_TP-gt — NULL for REFINED
+    tp_base_fp_gt = Column(Integer)   # TP-base_FP-gt — NULL for REFINED
 
     experiment = relationship("SVExperiment", back_populates="sv_results")
 
     def __repr__(self):
-        return f"<SVResult(exp_id={self.experiment_id}, type={self.sv_type.value}, size={self.size_range.value})>"
+        return f"<SVResult(exp_id={self.experiment_id}, type={self.sv_type.value}, size={self.size_range.value}, result={self.result_type.value})>"
