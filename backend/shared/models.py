@@ -2,16 +2,20 @@
 # models.py
 # ============================================================================
 """
-Database models and enums for SNV Benchmarking Dashboard.
+Database models and enums for the Benchmarking Dashboard (SNV + SV).
 
-Main components:
-- Enum definitions for all categorical data types
-- SQLAlchemy table models for normalized database structure
-- Relationship definitions between tables
-- RegionType enum with hap.py mapping methods
+Structure:
+- Shared enums used by both SNV and SVpipelines
+- SNV-specific enums: SNVCallerName, VariantType, RegionType
+- SV-specific enums: SVCallerName, SVType, SVSizeRange
+- Shared reference tables: users, sequencing_technologies, aligners,
+  truth_sets, benchmark_tools, quality_control_metrics, chemistries
+- SNV tables: snv_callers, variants, snv_experiments,
+  snv_overall_results, snv_benchmark_results
+- SV tables: sv_callers, sv_experiments, sv_results
 """
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, Enum, func
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, Enum, Text, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 import enum
@@ -19,11 +23,10 @@ import enum
 Base = declarative_base()
 
 # ============================================================================
-# ENUM DEFINITIONS - All uppercase
+# SHARED ENUMS
 # ============================================================================
 
 class SeqTechName(enum.Enum):
-    """Sequencing technologies"""
     ILLUMINA = "ILLUMINA"
     MGI = "MGI"
     ONT = "ONT"
@@ -32,94 +35,79 @@ class SeqTechName(enum.Enum):
     ULTIMA = "ULTIMA"
 
 class SeqTechTarget(enum.Enum):
-    """Sequencing targets"""
     WGS = "WGS" # whole genome sequencing
-    WES = "WES" # exon sequencing    
+    WES = "WES" # exon sequencing 
 
 class SeqTechPlatformType(enum.Enum):
-    """Sequencing Platform types"""
-    SRS = "SRS"  # Short Read Sequencing
-    LRS = "LRS" # Long Read Sequencing
-    SYNTHETIC = "SYNTHETIC" 
-
-class SNVCallerName(enum.Enum):
-    """Variant caller names"""
-    DEEPVARIANT = "DEEPVARIANT"
-    GATK3 = "GATK3"      
-    GATK4 = "GATK4"       
-    CLAIR3 = "CLAIR3"
-    DRAGEN = "DRAGEN"
-    LONGRANGER = "LONGRANGER"
-    MEGABOLT = "MEGABOLT"   
-    NANOCALLER = "NANOCALLER"
-    PARABRICK = "PARABRICK"
-    PEPPER = "PEPPER"     
-
-class SVCallerName(enum.Enum):
-    SAWFISH = "SAWFISH"
+    SRS = "SRS"       # Short Read Sequencing
+    LRS = "LRS"       # Long Read Sequencing
+    SYNTHETIC = "SYNTHETIC"
 
 class CallerType(enum.Enum):
-    """Variant caller types"""
     ML = "ML"
     TRADITIONAL = "TRADITIONAL"
 
 class TruthSetName(enum.Enum):
-    """Benchmarking truth sets"""
-    GIAB = "GIAB" # Genome in a Bottle
-    CMRG = "CMRG" # Challenging Medically Relevant Genes
-    T2T = "T2T" # Telomere to Telomere
+    GIAB = "GIAB"
+    CMRG = "CMRG"
+    T2T = "T2T"
 
 class TruthSetReference(enum.Enum):
-    """Benchmarking truth set references"""
     GRCH37 = "GRCH37"
     GRCH38 = "GRCH38"
 
-class TruthSetSample(enum.Enum): 
-    """Benchmarking samples"""
+class TruthSetSample(enum.Enum):
     HG001 = "HG001"
     HG002 = "HG002"
     HG003 = "HG003"
     HG004 = "HG004"
-    HCC1395 = "HCC1395" # triple negative breast cancer
-
-class VariantOrigin(enum.Enum):
-    """Origins of variants"""
-    GERMLINE = "GERMLINE" # reproductive cells
-    SOMATIC = "SOMATIC"  # non-reproductive cells
-
-class VariantSize(enum.Enum):
-    """Sizes of variants"""
-    SMALL = "SMALL"
-    LARGE = "LARGE"
-
-class VariantType(enum.Enum):
-    """Types of variants"""
-    SNP = "SNP"  # Single Nucleotide Polymorphism
-    INDEL = "INDEL" # Insertion/Deletion
-    DEL = "DEL"  # Deletion
-    INS = "INS"  # Insertion
-    SNPINDEL = "SNPINDEL"
+    HCC1395 = "HCC1395"  # triple negative breast cancer cell line
 
 class BenchmarkToolName(enum.Enum):
-    """Benchmarking tools"""
     HAPPY = "HAPPY"
     VCFDIST = "VCFDIST"
-    TRUVARI = "TRUVARI" 
+    TRUVARI = "TRUVARI"
+
+# ============================================================================
+# SNV-SPECIFIC ENUMS
+# ============================================================================
+
+class SNVCallerName(enum.Enum):
+    """SNV variant caller names (hap.py pipeline)"""
+    DEEPVARIANT = "DEEPVARIANT"
+    GATK3 = "GATK3"
+    GATK4 = "GATK4"
+    CLAIR3 = "CLAIR3"
+    DRAGEN = "DRAGEN"
+    LONGRANGER = "LONGRANGER"
+    MEGABOLT = "MEGABOLT"
+    NANOCALLER = "NANOCALLER"
+    PARABRICK = "PARABRICK"
+    PEPPER = "PEPPER"
+
+class SNVType(enum.Enum):
+    """SNV variant types (hap.py output types)"""
+    SNP = "SNP"
+    INDEL = "INDEL"
+    SNPINDEL = "SNPINDEL"  # combined SNP+INDEL upload
+
+class VariantOrigin(enum.Enum):
+    GERMLINE = "GERMLINE"
+    SOMATIC = "SOMATIC"
+
+class SNVSize(enum.Enum):
+    SMALL = "SMALL"
+    LARGE = "LARGE"
 
 class RegionType(enum.Enum):
     """
     All genomic regions from hap.py stratified analysis.
-    Values are kept display-friendly to match hap.py outputs.
+    Values are display-friendly strings matching hap.py outputs.
     """
-    
-    # All
     ALL = "All Regions"
-    
-    # Difficulty
     EASY = "Easy Regions"
     DIFFICULT = "Difficult Regions"
-    
-    # GC Content
+
     GC_VERY_LOW = "GC_<15"
     GC_15_20 = "GC_15_20"
     GC_20_25 = "GC_20_25"
@@ -132,66 +120,48 @@ class RegionType(enum.Enum):
     GC_75_80 = "GC_75_80"
     GC_80_85 = "GC_80_85"
     GC_VERY_HIGH = "GC_>85"
-    
-    # GC Extreme Ranges
     GC_LT25_OR_GT65 = "GC <25 or >65"
     GC_LT30_OR_GT55 = "GC <30 or >55"
 
-    # Functional
     REFSEQ_CDS = "RefSeq CDS"
     NOT_IN_CDS = "Non-CDS Regions"
-    
-    # Repetitive - Segmental duplications 
+
     SEGDUP = "Segmental Duplications"
     NOT_IN_SEGDUPS = "Non-Segmental Duplications"
 
-    # Repetitive - homopolymers
     HOMOPOLYMER_4TO6 = "Homopolymer 4-6bp"
     HOMOPOLYMER_7TO11 = "Homopolymer 7-11bp"
     HOMOPOLYMER_GT12 = "Homopolymer >12bp"
     HOMOPOLYMER_GE21 = "Homopolymer ≥21bp"
-    ALL_TR_AND_HOMOPOLYMERS = "All Tandem Repeats & Homopolymers" 
-    NOT_IN_ALL_TR_AND_HOMOPOLYMERS = "Non-Tandem Repeats & Non-Homopolymers" 
+    ALL_TR_AND_HOMOPOLYMERS = "All Tandem Repeats & Homopolymers"
+    NOT_IN_ALL_TR_AND_HOMOPOLYMERS = "Non-Tandem Repeats & Non-Homopolymers"
 
-    # Repetitive - Satellites
-    SATELLITES = "Satellites"  
-    NOT_IN_SATELLITES = "Non-Satellites" 
+    SATELLITES = "Satellites"
+    NOT_IN_SATELLITES = "Non-Satellites"
 
-    # Mappability
     LOW_MAPPABILITY = "Low Mappability"
-    NOT_IN_LOW_MAPPABILITY = "Non-Low Mappability" 
+    NOT_IN_LOW_MAPPABILITY = "Non-Low Mappability"
 
-    # Other
     MHC = "MHC Region"
     TS_BOUNDARY = "Truth Set Boundary"
     TS_CONTAINED = "Truth Set Contained"
-    
+
     @classmethod
     def from_string(cls, region_str):
-        """
-        Convert hap.py region string to enum value (case-insensitive).
-        
-        Maps the raw region strings from hap.py CSV files to their corresponding
-        enum values for database storage. Handles multiple naming conventions.
-        
-        Args:
-            region_str (str): Raw region string from hap.py output (e.g., "*", "easy", "GC_<15")
-            
-        Returns:
-            RegionType: Corresponding enum value or None if mapping not found
-        """
+        """Map raw hap.py region string to enum (case-insensitive). Returns None if unknown."""
         if not region_str:
             return None
-        
+
         region_str_lower = str(region_str).strip().lower()
-        
+
         mapping = {
             # Core regions
             "*": cls.ALL,
             "easy": cls.EASY,
             "difficult": cls.DIFFICULT,
-            
-            # GC Content 
+
+            # GC Content
+
             "gc_<15": cls.GC_VERY_LOW,
             "gc_15_20": cls.GC_15_20,
             "gc_20_25": cls.GC_20_25,
@@ -217,16 +187,16 @@ class RegionType(enum.Enum):
             "gc75to80": cls.GC_75_80,
             "gc80to85": cls.GC_80_85,
             "gc85": cls.GC_VERY_HIGH,
-            
+
             # Extreme GC ranges
             "gclt25orgt65": cls.GC_LT25_OR_GT65,
             "gclt30orgt55": cls.GC_LT30_OR_GT55,
-            
+
             # Functional regions
             "refseq_cds": cls.REFSEQ_CDS,
             "not_in_cds": cls.NOT_IN_CDS,
             "not_in_refseq_cds": cls.NOT_IN_CDS,
-            
+
             # Segmental duplications
             "segdup": cls.SEGDUP,
             "segdups": cls.SEGDUP,
@@ -261,84 +231,44 @@ class RegionType(enum.Enum):
     
     @classmethod
     def from_display_name(cls, display_name):
-        """
-        Convert UI display names to enum values (case-insensitive).
-        
-        Maps user-friendly region names from the dashboard UI to their
-        corresponding enum values for database queries.
-        
-        Args:
-            display_name (str): User-friendly name from UI (e.g., "All Regions", "Easy Regions")
-            
-        Returns:
-            RegionType: Corresponding enum value or None if mapping not found
-        """
+        """Reverse-lookup by display value string. OPTIONAL"""
         if not display_name:
             return None
-            
-        display_name_lower = str(display_name).strip().lower()
-        
-        mapping = {
-            # Main regions
-            "all regions": cls.ALL,
-            "easy regions": cls.EASY,
-            "difficult regions": cls.DIFFICULT,
-            
-            # Functional
-            "refseq cds": cls.REFSEQ_CDS,
-            "non-cds regions": cls.NOT_IN_CDS,
-            
-            # Homopolymer
-            "homopolymer 4-6bp": cls.HOMOPOLYMER_4TO6,
-            "homopolymer 7-11bp": cls.HOMOPOLYMER_7TO11,
-            "homopolymer >12bp": cls.HOMOPOLYMER_GT12,
-            "homopolymer ≥21bp": cls.HOMOPOLYMER_GE21,
-            "homopolymer >=21bp": cls.HOMOPOLYMER_GE21,
-            
-            # Tandem Repeats & Homopolymers
-            "all tandem repeat & homopolymers": cls.ALL_TR_AND_HOMOPOLYMERS,
-            "all tr & homopolymers": cls.ALL_TR_AND_HOMOPOLYMERS,
-            "non-tandem repeat & non-homopolymers": cls.NOT_IN_ALL_TR_AND_HOMOPOLYMERS,
-            "non-tr & non-homopolymers": cls.NOT_IN_ALL_TR_AND_HOMOPOLYMERS,
-            
-            # GC Content
-            "gc_<15": cls.GC_VERY_LOW,
-            "gc_15_20": cls.GC_15_20,
-            "gc_20_25": cls.GC_20_25,
-            "gc_25_30": cls.GC_25_30,
-            "gc_30_55": cls.GC_30_55,
-            "gc_55_60": cls.GC_55_60,
-            "gc_60_65": cls.GC_60_65,
-            "gc_65_70": cls.GC_65_70,
-            "gc_70_75": cls.GC_70_75,
-            "gc_75_80": cls.GC_75_80,
-            "gc_80_85": cls.GC_80_85,
-            "gc_>85": cls.GC_VERY_HIGH,
-            
-            # Extreme GC ranges
-            "gc <25 or >65": cls.GC_LT25_OR_GT65,
-            "gc <30 or >55": cls.GC_LT30_OR_GT55,
-
-            # Complex regions
-            "mhc region": cls.MHC,
-            "segmental duplications": cls.SEGDUP,
-            "low mappability": cls.LOW_MAPPABILITY,
-            
-            # Non-Segmental Duplications
-            "non-segmental duplications": cls.NOT_IN_SEGDUPS,
-            
-            # Non-Low Mappability
-            "non-low mappability": cls.NOT_IN_LOW_MAPPABILITY,
-            
-            # Satellites
-            "satellites": cls.SATELLITES,
-            "non-satellites": cls.NOT_IN_SATELLITES,
-        }
-        
-        return mapping.get(display_name_lower)
+        for member in cls:
+            if member.value.lower() == str(display_name).strip().lower():
+                return member
+        return None
 
 # ============================================================================
-# DATABASE TABLES
+# SV-SPECIFIC ENUMS
+# ============================================================================
+
+class SVCallerName(enum.Enum):
+    """SV variant caller names (Truvari pipeline)"""
+    METASV = "METASV"
+    DYSGU = "DYSGU"
+    CUTESV = "CUTESV"
+    SNIFFLES = "SNIFFLES"
+    SVIM = "SVIM"
+    PDSV = "PDSV"
+    SAWFISH = "SAWFISH"
+
+class SVType(enum.Enum):
+    """SV types from Truvari directory naming"""
+    DEL = "DEL"
+    INS = "INS"
+
+class SVSizeRange(enum.Enum):
+    """SV size bins from Truvari directory naming"""
+    ALL = "ALL"
+    SIZE_30_50 = "30_50"
+    SIZE_50_250 = "50_250"
+    SIZE_250_500 = "250_500"
+    SIZE_500_6000 = "500_6000"
+    SIZE_6000PLUS = "6000plus"
+
+# ============================================================================
+# SHARED REFERENCE TABLES
 # ============================================================================
 
 class User(Base):
@@ -360,221 +290,222 @@ class User(Base):
     
 
 class SequencingTechnology(Base):
-    """Sequencing technology and platform information"""
-    __tablename__ = "sequencing_technologies"
+    """Sequencing platform metadata"""
+    __tablename__ = 'sequencing_technologies'
 
     id = Column(Integer, primary_key=True)
-    technology = Column(Enum(SeqTechName), nullable=False)
+    technology = Column(Enum(SeqTechName))
     target = Column(Enum(SeqTechTarget))
     platform_type = Column(Enum(SeqTechPlatformType))
-    platform_name = Column(String(50))
-    platform_version = Column(String(50))
+    platform_name = Column(String(100))
+    platform_version = Column(Float)
 
-    # Relationships 
-    experiments = relationship("Experiment", back_populates="sequencing_technology")
-    
+    # Relationships
+    snv_experiments = relationship("SNVExperiment", back_populates="sequencing_technology")
+    sv_experiments = relationship("SVExperiment", back_populates="sequencing_technology")
+
     def __repr__(self):
-        return f"<SequencingTechnology(tech={self.technology.value}, platform={self.platform_name})>"
+        return f"<SequencingTechnology(technology={self.technology.value}, platform={self.platform_name})>"
 
-class VariantCaller(Base): 
-    """Variant calling algorithms and details"""
-    __tablename__ = 'variant_callers' 
 
-    id = Column(Integer, primary_key=True)
-    name = Column(Enum(CallerName), nullable=False)
-    type = Column(Enum(CallerType))
-    version = Column(String(50))
-    model = Column(String(50))
-
-    experiments = relationship("Experiment", back_populates="variant_caller")
-    
-    def __repr__(self):
-        return f"<VariantCaller(name={self.name.value}, version={self.version})>"
-
-class Aligner(Base): 
-    """Alignment algorithms and versions"""
+class Aligner(Base):
+    """Aligners — free text, no enum (new aligners added automatically)"""
     __tablename__ = 'aligners'
-    
+
     id = Column(Integer, primary_key=True)
     name = Column(String(50))
     version = Column(String(50))
-    
-    experiments = relationship("Experiment", back_populates="aligner")
-    
+
+    snv_experiments = relationship("SNVExperiment", back_populates="aligner")
+    sv_experiments = relationship("SVExperiment", back_populates="aligner")
+
     def __repr__(self):
         return f"<Aligner(name={self.name}, version={self.version})>"
 
+
 class TruthSet(Base):
-    """Validation/Truth sets and details"""
+    """Validation truth sets"""
     __tablename__ = 'truth_sets'
-    
+
     id = Column(Integer, primary_key=True)
     name = Column(Enum(TruthSetName))
     version = Column(String(50))
     reference = Column(Enum(TruthSetReference))
     sample = Column(Enum(TruthSetSample))
 
-    experiments = relationship("Experiment", back_populates="truth_set")
-    
+    snv_experiments = relationship("SNVExperiment", back_populates="truth_set")
+    sv_experiments = relationship("SVExperiment", back_populates="truth_set")
+
     def __repr__(self):
         return f"<TruthSet(name={self.name.value}, sample={self.sample.value})>"
 
+
 class BenchmarkTool(Base):
     """Benchmarking tools and versions"""
-    __tablename__ = 'benchmark_tools' 
-    
+    __tablename__ = 'benchmark_tools'
+
     id = Column(Integer, primary_key=True)
     name = Column(Enum(BenchmarkToolName))
-    version = Column(String(50)) 
-    
-    experiments = relationship("Experiment", back_populates="benchmark_tool")
-    
+    version = Column(String(50))
+
+    snv_experiments = relationship("SNVExperiment", back_populates="benchmark_tool")
+    sv_experiments = relationship("SVExperiment", back_populates="benchmark_tool")
+
     def __repr__(self):
         return f"<BenchmarkTool(name={self.name.value}, version={self.version})>"
 
-class Variant(Base):
-    """Variant types and details"""
-    __tablename__ = 'variants'
-    
-    id = Column(Integer, primary_key=True)
-    type = Column(Enum(VariantType))
-    size = Column(Enum(VariantSize))
-    origin = Column(Enum(VariantOrigin))
-    is_phased = Column(Boolean, default=False)
-    
-    experiments = relationship("Experiment", back_populates="variant")
-    
-    def __repr__(self):
-        return f"<Variant(type={self.type.value}, origin={self.origin.value})>"
 
 class QualityControl(Base):
-    """Quality control metrics"""
+    """QC metrics; read_length for SRS only, mean_read_length for LRS only"""
     __tablename__ = 'quality_control_metrics'
 
     id = Column(Integer, primary_key=True)
-    mean_coverage = Column(Float) 
-    read_length = Column(Float) # Only for SRS
-    mean_read_length = Column(Float) # Only for LRS
-    mean_insert_size = Column(Float) # Only for SRS
-    read_quality = Column(Float) 
+    mean_coverage = Column(Float)
+    read_length = Column(Float)         # SRS only
+    mean_read_length = Column(Float)    # LRS only
+    mean_insert_size = Column(Float)    # SRS only
+    read_quality = Column(Float)
     max_aligned_read = Column(Float)
 
-    experiments = relationship("Experiment", back_populates="quality_control")
-    
+    snv_experiments = relationship("SNVExperiment", back_populates="quality_control")
+    sv_experiments = relationship("SVExperiment", back_populates="quality_control")
+
     def __repr__(self):
-        return f"<QualityControl(coverage={self.mean_coverage}, read_length={self.read_length})>"
+        return f"<QualityControl(coverage={self.mean_coverage})>"
+
 
 class Chemistry(Base):
-    """Chemistry details"""
+    """Library chemistry (e.g., SPRQ for PacBio Revio)"""
     __tablename__ = 'chemistries'
+
     id = Column(Integer, primary_key=True)
-    name = Column(String(50))  # e.g., "SPRQ"
+    name = Column(String(50))
     version = Column(String(50))
-    sequencing_technology = Column(Enum(SeqTechName)) # Related sequencing technology
+    sequencing_technology = Column(Enum(SeqTechName))
     sequencing_platform = Column(String(50))
 
-    experiments = relationship("Experiment", back_populates="chemistry")
+    snv_experiments = relationship("SNVExperiment", back_populates="chemistry")
+    sv_experiments = relationship("SVExperiment", back_populates="chemistry")
 
     def __repr__(self):
         return f"<Chemistry(name={self.name}, version={self.version})>"
 
 # ============================================================================
-# MAIN EXPERIMENT TABLE
+# SNV TABLES
 # ============================================================================
 
-class Experiment(Base):
-    """
-    Main table linking all metadata and details related to a benchmarking experiment.
-    """
-    __tablename__ = 'experiments'
-    
+class SNVCaller(Base):
+    """SNV variant callers — separate from SV callers"""
+    __tablename__ = 'snv_callers'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(Enum(SNVCallerName))
+    type = Column(Enum(CallerType))
+    version = Column(String(50))
+    model = Column(String(100))
+
+    snv_experiments = relationship("SNVExperiment", back_populates="snv_caller")
+
+    def __repr__(self):
+        return f"<SNVCaller(name={self.name.value}, version={self.version})>"
+
+
+class Variant(Base):
+    """SNV-only variant metadata; sv_type lives on sv_results rows"""
+    __tablename__ = 'variants'
+
+    id = Column(Integer, primary_key=True)
+    type = Column(Enum(SNVType))
+    size = Column(Enum(SNVSize))
+    origin = Column(Enum(VariantOrigin))
+    is_phased = Column(Boolean, default=False)
+
+    snv_experiments = relationship("SNVExperiment", back_populates="variant")
+
+    def __repr__(self):
+        return f"<Variant(type={self.type.value}, origin={self.origin.value})>"
+
+
+class SNVExperiment(Base):
+    """One row per hap.py upload"""
+    __tablename__ = 'snv_experiments'
+
     id = Column(Integer, primary_key=True)
     name = Column(String(200), nullable=False)
     description = Column(String(1000))
-    is_public = Column(Boolean, default=True)        # Public vs Private
-    created_by_username = Column(String(100))                          
+    is_public = Column(Boolean, default=True)
+    created_by_username = Column(String(100))
+    created_at = Column(DateTime)
 
-    # Foreign keys to reference tables
-    owner_id = Column(Integer, ForeignKey('users.id'), nullable=True)  # NULL = public legacy data
+    owner_id = Column(Integer, ForeignKey('users.id'), nullable=True) # NULL = public legacy data
     sequencing_technology_id = Column(Integer, ForeignKey('sequencing_technologies.id'))
-    variant_caller_id = Column(Integer, ForeignKey('variant_callers.id'))
+    snv_caller_id = Column(Integer, ForeignKey('snv_callers.id'))
     aligner_id = Column(Integer, ForeignKey('aligners.id'))
     truth_set_id = Column(Integer, ForeignKey('truth_sets.id'))
     benchmark_tool_id = Column(Integer, ForeignKey('benchmark_tools.id'))
     variant_id = Column(Integer, ForeignKey('variants.id'))
     quality_control_metrics_id = Column(Integer, ForeignKey('quality_control_metrics.id'))
     chemistry_id = Column(Integer, ForeignKey('chemistries.id'))
-    
-    # Timestamps
-    created_at = Column(DateTime)
 
-    # Relationships
-    owner = relationship("User", back_populates="experiments")
-    sequencing_technology = relationship("SequencingTechnology", back_populates="experiments")
-    variant_caller = relationship("VariantCaller", back_populates="experiments")
-    aligner = relationship("Aligner", back_populates="experiments")
-    truth_set = relationship("TruthSet", back_populates="experiments")
-    benchmark_tool = relationship("BenchmarkTool", back_populates="experiments")
-    variant = relationship("Variant", back_populates="experiments")
-    quality_control = relationship("QualityControl", back_populates="experiments")
-    chemistry = relationship("Chemistry", back_populates="experiments")
-    benchmark_results = relationship("BenchmarkResult", back_populates="experiment")
-    
+    owner = relationship("User", back_populates="snv_experiments")
+    sequencing_technology = relationship("SequencingTechnology", back_populates="snv_experiments")
+    snv_caller = relationship("SNVCaller", back_populates="snv_experiments")
+    aligner = relationship("Aligner", back_populates="snv_experiments")
+    truth_set = relationship("TruthSet", back_populates="snv_experiments")
+    benchmark_tool = relationship("BenchmarkTool", back_populates="snv_experiments")
+    variant = relationship("Variant", back_populates="snv_experiments")
+    quality_control = relationship("QualityControl", back_populates="snv_experiments")
+    chemistry = relationship("Chemistry", back_populates="snv_experiments")
+    snv_overall_results = relationship("SNVOverallResult", back_populates="experiment")
+    snv_benchmark_results = relationship("SNVBenchmarkResult", back_populates="experiment")
+
     def __repr__(self):
-        return f"<Experiment(name={self.name})>"
+        return f"<SNVExperiment(name={self.name})>"
 
-# ============================================================================
-# BENCHMARKING RESULTS TABLES
-# ============================================================================
 
-class OverallResult(Base):
+class SNVOverallResult(Base):
     """
-    Fast access table for overall (*) region results from hap.py files 
-    Used for main performane results (Tab 2 and 3) 
+    Fast-access table for overall (*) region results from hap.py.
+    One row per (experiment, variant_type). Used for Tabs 2 and 3.
     """
-    __tablename__ = 'overall_results'
-    
+    __tablename__ = 'snv_overall_results'
+
     id = Column(Integer, primary_key=True)
-    experiment_id = Column(Integer, ForeignKey('experiments.id'), nullable=False)
-    
-    # Core identifiers
-    variant_type = Column(String(20), nullable=False)      # SNP, INDEL
-    
-    # Performance metrics (most important)
-    metric_recall = Column(Float)      
-    metric_precision = Column(Float)   
-    metric_f1_score = Column(Float)    
-    
-    # Essential counts
+    experiment_id = Column(Integer, ForeignKey('snv_experiments.id'), nullable=False)
+    variant_type = Column(String(20), nullable=False)   # SNP or INDEL
+
+    metric_recall = Column(Float)
+    metric_precision = Column(Float)
+    metric_f1_score = Column(Float)
+
     truth_total = Column(Integer)
     truth_tp = Column(Integer)
     truth_fn = Column(Integer)
     query_total = Column(Integer)
     query_tp = Column(Integer)
     query_fp = Column(Integer)
-    
-    # Relationship
-    experiment = relationship("Experiment")
-    
-    def __repr__(self):
-        return f"<OverallResult(exp_id={self.experiment_id}, type={self.variant_type})>"
-    
-class BenchmarkResult(Base):
-    """
-    Full benchmarking experiment results (including all region types) from hap.py output.
-    Used for stratified analysis (Tab 4 only)
-    """
-    __tablename__ = 'benchmark_results'
-    
-    id = Column(Integer, primary_key=True)
-    experiment_id = Column(Integer, ForeignKey('experiments.id'), nullable=False)
 
-    # Core identifiers (filtering criteria)
-    variant_type = Column(String(20), nullable=False)      # SNP, INDEL
-    subtype = Column(String(100), default='NULL')             # Always 'NULL'
-    subset = Column(Enum(RegionType), nullable=False)       # Region types
-    filter_type = Column(String(20), default='ALL')       # Always 'ALL'
-    
+    experiment = relationship("SNVExperiment", back_populates="snv_overall_results")
+
+    def __repr__(self):
+        return f"<SNVOverallResult(exp_id={self.experiment_id}, type={self.variant_type})>"
+
+
+class SNVBenchmarkResult(Base):
+    """
+    Full stratified hap.py results including all region types.
+    One row per (experiment, variant_type, region). Used for Tab 4.
+    """
+    __tablename__ = 'snv_benchmark_results'
+
+    id = Column(Integer, primary_key=True)
+    experiment_id = Column(Integer, ForeignKey('snv_experiments.id'), nullable=False)
+
+    variant_type = Column(String(20), nullable=False)
+    subtype = Column(String(100), default='NULL')
+    subset = Column(Enum(RegionType), nullable=False)
+    filter_type = Column(String(20), default='ALL')
+
     # Performance metrics
     metric_recall = Column(Float)      # METRIC.Recall
     metric_precision = Column(Float)   # METRIC.Precision
@@ -618,9 +549,97 @@ class BenchmarkResult(Base):
     query_unk = Column(Integer)           # QUERY.UNK
     query_unk_het = Column(Integer)         # QUERY.UNK.het
     query_unk_homalt = Column(Integer)      # QUERY.UNK.homalt
-    
-    # Relationship
-    experiment = relationship("Experiment", back_populates="benchmark_results")
-    
+
+    experiment = relationship("SNVExperiment", back_populates="snv_benchmark_results")
+
     def __repr__(self):
-        return f"<BenchmarkResult(exp_id={self.experiment_id}, type={self.variant_type}, recall={self.metric_recall})>"
+        return f"<SNVBenchmarkResult(exp_id={self.experiment_id}, type={self.variant_type}, recall={self.metric_recall})>"
+
+# ============================================================================
+# SV TABLES
+# ============================================================================
+
+class SVCaller(Base):
+    """SV variant callers — separate from SNV callers"""
+    __tablename__ = 'sv_callers'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(Enum(SVCallerName))
+    type = Column(Enum(CallerType))
+    version = Column(String(50))
+    model = Column(String(100))
+
+    sv_experiments = relationship("SVExperiment", back_populates="sv_caller")
+
+    def __repr__(self):
+        return f"<SVCaller(name={self.name.value}, version={self.version})>"
+
+
+class SVExperiment(Base):
+    """One row per uploaded parent Truvari directory. No variant FK — sv_type lives on sv_results."""
+    __tablename__ = 'sv_experiments'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(200), nullable=False)
+    description = Column(String(1000))
+    is_public = Column(Boolean, default=True)
+    created_by_username = Column(String(100))
+    created_at = Column(DateTime)
+
+    owner_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    sequencing_technology_id = Column(Integer, ForeignKey('sequencing_technologies.id'))
+    sv_caller_id = Column(Integer, ForeignKey('sv_callers.id'))
+    aligner_id = Column(Integer, ForeignKey('aligners.id'))
+    truth_set_id = Column(Integer, ForeignKey('truth_sets.id'))
+    benchmark_tool_id = Column(Integer, ForeignKey('benchmark_tools.id'))
+    quality_control_metrics_id = Column(Integer, ForeignKey('quality_control_metrics.id'))
+    chemistry_id = Column(Integer, ForeignKey('chemistries.id'))
+
+    owner = relationship("User", back_populates="sv_experiments")
+    sequencing_technology = relationship("SequencingTechnology", back_populates="sv_experiments")
+    sv_caller = relationship("SVCaller", back_populates="sv_experiments")
+    aligner = relationship("Aligner", back_populates="sv_experiments")
+    truth_set = relationship("TruthSet", back_populates="sv_experiments")
+    benchmark_tool = relationship("BenchmarkTool", back_populates="sv_experiments")
+    quality_control = relationship("QualityControl", back_populates="sv_experiments")
+    chemistry = relationship("Chemistry", back_populates="sv_experiments")
+    sv_results = relationship("SVResult", back_populates="experiment")
+
+    def __repr__(self):
+        return f"<SVExperiment(name={self.name})>"
+
+
+class SVResult(Base):
+    """
+    One row per JSON file parsed from a Truvari parent directory.
+    gt_concordance and gt_matrix_json are NULL for T2T (refine) runs.
+    has_refinement=True when parsed from refine.variant_summary.json.
+    """
+    __tablename__ = 'sv_results'
+
+    id = Column(Integer, primary_key=True)
+    experiment_id = Column(Integer, ForeignKey('sv_experiments.id'), nullable=False)
+
+    sv_type = Column(Enum(SVType), nullable=False)       # DEL or INS
+    size_range = Column(Enum(SVSizeRange), nullable=False)
+
+    metric_recall = Column(Float)
+    metric_precision = Column(Float)
+    metric_f1_score = Column(Float)
+
+    base_count = Column(Integer)     # truth total (base cnt)
+    comp_count = Column(Integer)     # call total (comp cnt)
+    truth_tp = Column(Integer)       # TP-base
+    call_tp = Column(Integer)        # TP-comp
+    fp = Column(Integer)
+    fn = Column(Integer)
+
+    gt_concordance = Column(Float)   
+    gt_matrix_json = Column(Text)    # TO BE EDITED
+    
+    has_refinement = Column(Boolean, default=False)
+
+    experiment = relationship("SVExperiment", back_populates="sv_results")
+
+    def __repr__(self):
+        return f"<SVResult(exp_id={self.experiment_id}, type={self.sv_type.value}, size={self.size_range.value})>"
