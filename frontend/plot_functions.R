@@ -435,7 +435,7 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
     height_per_region <- 40 + (n_experiments * 16)
     
     return(base_height + (n_regions * height_per_region))
-  })
+  },  width = 900)
   
   # INDEL Stratified Plot
   output$stratified_indel_plot <- renderPlot({
@@ -453,7 +453,7 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
     height_per_region <- 40 + (n_experiments * 16)
     
     return(base_height + (n_regions * height_per_region))
-  })
+  },  width = 900)
   
   # ====================================================================
   # LEGEND OUTPUTS (TAB 3)
