@@ -248,7 +248,7 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
                  dragmode = "zoom",
                  hoverlabel = list(align = "left"),
                  margin = list(l = 5, r = 5, t = 45, b = 5),
-                 width = NULL, 
+                 width = 350,
                  height = 500,
                  autosize = TRUE,
                                   xaxis = list(
@@ -374,7 +374,7 @@ setup_plot_outputs <- function(input, output, session, data_reactives) {
                  dragmode = "zoom",
                  hoverlabel = list(align = "left"),
                  margin = list(l = 5, r = 5, t = 45, b = 5),
-                 width = NULL, 
+                 width = 350,
                  height = 500,
                  autosize = TRUE,
                  xaxis = list(
