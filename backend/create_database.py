@@ -68,7 +68,18 @@ def main():
     except Exception as e:
         logger.error(f"Failed to verify tables: {e}")
         sys.exit(1)
-    
+
+    # Step 5: One-time WAL checkpoint cleanup on startup.
+    # Folds any leftover benchmarking.db-wal data into benchmarking.db itself.
+    # Safe no-op if there's no WAL file or nothing pending in it.
+    try:
+        from sqlalchemy import text
+        engine = get_engine()
+        with engine.connect() as conn:
+            conn.execute(text("PRAGMA wal_checkpoint(TRUNCATE)"))
+        logger.info("WAL checkpoint completed (no-op if no WAL data pending)")
+    except Exception as e:
+        logger.warning(f"WAL checkpoint step failed (non-fatal): {e}")
 
 if __name__ == "__main__":
     main()
