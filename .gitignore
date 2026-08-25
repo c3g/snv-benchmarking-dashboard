@@ -1,6 +1,9 @@
 # macOS
 .DS_Store
 
+# Task planning docs
+docs/
+
 # Project Data
 data/
 data/happy_files/*.csv
