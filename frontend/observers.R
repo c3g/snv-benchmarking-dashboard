@@ -151,7 +151,8 @@ setup_observers <- function(input, output, session, data_reactives) {
     data_reactives$plot_clicked_id(NULL)
     data_reactives$stratified_triggered(FALSE)
     data_reactives$active_truth_set_filter("ALL")
-    
+    data_reactives$active_reference_filter("ALL")
+
     # Reset all filter controls
     updateRadioButtons(session, "filter_type", selected = "none")
     updateSelectInput(session, "filter_technology", selected = "ILLUMINA")
@@ -164,7 +165,12 @@ setup_observers <- function(input, output, session, data_reactives) {
     updateSelectInput(session, "truth_set_filter_tab2", selected = "ALL")
     updateSelectInput(session, "truth_set_filter_tab3", selected = "ALL")
     updateSelectInput(session, "truth_set_filter_tab4", selected = "ALL")
-    
+
+    # Reset reference genome filters
+    updateSelectInput(session, "reference_filter_tab2", selected = "ALL")
+    updateSelectInput(session, "reference_filter_tab3", selected = "ALL")
+    updateSelectInput(session, "reference_filter_tab4", selected = "ALL")
+
     # Clear table selection
     dataTableProxy('experiments_table') %>% selectRows(NULL)
         
@@ -397,10 +403,49 @@ setup_observers <- function(input, output, session, data_reactives) {
     new_value <- input$truth_set_filter_tab4
     if (!is.null(new_value) && new_value != data_reactives$active_truth_set_filter()) {
       data_reactives$active_truth_set_filter(new_value)
-      
+
       # Sync other tabs
       updateSelectInput(session, "truth_set_filter_tab2", selected = new_value)
       updateSelectInput(session, "truth_set_filter_tab3", selected = new_value)
+    }
+  })
+
+  # ====================================================================
+  # REFERENCE GENOME FILTER SYNCHRONIZATION OBSERVERS
+  # ====================================================================
+  # Tab 2 filter
+  observeEvent(input$reference_filter_tab2, {
+    new_value <- input$reference_filter_tab2
+    if (!is.null(new_value) && new_value != data_reactives$active_reference_filter()) {
+      data_reactives$active_reference_filter(new_value)
+
+      # Sync other tabs
+      updateSelectInput(session, "reference_filter_tab3", selected = new_value)
+      updateSelectInput(session, "reference_filter_tab4", selected = new_value)
+    }
+  })
+
+  # Tab 3 filter
+  observeEvent(input$reference_filter_tab3, {
+    new_value <- input$reference_filter_tab3
+    if (!is.null(new_value) && new_value != data_reactives$active_reference_filter()) {
+      data_reactives$active_reference_filter(new_value)
+
+      # Sync other tabs
+      updateSelectInput(session, "reference_filter_tab2", selected = new_value)
+      updateSelectInput(session, "reference_filter_tab4", selected = new_value)
+    }
+  })
+
+  # Tab 4 filter
+  observeEvent(input$reference_filter_tab4, {
+    new_value <- input$reference_filter_tab4
+    if (!is.null(new_value) && new_value != data_reactives$active_reference_filter()) {
+      data_reactives$active_reference_filter(new_value)
+
+      # Sync other tabs
+      updateSelectInput(session, "reference_filter_tab2", selected = new_value)
+      updateSelectInput(session, "reference_filter_tab3", selected = new_value)
     }
   })
 
