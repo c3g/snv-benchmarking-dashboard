@@ -434,21 +434,39 @@ ui <- fluidPage(
               )
               )
             ),
-            #truthset filter 
+            #truthset + reference genome filters
             div(class = "truth-set-filter-panel",
-              tags$label("Choose Truth Set References for Comparison:"),
-              selectInput(
-                "truth_set_filter_tab2",
-                label = NULL,
-                choices = TRUTH_SET_FILTER_OPTIONS,
-                selected = " ALL",
-                width = "100%"
+              div(class = "filter-group",
+                tags$label("Truth Set:"),
+                selectInput(
+                  "truth_set_filter_tab2",
+                  label = NULL,
+                  choices = TRUTH_SET_FILTER_OPTIONS,
+                  selected = "ALL",
+                  width = "100%"
+                ),
+                tags$span(
+                  class = "info-icon",
+                  icon("info-circle"),
+                  title = "Filter experiments by benchmarking truth set",
+                  `data-toggle` = "tooltip"
+                )
               ),
-              tags$span(
-                class = "info-icon",
-                icon("info-circle"),
-                title = "Filter experiments by benchmarking truth set",
-                `data-toggle` = "tooltip"
+              div(class = "filter-group",
+                tags$label("Reference Genome:"),
+                selectInput(
+                  "reference_filter_tab2",
+                  label = NULL,
+                  choices = REFERENCE_FILTER_OPTIONS,
+                  selected = "ALL",
+                  width = "100%"
+                ),
+                tags$span(
+                  class = "info-icon",
+                  icon("info-circle"),
+                  title = "Filter experiments by reference genome build (GRCh37/GRCh38)",
+                  `data-toggle` = "tooltip"
+                )
               )
             ),
             DT::dataTableOutput("performance_table")
@@ -492,21 +510,39 @@ div(
                     )
               )
             ),
-            #truthset filter 
+            #truthset + reference genome filters
             div(class = "truth-set-filter-panel",
-              tags$label("Choose Truth Set References for Comparison:"),
-              selectInput(
-                "truth_set_filter_tab3",
-                label = NULL,
-                choices = TRUTH_SET_FILTER_OPTIONS,
-                selected = "ALL",
-                width = "100%"
+              div(class = "filter-group",
+                tags$label("Truth Set:"),
+                selectInput(
+                  "truth_set_filter_tab3",
+                  label = NULL,
+                  choices = TRUTH_SET_FILTER_OPTIONS,
+                  selected = "ALL",
+                  width = "100%"
+                ),
+                tags$span(
+                  class = "info-icon",
+                  icon("info-circle"),
+                  title = "Filter experiments by benchmarking truth set",
+                  `data-toggle` = "tooltip"
+                )
               ),
-              tags$span(
-                class = "info-icon",
-                icon("info-circle"),
-                title = "Filter experiments by benchmarking truth set",
-                `data-toggle` = "tooltip"
+              div(class = "filter-group",
+                tags$label("Reference Genome:"),
+                selectInput(
+                  "reference_filter_tab3",
+                  label = NULL,
+                  choices = REFERENCE_FILTER_OPTIONS,
+                  selected = "ALL",
+                  width = "100%"
+                ),
+                tags$span(
+                  class = "info-icon",
+                  icon("info-circle"),
+                  title = "Filter experiments by reference genome build (GRCh37/GRCh38)",
+                  `data-toggle` = "tooltip"
+                )
               )
             ),
             # Performance plots
@@ -616,21 +652,39 @@ div(
                 )
               )
             ),
-            #truthset filter 
+            #truthset + reference genome filters
             div(class = "truth-set-filter-panel",
-              tags$label("Choose Truth Set References for Comparison:"),
-              selectInput(
-                "truth_set_filter_tab4",
-                label = NULL,
-                choices = TRUTH_SET_FILTER_OPTIONS,
-                selected = "ALL",
-                width = "100%"
+              div(class = "filter-group",
+                tags$label("Truth Set:"),
+                selectInput(
+                  "truth_set_filter_tab4",
+                  label = NULL,
+                  choices = TRUTH_SET_FILTER_OPTIONS,
+                  selected = "ALL",
+                  width = "100%"
+                ),
+                tags$span(
+                  class = "info-icon",
+                  icon("info-circle"),
+                  title = "Filter experiments by benchmarking truth set",
+                  `data-toggle` = "tooltip"
+                )
               ),
-              tags$span(
-                class = "info-icon",
-                icon("info-circle"),
-                title = "Filter experiments by benchmarking truth set",
-                `data-toggle` = "tooltip"
+              div(class = "filter-group",
+                tags$label("Reference Genome:"),
+                selectInput(
+                  "reference_filter_tab4",
+                  label = NULL,
+                  choices = REFERENCE_FILTER_OPTIONS,
+                  selected = "ALL",
+                  width = "100%"
+                ),
+                tags$span(
+                  class = "info-icon",
+                  icon("info-circle"),
+                  title = "Filter experiments by reference genome build (GRCh37/GRCh38)",
+                  `data-toggle` = "tooltip"
+                )
               )
             ),
             # Region selection panel
