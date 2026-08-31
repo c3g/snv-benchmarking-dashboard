@@ -34,7 +34,9 @@ TECHNOLOGY_OPTIONS <- enums$VALID_TECHNOLOGIES
 CALLER_OPTIONS <-  enums$VALID_CALLERS
 
 TRUTH_SET_OPTIONS <-  enums$VALID_TRUTH_SETS # for upload modal
-TRUTH_SET_FILTER_OPTIONS <-  c("ALL", enums$VALID_TRUTH_SETS) # for filtering results 
+TRUTH_SET_FILTER_OPTIONS <-  c("ALL", enums$VALID_TRUTH_SETS) # for filtering results
+
+REFERENCE_FILTER_OPTIONS <- c("ALL", enums$VALID_REFERENCES) # for filtering results by genome build
 
 TARGET_OPTIONS <- enums$VALID_TARGETS
 PLATFORM_TYPE_OPTIONS <- enums$VALID_PLATFORM_TYPES
@@ -678,18 +680,36 @@ TRUTH_SET_FILTER_CSS <- "
     color: #495057;
     white-space: nowrap;
   }
-  
-  .truth-set-filter-panel .form-group {
+
+  .truth-set-filter-panel .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .truth-set-filter-panel .filter-group .form-group {
     margin: 0;
     flex: 1;
+    min-width: 0;
     max-width: 250px;
   }
-  
+
   .truth-set-filter-panel select {
     font-size: 13px;
     padding: 6px 10px;
     border-radius: 4px;
     border: 1px solid #ced4da;
+  }
+
+  @media (max-width: 768px) {
+    .truth-set-filter-panel {
+      flex-wrap: wrap;
+    }
+    .truth-set-filter-panel .filter-group {
+      flex-basis: 100%;
+    }
   }
   
   .truth-set-filter-panel .info-icon {

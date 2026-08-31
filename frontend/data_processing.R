@@ -56,6 +56,9 @@ setup_data_reactives <- function(input, output, session) {
   # Currently active truth set filter
   active_truth_set_filter <- reactiveVal("ALL")
 
+  # Currently active reference genome filter
+  active_reference_filter <- reactiveVal("ALL")
+
   # Visibility filter mode -- not used 
   # visibility_filter <- reactiveVal("all")  # "all", "public", "mine"
 
@@ -203,33 +206,58 @@ setup_data_reactives <- function(input, output, session) {
     }
   })
   
-  # Filter performance experiment IDs by active truth set
+  # Filter performance experiment IDs by active truth set and reference genome
   performance_experiment_ids_filtered <- reactive({
     ids <- performance_experiment_ids()
-    truth_set_filter <- active_truth_set_filter() 
-    
-    # If "ALL" selected, return all IDs
-    if (is.null(truth_set_filter) || truth_set_filter == "ALL") {
+    truth_set_filter <- active_truth_set_filter()
+    reference_filter <- active_reference_filter()
+
+    truth_set_active <- !is.null(truth_set_filter) && truth_set_filter != "ALL"
+    reference_active <- !is.null(reference_filter) && reference_filter != "ALL"
+
+    # If neither filter is active, return all IDs
+    if (!truth_set_active && !reference_active) {
       return(ids)
     }
-    
-    # filter experiments by truth set
+
+    # filter experiments by truth set and/or reference genome
     tryCatch({
       user_info <- get_user_info(session)
       user_id <- if (!is.null(user_info)) session$userData$user_id else NULL
       is_admin_user <- if (!is.null(user_info)) isTRUE(user_info$is_admin) else FALSE
-      overview <- py_df_to_r(db$get_experiments_overview(NULL, json_param(ids), user_id, is_admin_user))      
-      filtered <- overview %>%
-        filter(toupper(truth_set) == toupper(truth_set_filter)) %>%
-        pull(id)
-      
+      overview <- py_df_to_r(db$get_experiments_overview(NULL, json_param(ids), user_id, is_admin_user))
+
+      missing_cols <- c(
+        if (truth_set_active && !("truth_set" %in% names(overview))) "truth set",
+        if (reference_active && !("truth_set_reference" %in% names(overview))) "reference genome"
+      )
+      if (length(missing_cols) > 0) {
+        showNotification(
+          paste0("Could not apply ", paste(missing_cols, collapse = " / "),
+                 " filter(s) -- required data is unavailable. Filters were not applied."),
+          type = "error", duration = 8
+        )
+        return(ids)
+      }
+
+      filtered <- overview
+      if (truth_set_active) {
+        filtered <- filtered %>% filter(toupper(truth_set) == toupper(truth_set_filter))
+      }
+      if (reference_active) {
+        filtered <- filtered %>% filter(toupper(truth_set_reference) == toupper(reference_filter))
+      }
+      filtered <- filtered %>% pull(id)
+
       if (length(filtered) == 0) {
-        showNotification(paste("No experiments found with truth set:", truth_set_filter), 
+        showNotification("No experiments found matching the selected truth set / reference genome.",
                         type = "warning", duration = 4)
       }
       return(filtered)
     }, error = function(e) {
-      cat("Error filtering by truth set:", e$message, "\n")
+      cat("Error filtering by truth set / reference genome:", e$message, "\n")
+      showNotification(paste("Error applying truth set / reference genome filter:", e$message),
+                       type = "error", duration = 6)
       return(ids)
     })
   })
@@ -286,10 +314,10 @@ setup_data_reactives <- function(input, output, session) {
     
     enhanced_data <- viz_data %>%
       select(
-        experiment_id, experiment_name, 
+        experiment_id, experiment_name,
         technology, platform_name,
         caller, caller_version, chemistry_name, mean_coverage,
-        truth_set,
+        truth_set, truth_set_reference,
         variant_type, recall, precision, f1_score
       ) %>%
       mutate(
@@ -313,8 +341,9 @@ setup_data_reactives <- function(input, output, session) {
         "Version" = caller_version,
         "Chemistry" = chemistry_name,
         "Truth Set" = truth_set,
+        "Reference" = truth_set_reference,
         "Coverage" = mean_coverage,
-        "Variant" = variant_type,
+        "Variant Type" = variant_type,
         "F1 Score (%)" = f1_score,
         "Precision (%)" = precision,
         "Recall (%)" = recall
@@ -400,6 +429,7 @@ setup_data_reactives <- function(input, output, session) {
     current_mode = current_mode,
     display_experiment_ids = display_experiment_ids,
     active_truth_set_filter = active_truth_set_filter,
+    active_reference_filter = active_reference_filter,
     table_selected_ids = table_selected_ids,
     plot_clicked_id = plot_clicked_id,
     comparison_submitted = comparison_submitted,

@@ -528,18 +528,22 @@ generate_html_header <- function() {
 generate_summary_section <- function(viz_data, experiment_ids) {
   technologies <- unique(viz_data$technology[!is.na(viz_data$technology)])
   callers <- unique(viz_data$caller[!is.na(viz_data$caller)])
+  truth_sets <- unique(viz_data$truth_set[!is.na(viz_data$truth_set)])
+  references <- unique(viz_data$truth_set_reference[!is.na(viz_data$truth_set_reference)])
   paste0('
       <p style="text-align: center; color: #6c757d; margin-bottom: 30px;">
           Generated on ', format(Sys.time(), "%B %d, %Y at %H:%M"), '<br>
           Total Experiments: ', length(experiment_ids), '
       </p>
-      
+
       <div class="summary">
           <h3>Export Summary</h3>
           <ul>
               <li><strong>Total Experiments:</strong> ', length(experiment_ids), '</li>
               <li><strong>Technologies:</strong> ', paste(technologies, collapse = ", "), '</li>
               <li><strong>Variant Callers:</strong> ', paste(callers, collapse = ", "), '</li>
+              <li><strong>Truth Set(s):</strong> ', paste(truth_sets, collapse = ", "), '</li>
+              <li><strong>Reference Genome(s):</strong> ', paste(references, collapse = ", "), '</li>
           </ul>
       </div>')
 }

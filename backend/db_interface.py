@@ -182,6 +182,7 @@ def get_experiments_overview(filters=None, experiment_ids_param=None, user_id=No
                     'caller_version': exp.variant_caller.version if (exp.variant_caller and exp.variant_caller.version) else "N/A",
                     'chemistry': exp.chemistry.name if (exp.chemistry and exp.chemistry.name) else "N/A",
                     'truth_set': exp.truth_set.name.value if exp.truth_set else "N/A",
+                    'truth_set_reference': exp.truth_set.reference.value if exp.truth_set else "N/A",
                     'sample': exp.truth_set.sample.value if exp.truth_set else "N/A",
                     'created_at': exp.created_at.strftime('%Y-%m-%d') if exp.created_at else "N/A",
                     # Visibility info

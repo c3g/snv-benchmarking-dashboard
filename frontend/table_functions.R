@@ -246,29 +246,31 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
       df$created_at <- format(as.Date(df$created_at), "%Y/%m/%d")
     }
     
-    # Select and reorder columns
-    column_order <- c(
-      "expand_button", 
-      "id", 
-      "name", 
-      "technology", 
-      "platform_name", 
-      "caller", 
-      "caller_version", 
-      "chemistry", 
-      "truth_set", 
-      "sample",
-      "Visibility", 
-      "created_at"
+
+    column_labels <- c(
+      expand_button = "",
+      id = "ID",
+      name = "Name",
+      technology = "Technology",
+      platform_name = "Platform",
+      caller = "Caller",
+      caller_version = "Version",
+      chemistry = "Chemistry",
+      truth_set = "Truth Set",
+      truth_set_reference = "Reference",
+      sample = "Sample",
+      Visibility = "Visibility",
+      created_at = "Created"
     )
-    
-    # Keep only columns that exist in df
-    column_order <- column_order[column_order %in% names(df)]
+
+    # Keep only columns that exist in df, preserving display order
+    column_order <- names(column_labels)[names(column_labels) %in% names(df)]
     df <- df[, column_order]
-    
+    display_colnames <- unname(column_labels[column_order])
+
     # Configure table selection based on current mode
     current_mode <- data_reactives$current_mode()
-    
+
     if (current_mode == "manual_selection") {
       selected_ids <- isolate(data_reactives$table_selected_ids())
       selected_rows <- which(df$id %in% selected_ids)
@@ -276,7 +278,26 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
     } else {
       selection_config <- 'none'
     }
-    
+
+    # Compute column indices (0-based, for DT columnDefs targets) from
+    # actual column_order rather than hardcoding them, so a column being
+    # missing/reordered can't silently misalign the styling rules below.
+    idx0 <- function(col) which(column_order == col) - 1
+
+    columnDefs <- list()
+    if (length(idx0("expand_button")) > 0) {
+      columnDefs <- c(columnDefs, list(list(targets = idx0("expand_button"), orderable = FALSE, width = "20px")))
+    }
+    if (length(idx0("id")) > 0) {
+      columnDefs <- c(columnDefs, list(list(targets = idx0("id"), width = "20px", className = "dt-center")))
+    }
+    if (length(idx0("name")) > 0) {
+      columnDefs <- c(columnDefs, list(list(targets = idx0("name"), width = 150)))
+    }
+    if (length(idx0("Visibility")) > 0) {
+      columnDefs <- c(columnDefs, list(list(targets = idx0("Visibility"), className = "dt-center", width = "80px")))
+    }
+
     # Create DataTable
     dt <- DT::datatable(
       df,
@@ -293,28 +314,10 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
           "  $('.dataTables_wrapper').css('width', '100%');",
           "}"
         ),
-        columnDefs = list(
-          list(targets = 0, orderable = FALSE, width = "20px"),              # Expand button
-          list(targets = 1, width = "20px", className = "dt-center"),        # ID
-          list(targets = 2, width = 150),                                     # Name
-          list(targets = 10, className = "dt-center", width = "80px")        # Visibility (centered)
-        )
+        columnDefs = columnDefs
       ),
       rownames = FALSE,
-      colnames = c(
-        "",            # Expand button
-        "ID", 
-        "Name", 
-        "Technology", 
-        "Platform", 
-        "Caller", 
-        "Version", 
-        "Chemistry", 
-        "Truth Set", 
-        "Sample",
-        "Visibility", 
-        "Created"
-      )
+      colnames = display_colnames
     )
       dt <- dt %>%
       formatStyle(
@@ -340,7 +343,14 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
       df <- df %>% select(-row_class)
     }
     
-    # Create DataTable with conditional formatting
+    # Column names here already match desired display labels (set via
+    # rename() in performance_data), so DT uses df's own names directly
+    # instead of a separately hardcoded colnames vector -- a mismatched
+    # count/order between the two is what previously mislabeled the
+    # Recall/F1 Score columns and, before that, broke silently whenever a
+    # column was added/removed upstream.
+    idx0 <- function(col) which(names(df) == col) - 1
+
     dt <- DT::datatable(
       df,
       selection = 'none',
@@ -348,27 +358,21 @@ setup_table_outputs <- function(input, output, session, data_reactives) {
         pageLength = 20,
         scrollX = TRUE,
         columnDefs = list(
-          list(targets = 0, className = "dt-center", width = "50px"),     # ID column
-          list(targets = c(10, 11, 12), className = "dt-center"),         # Performance columns 
-          list(targets = 7, className = "dt-center"),                     # Coverage column 
-          list(targets = 5, className = "dt-body-wrap"),                  # Version column 
+          list(targets = idx0("ID"), className = "dt-center", width = "50px"),
+          list(targets = c(idx0("Recall (%)"), idx0("Precision (%)"), idx0("F1 Score (%)")), className = "dt-center"),
+          list(targets = idx0("Coverage"), className = "dt-center"),
+          list(targets = idx0("Version"), className = "dt-body-wrap"),
           list(targets = "_all", className = "dt-body-nowrap")
         )
       ),
-      rownames = FALSE,
-      colnames = c(
-        "ID", "Experiment", "Technology", "Platform",
-        "Caller", "Version", "Chemistry", "Coverage", 
-        "Truth Set", 
-        "Variant Type", "F1 Score (%)", "Precision (%)", "Recall (%)"
-      )
+      rownames = FALSE
     ) %>%
       # Variant type row coloring
       formatStyle(
-        "Variant",
+        "Variant Type",
         target = "row",
         backgroundColor = styleEqual(
-          c("SNP", "INDEL"), 
+          c("SNP", "INDEL"),
           c("#fdf2f2", "#f2f7fd")  # Light red for SNP, light blue for INDEL
         )
       )
