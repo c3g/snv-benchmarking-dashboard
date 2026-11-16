@@ -230,23 +230,24 @@ generate_stratified_plots <- function(stratified_data, selected_metric = "f1_sco
     p <- ggplot(plot_data, aes(x = metric_value, y = exp_label)) + 
       geom_col(aes(fill = tech_caller), alpha = 0.85, width = 0.7) + 
       geom_text(aes(label = paste0(round(metric_value * 100, 2), "%")), 
-                hjust = -0.1, size = 3.5, color = "black") +
+                hjust = -0.1, size = 3.8, color = "black") +
       scale_fill_manual(values = tech_caller_colors, na.value = "gray70") +
       scale_x_continuous(limits = c(0, 1.1), labels = scales::percent_format()) +
       facet_wrap(~ subset, scales = "free_y", ncol = 1) +
-      labs(x = metric_label, y = "Experiment", fill = "Technology + Caller") +
+      labs(x = metric_label, y = NULL, fill = "Technology + Caller") +
       theme_bw() +
       theme(
         strip.background = element_rect(fill = "#f8f9fa", color = "#dee2e6"),
-        strip.text = element_text(face = "bold", size = 14),
-        axis.text.y = element_text(face = "bold", size = 10),
-        axis.text.x = element_text(face = "bold", size = 10),
+        strip.text = element_text(face = "bold", size = 13),
+        axis.text.y = element_text(face = "bold", size = 11),
+        axis.text.x = element_text(face = "bold", size = 11),
         legend.position = "bottom",
-        legend.text = element_text(size =10),
+        legend.direction = "vertical",
+        legend.text = element_text(size = 10),
         panel.grid.major.y = element_blank(),
         panel.grid.minor = element_blank()
       ) +
-      guides(fill = guide_legend(ncol = 4, byrow = TRUE))
+      guides(fill = guide_legend(ncol = 2, byrow = TRUE))
     
     return(p)
   }
@@ -257,17 +258,23 @@ generate_stratified_plots <- function(stratified_data, selected_metric = "f1_sco
   temp_snp <- tempfile(fileext = ".png")
   temp_indel <- tempfile(fileext = ".png")
   
-  n_regions <- length(unique(stratified_data$subset))
-  n_experiments <- length(unique(stratified_data$experiment_id))
+  # Size the image from the bars actually drawn: each region panel holds one
+  # bar per experiment that has data there. Width is kept close to the
+  # ~560px column each plot gets in the report, so text isn't shrunk away.
+  bars_per_region <- stratified_data %>%
+    distinct(variant_type, subset, experiment_id) %>%
+    count(variant_type, subset) %>%
+    group_by(subset) %>%
+    summarise(n = max(n), .groups = "drop")
+  n_regions <- nrow(bars_per_region)
+  n_bars <- sum(bars_per_region$n)
+  n_legend_rows <- ceiling(length(unique(paste(stratified_data$technology, stratified_data$caller))) / 2)
 
-  height_per_region <- 3
-  height_per_experiment <- 0.4
-  base_height <- 4
-  
-  plot_height <- base_height + (n_regions * height_per_region) + (n_experiments * height_per_experiment) 
-  
-  ggsave(temp_snp, snp_plot, width = 12, height = plot_height, dpi = 300)
-  ggsave(temp_indel, indel_plot, width = 12, height = plot_height, dpi = 300)
+  plot_height <- 1.2 + (n_regions * 0.45) + (n_bars * 0.38) + (n_legend_rows * 0.25)
+  plot_width <- 8.5
+
+  ggsave(temp_snp, snp_plot, width = plot_width, height = plot_height, dpi = 200)
+  ggsave(temp_indel, indel_plot, width = plot_width, height = plot_height, dpi = 200)
   
   snp_base64 <- base64enc::base64encode(temp_snp)
   indel_base64 <- base64enc::base64encode(temp_indel)
