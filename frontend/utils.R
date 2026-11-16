@@ -62,6 +62,7 @@ technology_colors <- c(
   "MGI"      = "#009E73",
   "10X"      = "#E69F00",
   "ULTIMA"   = "#0072B2",
+  "ROCHE"    = "#8B4513",
   "Unknown"  = "#999999"
 )
 

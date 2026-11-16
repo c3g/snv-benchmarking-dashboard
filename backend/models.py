@@ -30,6 +30,7 @@ class SeqTechName(enum.Enum):
     PACBIO = "PACBIO"
     TENX = "10X"
     ULTIMA = "ULTIMA"
+    ROCHE = "ROCHE"
     #NEWTECH = "NEWTECH"  # Placeholder for future technologies
 
 class SeqTechTarget(enum.Enum):
